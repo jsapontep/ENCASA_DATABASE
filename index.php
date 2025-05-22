@@ -16,8 +16,18 @@ define('CONFIG_PATH', APP_PATH . '/config');
 require_once CONFIG_PATH . '/config.php';
 require_once CONFIG_PATH . '/database.php';
 require_once CONFIG_PATH . '/autoload.php';
-require_once CONFIG_PATH . '/routes.php';
 
-// Iniciar Router
-$router = new App\Helpers\Router();
+// Configuración de sesiones ANTES de iniciarlas
+ini_set('session.cookie_httponly', 1);
+ini_set('session.use_only_cookies', 1);
+ini_set('session.use_strict_mode', 1);
+if (APP_ENV === 'production') {
+    ini_set('session.cookie_secure', 1);
+}
+
+// Iniciar sesión
+session_start();
+
+// Cargar y ejecutar el router
+$router = require_once CONFIG_PATH . '/routes.php';
 $router->dispatch();
