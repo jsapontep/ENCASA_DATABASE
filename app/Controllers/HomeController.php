@@ -1,4 +1,5 @@
 <?php
+// filepath: /Applications/XAMPP/xamppfiles/htdocs/Encasa_Database/app/Controllers/HomeController.php
 namespace App\Controllers;
 
 class HomeController extends Controller {

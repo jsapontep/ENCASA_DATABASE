@@ -65,28 +65,20 @@ abstract class Model {
     /**
      * Actualiza un registro existente
      */
-    public function update($id, array $data) {
-        // Filtrar solo los campos permitidos
-        $data = $this->filterFields($data);
-        
-        if (empty($data)) {
-            return false;
+    public function update($id, $data) {
+        $fields = [];
+        foreach ($data as $key => $value) {
+            $fields[] = "{$key} = :{$key}";
         }
         
-        $fields = array_map(function($field) {
-            return $field . ' = :' . $field;
-        }, array_keys($data));
-        
-        $query = "UPDATE {$this->table} SET " . implode(', ', $fields) . " 
-                  WHERE {$this->primaryKey} = :id";
-        
+        $query = "UPDATE {$this->table} SET " . implode(', ', $fields) . " WHERE id = :id";
         $stmt = $this->db->prepare($query);
-        $stmt->bindValue(':id', $id);
         
         foreach ($data as $key => $value) {
-            $stmt->bindValue(':' . $key, $value);
+            $stmt->bindValue(":{$key}", $value);
         }
         
+        $stmt->bindValue(':id', $id);
         return $stmt->execute();
     }
     

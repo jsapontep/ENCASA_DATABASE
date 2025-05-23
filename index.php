@@ -1,4 +1,9 @@
 <?php
+// Al inicio del archivo index.php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 // Configurar visualización de errores para desarrollo
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
@@ -17,7 +22,7 @@ require_once CONFIG_PATH . '/config.php';
 require_once CONFIG_PATH . '/database.php';
 require_once CONFIG_PATH . '/autoload.php';
 
-// Configuración de sesiones ANTES de iniciarlas
+// Configuración de sesiones
 ini_set('session.cookie_httponly', 1);
 ini_set('session.use_only_cookies', 1);
 ini_set('session.use_strict_mode', 1);
@@ -30,4 +35,14 @@ session_start();
 
 // Cargar y ejecutar el router
 $router = require_once CONFIG_PATH . '/routes.php';
-$router->dispatch();
+try {
+    $router->dispatch();
+} catch (Exception $e) {
+    echo '<pre>';
+    echo 'Error: ' . $e->getMessage();
+    echo '<br>En archivo: ' . $e->getFile() . ' línea: ' . $e->getLine();
+    echo '<br>Stack trace:<br>';
+    echo $e->getTraceAsString();
+    echo '</pre>';
+    die();
+}
