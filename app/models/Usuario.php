@@ -1,10 +1,22 @@
 <?php
-// filepath: /Applications/XAMPP/xamppfiles/htdocs/Encasa_Database/app/models/Usuario.php
+// filepath: c:\xampp\htdocs\ENCASA_DATABASE\app\models\Usuario.php
 namespace App\Models;
 
 class Usuario extends Model {
-    protected $table = 'Usuarios';
-    protected $fillable = ['username', 'email', 'password', 'nombre_completo', 'ultimo_login', 'activo'];
+    protected $table = 'usuarios';
+    // Actualizar $fillable para que coincida con la estructura de la tabla
+    protected $fillable = [
+        'username', 
+        'email', 
+        'password', 
+        'nombre_completo', 
+        'miembro_id', 
+        'rol_id',
+        'ultimo_acceso', 
+        'estado',
+        'intentos_fallidos',
+        'token_reset'
+    ];
     
     /**
      * Encuentra un usuario por su nombre de usuario
@@ -68,9 +80,9 @@ class Usuario extends Model {
             return false;
         }
         
-        // Actualizar último login
+        // Actualizar último acceso (no último_login)
         $this->update($user['id'], [
-            'ultimo_login' => date('Y-m-d H:i:s')
+            'ultimo_acceso' => date('Y-m-d H:i:s')
         ]);
         
         return $user;
@@ -94,16 +106,44 @@ class Usuario extends Model {
      * Crea un nuevo usuario con contraseña hasheada
      */
     public function register($data) {
-        // Verificar si el usuario o email ya existe
-        if ($this->findByUsername($data['username']) || $this->findByEmail($data['email'])) {
+        // Log para depuración
+        error_log("Intentando registrar usuario: " . $data['username']);
+        
+        // Verificar si el usuario ya existe
+        if ($this->findByUsername($data['username'])) {
+            error_log("Usuario ya existe: " . $data['username']);
             return false;
         }
         
-        // Hashear la contraseña antes de guardarla
+        // Verificar si el email ya existe
+        if (!empty($data['email']) && $this->findByEmail($data['email'])) {
+            error_log("Email ya existe: " . $data['email']);
+            return false;
+        }
+        
+        // Hashear la contraseña
         $data['password'] = $this->hashPassword($data['password']);
         
+        // Asegurar que tiene campos obligatorios
+        if (!isset($data['miembro_id'])) {
+            error_log("Falta miembro_id para el usuario: " . $data['username']);
+            return false;
+        }
+        
+        if (!isset($data['rol_id'])) {
+            error_log("Falta rol_id para el usuario: " . $data['username']);
+            return false;
+        }
+        
         // Crear el usuario
-        return $this->create($data);
+        try {
+            $id = $this->create($data);
+            error_log("Usuario creado con ID: $id");
+            return $id;
+        } catch (\PDOException $e) {
+            error_log("Error al crear usuario: " . $e->getMessage());
+            return false;
+        }
     }
     
     /**

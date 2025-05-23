@@ -1,36 +1,49 @@
 <?php
-// filepath: /Applications/XAMPP/xamppfiles/htdocs/Encasa_Database/app/views/auth/register.php
+// filepath: c:\xampp\htdocs\ENCASA_DATABASE\app\views\auth\register.php
 ?>
 <div class="row justify-content-center">
   <div class="col-md-8 col-lg-6">
     <div class="card shadow">
-      <div class="card-header bg-primary text-white">
-        <h2 class="my-2">Registro de Usuario</h2>
-      </div>
       <div class="card-body">
+        <h3 class="card-title text-center mb-4">Registro de Usuario</h3>
+        
+        <?php if(isset($errors)): ?>
+        <div class="alert alert-danger">
+          <ul class="mb-0">
+            <?php foreach($errors as $error): ?>
+            <li><?= $error ?></li>
+            <?php endforeach; ?>
+          </ul>
+        </div>
+        <?php endif; ?>
+        
         <form action="<?= APP_URL ?>/auth/registro" method="post">
+          <!-- Nombre completo -->
           <div class="mb-3">
-            <label for="nombre_completo" class="form-label">Nombre Completo</label>
+            <label for="nombre_completo" class="form-label">Nombre completo</label>
             <input type="text" class="form-control" id="nombre_completo" name="nombre_completo" required>
           </div>
           
+          <!-- Nombre de usuario -->
           <div class="mb-3">
-            <label for="username" class="form-label">Nombre de Usuario</label>
+            <label for="username" class="form-label">Nombre de usuario</label>
             <input type="text" class="form-control" id="username" name="username" required>
-            <div class="form-text">Mínimo 4 caracteres, sin espacios</div>
           </div>
           
+          <!-- Correo electrónico -->
           <div class="mb-3">
-            <label for="email" class="form-label">Correo Electrónico</label>
+            <label for="email" class="form-label">Correo electrónico</label>
             <input type="email" class="form-control" id="email" name="email" required>
           </div>
           
+          <!-- Contraseña -->
           <div class="mb-3">
             <label for="password" class="form-label">Contraseña</label>
             <input type="password" class="form-control" id="password" name="password" required>
             <div class="form-text">Mínimo 6 caracteres</div>
           </div>
           
+          <!-- Confirmación de contraseña -->
           <div class="mb-3">
             <label for="password_confirmation" class="form-label">Confirmar Contraseña</label>
             <input type="password" class="form-control" id="password_confirmation" name="password_confirmation" required>

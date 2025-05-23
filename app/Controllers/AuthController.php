@@ -56,7 +56,7 @@ class AuthController extends Controller {
         }
         
         // Verificar si el usuario está activo
-        if (!$user['activo']) {
+        if ($user['estado'] !== 'Activo') {
             $_SESSION['flash_message'] = 'Tu cuenta está desactivada';
             $_SESSION['flash_type'] = 'warning';
             $this->redirect('login');
@@ -106,50 +106,65 @@ class AuthController extends Controller {
      * Procesa el registro de usuario
      */
     public function store() {
-        // Validar el formulario
-        $validation = $this->validate($_POST, [
-            'username' => ['required', 'min:4'],
-            'email' => ['required', 'email'],
-            'password' => ['required', 'min:6'],
-            'password_confirmation' => ['required']
-        ]);
-        
-        if (!$validation) {
-            $_SESSION['flash_message'] = 'Por favor verifica los campos del formulario';
-            $_SESSION['flash_type'] = 'danger';
-            $this->redirect('registro');
-            return;
+        // Verificar que sea una petición POST
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            // Redirigir a la página de registro si no es POST
+            header('Location: ' . APP_URL . '/registro');
+            exit;
         }
         
-        // Verificar que las contraseñas coinciden
-        if ($_POST['password'] !== $_POST['password_confirmation']) {
-            $_SESSION['flash_message'] = 'Las contraseñas no coinciden';
-            $_SESSION['flash_type'] = 'danger';
-            $this->redirect('registro');
-            return;
-        }
-        
-        // Preparar datos para registro
-        $userData = [
-            'username' => trim($_POST['username']),
-            'email' => trim($_POST['email']),
-            'password' => $this->userModel->hashPassword($_POST['password']),
-            'nombre_completo' => trim($_POST['nombre_completo'] ?? ''),
-            'activo' => 1
+        // Obtener datos del formulario
+        $data = [
+            'nombre_completo' => $_POST['nombre_completo'] ?? '',
+            'username' => $_POST['username'] ?? '',
+            'email' => $_POST['email'] ?? '',
+            'password' => $_POST['password'] ?? '',
+            'password_confirmation' => $_POST['password_confirmation'] ?? '',
+            // Añadir campos obligatorios para la BD
+            'miembro_id' => 1,  // Asegúrate de que este ID exista en InformacionGeneral
+            'rol_id' => 5,      // Asegúrate de que este ID exista en Roles
+            'estado' => 'Activo'
         ];
         
-        // Intentar registrar
-        $userId = $this->userModel->register($userData);
+        // Validar datos
+        $errors = [];
         
-        if (!$userId) {
-            $_SESSION['flash_message'] = 'No se pudo crear el usuario. Puede que el nombre de usuario o email ya existan';
-            $_SESSION['flash_type'] = 'danger';
-            $this->redirect('registro');
-            return;
+        if (empty($data['username'])) {
+            $errors[] = "El nombre de usuario es obligatorio";
         }
         
-        $_SESSION['flash_message'] = 'Usuario registrado correctamente. Ahora puedes iniciar sesión';
-        $_SESSION['flash_type'] = 'success';
-        $this->redirect('login');
+        if (empty($data['email'])) {
+            $errors[] = "El correo electrónico es obligatorio";
+        } elseif (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+            $errors[] = "El formato del correo electrónico no es válido";
+        }
+        
+        if (empty($data['password'])) {
+            $errors[] = "La contraseña es obligatoria";
+        } elseif (strlen($data['password']) < 6) {
+            $errors[] = "La contraseña debe tener al menos 6 caracteres";
+        } elseif ($data['password'] !== $data['password_confirmation']) {
+            $errors[] = "Las contraseñas no coinciden";
+        }
+        
+        // Si hay errores, mostrar formulario con errores
+        if (!empty($errors)) {
+            return $this->view('auth/register', ['errors' => $errors]);
+        }
+        
+        // Intentar registrar al usuario
+        $userModel = new \App\Models\Usuario();
+        $result = $userModel->register($data);
+        
+        if ($result) {
+            // Registro exitoso
+            $_SESSION['success_message'] = "Registro exitoso. Ahora puedes iniciar sesión.";
+            header('Location: ' . APP_URL . '/login');
+            exit;
+        } else {
+            // Error en el registro
+            $errors[] = "No se pudo completar el registro. El usuario o correo ya existe.";
+            return $this->view('auth/register', ['errors' => $errors]);
+        }
     }
 }

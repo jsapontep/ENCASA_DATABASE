@@ -1,0 +1,36 @@
+<?php
+
+
+/**
+ * Plan de pruebas según etapas del proyecto
+ * 
+ * Este archivo organiza las pruebas según las etapas definidas en la documentación
+ */
+class TestPlan {
+    public static function getTestsByStage($stage) {
+        $tests = [
+            // Pruebas Etapa 1: Configuración y BD
+            1 => [
+                'DatabaseConnectionTest',
+                'TableStructureTest',
+                'RelationshipTest'
+            ],
+            // Pruebas Etapa 2: Núcleo MVC
+            2 => [
+                'RouterTest',
+                'ControllerBaseTest',
+                'ModelBaseTest'
+            ],
+            // Pruebas Etapa 3: Autenticación
+            3 => [
+                'UserRegistrationTest',
+                'AuthenticationTest',
+                'SessionHandlingTest',
+                'PermissionTest'
+            ],
+            // Continuar con el resto de etapas...
+        ];
+        
+        return isset($tests[$stage]) ? $tests[$stage] : [];
+    }
+}
