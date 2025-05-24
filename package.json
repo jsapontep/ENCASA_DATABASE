@@ -1,0 +1,28 @@
+{
+  "name": "encasa-database",
+  "version": "1.0.0",
+  "description": "Sistema CRUD para la gestión de Iglesia En Casa",
+  "scripts": {
+    "dev": "npx tailwindcss -i ./resources/css/input.css -o ./public/css/main.css --watch",
+    "build": "npx tailwindcss -i ./resources/css/input.css -o ./public/css/main.css --minify"
+  },
+  "author": "Tu nombre",
+  "license": "MIT",
+  "devDependencies": {
+    "@tailwindcss/forms": "^0.5.10",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^3.4.17"
+  },
+  "main": "tailwind.config.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jsapontep/ENCASA_DATABASE.git"
+  },
+  "keywords": [],
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/jsapontep/ENCASA_DATABASE/issues"
+  },
+  "homepage": "https://github.com/jsapontep/ENCASA_DATABASE#readme"
+}

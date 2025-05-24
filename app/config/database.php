@@ -23,8 +23,8 @@ class Database {
             ];
             $this->connection = new PDO($dsn, DB_USER, DB_PASS, $options);
         } catch (PDOException $e) {
-            $this->logError($e->getMessage());
-            die("Error de conexión a la base de datos.");
+            $this->logError($e->getMessage()); // Pasamos el mensaje de error
+            die("Error de conexión a la base de datos: " . $e->getMessage());
         }
     }
     
@@ -39,16 +39,18 @@ class Database {
         return $this->connection;
     }
     
-    private function logError($message) {
-        $logFile = APP_PATH . '/logs/db_errors.log';
-        $directory = dirname($logFile);
+    private function logError($errorMessage) {
+        // Verificar si APP_PATH está definido, si no, usar una ruta relativa
+        $logPath = defined('APP_PATH') ? APP_PATH . '/logs/database_error.log' : __DIR__ . '/../../logs/database_error.log';
         
-        if (!is_dir($directory)) {
-            mkdir($directory, 0755, true);
+        // Asegurarse que el directorio existe
+        $logDir = dirname($logPath);
+        if (!is_dir($logDir)) {
+            mkdir($logDir, 0755, true);
         }
         
-        $timestamp = date('Y-m-d H:i:s');
-        $logMessage = "[$timestamp] $message" . PHP_EOL;
-        file_put_contents($logFile, $logMessage, FILE_APPEND);
+        // Usar el mensaje recibido como parámetro en lugar de connection->errorInfo
+        $logMessage = date('Y-m-d H:i:s') . " - MySQL Error: " . $errorMessage . PHP_EOL;
+        file_put_contents($logPath, $logMessage, FILE_APPEND);
     }
 }

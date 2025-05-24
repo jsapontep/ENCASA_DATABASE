@@ -1,0 +1,3827 @@
+# C�DIGO CONSOLIDADO DEL PROYECTO ENCASA_DATABASE
+# Generado: 2025-05-24 12:22:37
+# Total de archivos: 51
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\config\autoload.php
+# Última modificación: 2025-05-23 06:53:51
+# Tamaño: 1.26 KB
+###############################################################################
+
+<?php
+// Autoload mejorado para manejar problemas de mayÃºsculas/minÃºsculas en directorios
+spl_autoload_register(function ($className) {
+    // Normalizar separadores y quitar prefijo de namespace
+    $className = str_replace('App\\', '', $className);
+    $path = str_replace('\\', '/', $className);
+    
+    // Primera opciÃ³n: ruta exacta
+    $file = APP_PATH . '/' . $path . '.php';
+    if (file_exists($file)) {
+        require_once $file;
+        return true;
+    }
+    
+    // Segunda opciÃ³n: directorio en minÃºsculas, nombre de archivo normal
+    $dir = dirname($path);
+    $filename = basename($path);
+    $file = APP_PATH . '/' . strtolower($dir) . '/' . $filename . '.php';
+    if (file_exists($file)) {
+        require_once $file;
+        return true;
+    }
+    
+    // Tercera opciÃ³n: comprobar existencia de Controllers vs controllers
+    $file = APP_PATH . '/Controllers/' . $filename . '.php';
+    if (file_exists($file)) {
+        require_once $file;
+        return true;
+    }
+    
+    // Cuarta opciÃ³n: comprobar existencia de controllers vs Controllers
+    $file = APP_PATH . '/controllers/' . $filename . '.php';
+    if (file_exists($file)) {
+        require_once $file;
+        return true;
+    }
+    
+    return false;
+});
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\config\autoload.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\config\config.php
+# Última modificación: 2025-05-24 09:24:05
+# Tamaño: 0.29 KB
+###############################################################################
+
+<?php
+// ConfiguraciÃ³n general de la aplicaciÃ³n
+define('APP_NAME', 'Iglesia En Casa');
+define('APP_URL', 'http://localhost/Encasa_Database');
+define('APP_ENV', 'development'); // 'development' o 'production'
+
+// ConfiguraciÃ³n de zona horaria
+date_default_timezone_set('America/Bogota');
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\config\config.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\config\database.php
+# Última modificación: 2025-05-24 11:03:09
+# Tamaño: 1.95 KB
+###############################################################################
+
+<?php
+
+// ConfiguraciÃ³n de la base de datos
+define('DB_HOST', 'localhost');
+define('DB_NAME', 'IglesiaEnCasa');
+define('DB_USER', 'root');
+define('DB_PASS', '');
+define('DB_PORT', '3306');
+define('DB_CHARSET', 'utf8mb4');
+
+// Clase Singleton para conexiÃ³n a la base de datos
+class Database {
+    private static $instance = null;
+    private $connection;
+    
+    private function __construct() {
+        try {
+            $dsn = "mysql:host=".DB_HOST.";dbname=".DB_NAME.";charset=".DB_CHARSET;
+            $options = [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::ATTR_EMULATE_PREPARES => false
+            ];
+            $this->connection = new PDO($dsn, DB_USER, DB_PASS, $options);
+        } catch (PDOException $e) {
+            $this->logError($e->getMessage()); // Pasamos el mensaje de error
+            die("Error de conexiÃ³n a la base de datos: " . $e->getMessage());
+        }
+    }
+    
+    public static function getInstance() {
+        if (self::$instance === null) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
+    
+    public function getConnection() {
+        return $this->connection;
+    }
+    
+    private function logError($errorMessage) {
+        // Verificar si APP_PATH estÃ¡ definido, si no, usar una ruta relativa
+        $logPath = defined('APP_PATH') ? APP_PATH . '/logs/database_error.log' : __DIR__ . '/../../logs/database_error.log';
+        
+        // Asegurarse que el directorio existe
+        $logDir = dirname($logPath);
+        if (!is_dir($logDir)) {
+            mkdir($logDir, 0755, true);
+        }
+        
+        // Usar el mensaje recibido como parÃ¡metro en lugar de connection->errorInfo
+        $logMessage = date('Y-m-d H:i:s') . " - MySQL Error: " . $errorMessage . PHP_EOL;
+        file_put_contents($logPath, $logMessage, FILE_APPEND);
+    }
+}
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\config\database.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\config\db_verifier.php
+# Última modificación: 2025-05-23 06:53:51
+# Tamaño: 4.44 KB
+###############################################################################
+
+<?php
+
+require_once __DIR__ . '/database.php';
+
+class DBVerifier {
+    private $db;
+    private $errors = [];
+    
+    public function __construct() {
+        $this->db = Database::getInstance()->getConnection();
+    }
+    
+    public function verifyDatabase() {
+        try {
+            // Verificar si la base de datos existe
+            $this->db->query("USE IglesiaEnCasa");
+            $this->verifyTables();
+            $this->verifyConstraints();
+            $this->verifyIndexes();
+            
+            if (empty($this->errors)) {
+                return true;
+            } else {
+                $this->logErrors();
+                return false;
+            }
+        } catch (PDOException $e) {
+            $this->errors[] = "Error de base de datos: " . $e->getMessage();
+            $this->logErrors();
+            return false;
+        }
+    }
+    
+    private function verifyTables() {
+        $tables = [
+            'InformacionGeneral', 'Contacto', 'Roles', 'Ministerios', 
+            'MiembrosMinisterios', 'Usuarios'
+        ];
+        
+        foreach ($tables as $table) {
+            try {
+                $result = $this->db->query("SELECT 1 FROM `$table` LIMIT 1");
+            } catch (PDOException $e) {
+                $this->errors[] = "La tabla '$table' no existe o no es accesible.";
+            }
+        }
+    }
+    
+    private function verifyConstraints() {
+        $constraints = [
+            ['InformacionGeneral', 'informacion_general_ibfk_1'],
+            ['Contacto', 'contacto_ibfk_1'],
+            ['Ministerios', 'ministerios_ibfk_1'],
+            ['MiembrosMinisterios', 'miembrosministerios_ibfk_1'],
+            ['MiembrosMinisterios', 'miembrosministerios_ibfk_2'],
+            ['MiembrosMinisterios', 'miembrosministerios_ibfk_3'],
+            ['Usuarios', 'usuarios_ibfk_1'],
+            ['Usuarios', 'usuarios_ibfk_2']
+        ];
+        
+        foreach ($constraints as $constraint) {
+            try {
+                $query = "
+                    SELECT * FROM information_schema.TABLE_CONSTRAINTS 
+                    WHERE CONSTRAINT_SCHEMA = 'IglesiaEnCasa' 
+                    AND TABLE_NAME = ? 
+                    AND CONSTRAINT_NAME = ?
+                ";
+                $stmt = $this->db->prepare($query);
+                $stmt->execute([$constraint[0], $constraint[1]]);
+                
+                if ($stmt->rowCount() === 0) {
+                    $this->errors[] = "La restricciÃ³n '{$constraint[1]}' no existe en la tabla '{$constraint[0]}'.";
+                }
+            } catch (PDOException $e) {
+                $this->errors[] = "Error verificando restricciones: " . $e->getMessage();
+            }
+        }
+    }
+    
+    private function verifyIndexes() {
+        $indexes = [
+            ['InformacionGeneral', 'PRIMARY'],
+            ['Contacto', 'PRIMARY'],
+            ['Roles', 'PRIMARY'],
+            ['Ministerios', 'PRIMARY'],
+            ['Ministerios', 'lider_id'],
+            ['MiembrosMinisterios', 'PRIMARY']
+        ];
+        
+        foreach ($indexes as $index) {
+            try {
+                $query = "
+                    SELECT * FROM information_schema.STATISTICS 
+                    WHERE TABLE_SCHEMA = 'IglesiaEnCasa' 
+                    AND TABLE_NAME = ? 
+                    AND INDEX_NAME = ?
+                ";
+                $stmt = $this->db->prepare($query);
+                $stmt->execute([$index[0], $index[1]]);
+                
+                if ($stmt->rowCount() === 0) {
+                    $this->errors[] = "El Ã­ndice '{$index[1]}' no existe en la tabla '{$index[0]}'.";
+                }
+            } catch (PDOException $e) {
+                $this->errors[] = "Error verificando Ã­ndices: " . $e->getMessage();
+            }
+        }
+    }
+    
+    private function logErrors() {
+        $logFile = APP_PATH . '/logs/db_verification.log';
+        $directory = dirname($logFile);
+        
+        if (!is_dir($directory)) {
+            mkdir($directory, 0755, true);
+        }
+        
+        $timestamp = date('Y-m-d H:i:s');
+        $logMessage = "[$timestamp] VerificaciÃ³n de base de datos:" . PHP_EOL;
+        
+        foreach ($this->errors as $error) {
+            $logMessage .= "- $error" . PHP_EOL;
+        }
+        
+        file_put_contents($logFile, $logMessage, FILE_APPEND);
+    }
+    
+    public function getErrors() {
+        return $this->errors;
+    }
+}
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\config\db_verifier.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\config\routes.php
+# Última modificación: 2025-05-24 09:24:05
+# Tamaño: 1.7 KB
+###############################################################################
+
+<?php
+// filepath: /Applications/XAMPP/xamppfiles/htdocs/Encasa_Database/app/config/routes.php
+
+use App\Helpers\Router;
+
+// Instancia del router
+$router = new Router();
+
+// PÃ¡gina principal
+$router->get('', 'Home', 'index');
+$router->get('home', 'Home', 'index');
+
+// Rutas de miembros
+$router->get('miembros', 'Miembros', 'index', ['Auth']);
+$router->get('miembros/crear', 'Miembros', 'crear', ['Auth']);
+$router->post('miembros/guardar', 'Miembros', 'guardar', ['Auth']);
+$router->get('miembros/{id}', 'Miembros', 'ver', ['Auth']);
+$router->get('miembros/{id}/editar', 'Miembros', 'editar', ['Auth']);
+$router->post('miembros/{id}/actualizar', 'Miembros', 'actualizar', ['Auth']);
+$router->post('miembros/{id}/eliminar', 'Miembros', 'eliminar', ['Auth', 'AdminOnly']);
+
+// Rutas de ministerios
+$router->get('ministerios', 'Ministerios', 'index', ['Auth']);
+$router->get('ministerios/crear', 'Ministerios', 'crear', ['Auth']);
+$router->post('ministerios/guardar', 'Ministerios', 'guardar', ['Auth']);
+$router->get('ministerios/{id}', 'Ministerios', 'ver', ['Auth']);
+$router->get('ministerios/{id}/editar', 'Ministerios', 'editar', ['Auth']);
+$router->post('ministerios/{id}/actualizar', 'Ministerios', 'actualizar', ['Auth']);
+$router->post('ministerios/{id}/eliminar', 'Ministerios', 'eliminar', ['Auth', 'AdminOnly']);
+
+// Rutas de autenticaciÃ³n
+$router->get('login', 'Auth', 'login');
+$router->post('auth/login', 'Auth', 'authenticate');
+$router->get('logout', 'Auth', 'logout');
+$router->get('registro', 'Auth', 'register');
+$router->post('auth/registro', 'Auth', 'store');
+
+// Rutas de error
+$router->setNotFound(function() {
+    include VIEW_PATH . '/errors/404.php';
+});
+
+return $router;
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\config\routes.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\Controllers\AuthController.php
+# Última modificación: 2025-05-24 09:24:05
+# Tamaño: 5.56 KB
+###############################################################################
+
+<?php
+// filepath: /Applications/XAMPP/xamppfiles/htdocs/Encasa_Database/app/controllers/AuthController.php
+namespace App\Controllers;
+
+class AuthController extends Controller {
+    private $userModel;
+    
+    public function __construct() {
+        parent::__construct();
+        $this->userModel = new \App\Models\Usuario();
+    }
+    
+    /**
+     * Muestra el formulario de login
+     */
+    public function login() {
+        // Si ya estÃ¡ autenticado, redirigir al dashboard
+        if ($this->isAuthenticated()) {
+            $this->redirect('');
+            return;
+        }
+        
+        $this->renderWithLayout('auth/login', 'auth', [
+            'title' => 'Iniciar SesiÃ³n'
+        ]);
+    }
+    
+    /**
+     * Procesa el intento de login
+     */
+    public function authenticate() {
+        // Validar el formulario
+        $validation = $this->validate($_POST, [
+            'username' => ['required'],
+            'password' => ['required']
+        ]);
+        
+        if (!$validation) {
+            $_SESSION['flash_message'] = 'Por favor completa todos los campos';
+            $_SESSION['flash_type'] = 'danger';
+            $this->redirect('login');
+            return;
+        }
+        
+        $username = trim($_POST['username']);
+        $password = $_POST['password'];
+        
+        // Intentar autenticar
+        $user = $this->userModel->authenticate($username, $password);
+        
+        if (!$user) {
+            $_SESSION['flash_message'] = 'Credenciales incorrectas';
+            $_SESSION['flash_type'] = 'danger';
+            $this->redirect('login');
+            return;
+        }
+        
+        // Verificar si el usuario estÃ¡ activo
+        if ($user['estado'] !== 'Activo') {
+            $_SESSION['flash_message'] = 'Tu cuenta estÃ¡ desactivada';
+            $_SESSION['flash_type'] = 'warning';
+            $this->redirect('login');
+            return;
+        }
+        
+        // Iniciar sesiÃ³n
+        $_SESSION['user_id'] = $user['id'];
+        $_SESSION['username'] = $user['username'];
+        $_SESSION['nombre_completo'] = $user['nombre_completo'];
+        
+        $_SESSION['flash_message'] = 'Has iniciado sesiÃ³n correctamente';
+        $_SESSION['flash_type'] = 'success';
+        
+        // Redirigir al dashboard
+        $this->redirect('');
+    }
+    
+    /**
+     * Cierra la sesiÃ³n
+     */
+    public function logout() {
+        // Destruir la sesiÃ³n
+        session_unset();
+        session_destroy();
+        
+        // Redirigir a login
+        $this->redirect('login');
+    }
+    
+    /**
+     * Muestra el formulario de registro
+     */
+    public function register() {
+        // Si ya estÃ¡ autenticado, redirigir al dashboard
+        if ($this->isAuthenticated()) {
+            $this->redirect('');
+            return;
+        }
+        
+        $this->renderWithLayout('auth/register', 'auth', [
+            'title' => 'Registro de Usuario'
+        ]);
+    }
+    
+    /**
+     * Procesa el registro de usuario
+     */
+    public function store() {
+        // Verificar que sea una peticiÃ³n POST
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            // Redirigir a la pÃ¡gina de registro si no es POST
+            header('Location: ' . APP_URL . '/registro');
+            exit;
+        }
+        
+        // Obtener datos del formulario
+        $data = [
+            'nombre_completo' => $_POST['nombre_completo'] ?? '',
+            'username' => $_POST['username'] ?? '',
+            'email' => $_POST['email'] ?? '',
+            'password' => $_POST['password'] ?? '',
+            'password_confirmation' => $_POST['password_confirmation'] ?? '',
+            // AÃ±adir campos obligatorios para la BD
+            'miembro_id' => 1,  // AsegÃºrate de que este ID exista en InformacionGeneral
+            'rol_id' => 5,      // AsegÃºrate de que este ID exista en Roles
+            'estado' => 'Activo'
+        ];
+        
+        // Validar datos
+        $errors = [];
+        
+        if (empty($data['username'])) {
+            $errors[] = "El nombre de usuario es obligatorio";
+        }
+        
+        if (empty($data['email'])) {
+            $errors[] = "El correo electrÃ³nico es obligatorio";
+        } elseif (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+            $errors[] = "El formato del correo electrÃ³nico no es vÃ¡lido";
+        }
+        
+        if (empty($data['password'])) {
+            $errors[] = "La contraseÃ±a es obligatoria";
+        } elseif (strlen($data['password']) < 6) {
+            $errors[] = "La contraseÃ±a debe tener al menos 6 caracteres";
+        } elseif ($data['password'] !== $data['password_confirmation']) {
+            $errors[] = "Las contraseÃ±as no coinciden";
+        }
+        
+        // Si hay errores, mostrar formulario con errores
+        if (!empty($errors)) {
+            return $this->view('auth/register', ['errors' => $errors]);
+        }
+        
+        // Intentar registrar al usuario
+        $userModel = new \App\Models\Usuario();
+        $result = $userModel->register($data);
+        
+        if ($result) {
+            // Registro exitoso
+            $_SESSION['success_message'] = "Registro exitoso. Ahora puedes iniciar sesiÃ³n.";
+            header('Location: ' . APP_URL . '/login');
+            exit;
+        } else {
+            // Error en el registro
+            $errors[] = "No se pudo completar el registro. El usuario o correo ya existe.";
+            return $this->view('auth/register', ['errors' => $errors]);
+        }
+    }
+}
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\Controllers\AuthController.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\Controllers\Controller.php
+# Última modificación: 2025-05-23 06:53:51
+# Tamaño: 1.46 KB
+###############################################################################
+
+<?php
+namespace App\Controllers;
+
+abstract class Controller {
+    protected $view;
+    protected $model;
+    
+    public function __construct() {
+        $this->view = new \App\Helpers\View();
+    }
+    
+    /**
+     * MÃ©todo para renderizar una vista
+     */
+    protected function render($view, $data = []) {
+        $this->view->render($view, $data);
+    }
+    
+    /**
+     * MÃ©todo para renderizar una vista con un layout
+     */
+    protected function renderWithLayout($view, $layout = 'default', $data = []) {
+        $this->view->renderWithLayout($view, $layout, $data);
+    }
+    
+    /**
+     * MÃ©todo para validar datos de formulario
+     */
+    protected function validate($data, $rules) {
+        $validator = new \App\Helpers\Validator();
+        return $validator->validate($data, $rules);
+    }
+    
+    /**
+     * MÃ©todo para redireccionar
+     */
+    protected function redirect($url) {
+        \App\Helpers\Router::redirect($url);
+    }
+    
+    /**
+     * MÃ©todo para obtener el usuario actual
+     */
+    protected function getCurrentUser() {
+        if (isset($_SESSION['user_id'])) {
+            $userModel = new \App\Models\Usuario();
+            return $userModel->findById($_SESSION['user_id']);
+        }
+        return null;
+    }
+    
+    /**
+     * MÃ©todo para verificar si el usuario estÃ¡ autenticado
+     */
+    protected function isAuthenticated() {
+        return isset($_SESSION['user_id']);
+    }
+}
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\Controllers\Controller.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\Controllers\HomeController.php
+# Última modificación: 2025-05-23 16:55:27
+# Tamaño: 0.41 KB
+###############################################################################
+
+<?php
+// filepath: /Applications/XAMPP/xamppfiles/htdocs/Encasa_Database/app/Controllers/HomeController.php
+namespace App\Controllers;
+
+class HomeController extends Controller {
+    public function index() {
+        $title = 'Bienvenido a Iglesia En Casa';
+        $this->renderWithLayout('home/index', 'default', [
+            'title' => $title,
+            'user' => $this->getCurrentUser()
+        ]);
+    }
+}
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\Controllers\HomeController.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\Controllers\MiembroController.php
+# Última modificación: 2025-05-24 07:50:37
+# Tamaño: 4.97 KB
+###############################################################################
+
+<?php
+
+namespace App\Controllers;
+
+use App\Models\InformacionGeneral;
+use App\Models\Contacto;
+
+class MiembroController extends Controller {
+    private $miembroModel;
+    private $contactoModel;
+    
+    public function __construct() {
+        parent::__construct();
+        $this->miembroModel = new InformacionGeneral();
+        $this->contactoModel = new Contacto();
+    }
+    
+    public function index() {
+        // Verificar permisos
+        if (!$this->tienePermiso('ver_miembros')) {
+            $this->redirect('acceso-denegado');
+            return;
+        }
+        
+        $filtros = [];
+        $busqueda = $_GET['buscar'] ?? '';
+        $estado = $_GET['estado'] ?? '';
+        
+        if (!empty($busqueda)) {
+            $filtros['busqueda'] = $busqueda;
+        }
+        
+        if (!empty($estado)) {
+            $filtros['estado'] = $estado;
+        }
+        
+        // PaginaciÃ³n
+        $pagina = isset($_GET['pagina']) ? (int)$_GET['pagina'] : 1;
+        $porPagina = 10;
+        
+        $miembros = $this->miembroModel->obtenerMiembrosConFiltros($filtros, $pagina, $porPagina);
+        $totalMiembros = $this->miembroModel->contarMiembrosConFiltros($filtros);
+        $totalPaginas = ceil($totalMiembros / $porPagina);
+        
+        $this->view('miembros/index', [
+            'miembros' => $miembros,
+            'busqueda' => $busqueda,
+            'estado' => $estado,
+            'pagina' => $pagina,
+            'totalPaginas' => $totalPaginas,
+            'title' => 'Listado de Miembros'
+        ]);
+    }
+    
+    public function crear() {
+        // Verificar permisos
+        if (!$this->tienePermiso('crear_miembro')) {
+            $this->redirect('acceso-denegado');
+            return;
+        }
+        
+        $this->view('miembros/crear', [
+            'title' => 'Registro de Nuevo Miembro'
+        ]);
+    }
+    
+    public function guardar() {
+        // Verificar que sea POST y tenga permisos
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !$this->tienePermiso('crear_miembro')) {
+            $this->redirect('acceso-denegado');
+            return;
+        }
+        
+        $datos = [
+            'nombres' => $_POST['nombres'] ?? '',
+            'apellidos' => $_POST['apellidos'] ?? '',
+            'fecha_nacimiento' => $_POST['fecha_nacimiento'] ?? null,
+            'genero' => $_POST['genero'] ?? '',
+            'estado_civil' => $_POST['estado_civil'] ?? '',
+            'profesion' => $_POST['profesion'] ?? '',
+            'estado_espiritual' => $_POST['estado_espiritual'] ?? 'Visitante',
+            // Otros campos
+        ];
+        
+        // Validar datos
+        $errores = $this->validarDatosMiembro($datos);
+        
+        if (!empty($errores)) {
+            $_SESSION['errores'] = $errores;
+            $_SESSION['datos_form'] = $datos;
+            $this->redirect('miembros/crear');
+            return;
+        }
+        
+        // Procesar imagen si se subiÃ³
+        if (isset($_FILES['foto']) && $_FILES['foto']['error'] === UPLOAD_ERR_OK) {
+            $foto = $this->procesarImagen($_FILES['foto']);
+            if ($foto) {
+                $datos['foto'] = $foto;
+            }
+        }
+        
+        // Crear miembro
+        $miembroId = $this->miembroModel->create($datos);
+        
+        if (!$miembroId) {
+            $_SESSION['flash_message'] = 'Error al crear el miembro';
+            $_SESSION['flash_type'] = 'danger';
+            $this->redirect('miembros/crear');
+            return;
+        }
+        
+        // Crear contacto relacionado
+        $datosContacto = [
+            'miembro_id' => $miembroId,
+            'telefono' => $_POST['telefono'] ?? '',
+            'celular' => $_POST['celular'] ?? '',
+            'email' => $_POST['email'] ?? '',
+            'direccion' => $_POST['direccion'] ?? '',
+            // Otros datos de contacto
+        ];
+        
+        $this->contactoModel->create($datosContacto);
+        
+        $_SESSION['flash_message'] = 'Miembro registrado correctamente';
+        $_SESSION['flash_type'] = 'success';
+        $this->redirect('miembros');
+    }
+    
+    // Implementar los mÃ©todos restantes: ver, editar, actualizar, eliminar, etc.
+    
+    private function validarDatosMiembro($datos) {
+        $errores = [];
+        
+        if (empty($datos['nombres'])) {
+            $errores['nombres'] = 'El nombre es obligatorio';
+        }
+        
+        if (empty($datos['apellidos'])) {
+            $errores['apellidos'] = 'Los apellidos son obligatorios';
+        }
+        
+        return $errores;
+    }
+    
+    private function procesarImagen($archivo) {
+        // Implementar procesamiento de imagen
+        // Validar tipo, tamaÃ±o, etc.
+        // Guardar y retornar path
+        return 'default.jpg'; // Placeholder
+    }
+    
+    private function tienePermiso($permiso) {
+        // Implementar verificaciÃ³n de permisos
+        return true; // Placeholder
+    }
+}
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\Controllers\MiembroController.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\helpers\functions.php
+# Última modificación: 2025-05-24 10:22:23
+# Tamaño: 0.74 KB
+###############################################################################
+
+<?php
+/**
+ * Funciones auxiliares globales para logging
+ */
+
+if (!function_exists('log_error')) {
+    function log_error($message, $context = []) {
+        \App\Helpers\Logger::getInstance()->error($message, $context);
+    }
+}
+
+if (!function_exists('log_warning')) {
+    function log_warning($message, $context = []) {
+        \App\Helpers\Logger::getInstance()->warning($message, $context);
+    }
+}
+
+if (!function_exists('log_info')) {
+    function log_info($message, $context = []) {
+        \App\Helpers\Logger::getInstance()->info($message, $context);
+    }
+}
+
+if (!function_exists('log_debug')) {
+    function log_debug($message, $context = []) {
+        \App\Helpers\Logger::getInstance()->debug($message, $context);
+    }
+}
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\helpers\functions.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\helpers\JWT.php
+# Última modificación: 2025-05-24 10:22:34
+# Tamaño: 2.73 KB
+###############################################################################
+
+<?php
+namespace App\Helpers;
+
+class JWT {
+    private static $secret;
+    
+    /**
+     * Inicializa la clave secreta para JWT
+     */
+    public static function init($secret = null) {
+        if ($secret === null) {
+            self::$secret = getenv('JWT_SECRET') ?: 'encasa_secret_key_change_in_production';
+        } else {
+            self::$secret = $secret;
+        }
+    }
+    
+    /**
+     * Genera un JWT token
+     */
+    public static function encode($payload, $expiry = 86400) {
+        if (self::$secret === null) {
+            self::init();
+        }
+        
+        // AÃ±adir timestamps
+        $payload['iat'] = time();
+        $payload['exp'] = time() + $expiry;
+        
+        // Crear las partes del JWT
+        $header = self::base64UrlEncode(json_encode([
+            'alg' => 'HS256',
+            'typ' => 'JWT'
+        ]));
+        
+        $payload = self::base64UrlEncode(json_encode($payload));
+        
+        // Crear firma
+        $signature = self::base64UrlEncode(hash_hmac(
+            'sha256',
+            "$header.$payload",
+            self::$secret,
+            true
+        ));
+        
+        return "$header.$payload.$signature";
+    }
+    
+    /**
+     * Decodifica y verifica un JWT token
+     */
+    public static function decode($token) {
+        if (self::$secret === null) {
+            self::init();
+        }
+        
+        // Dividir el token
+        $parts = explode('.', $token);
+        
+        if (count($parts) !== 3) {
+            return false;
+        }
+        
+        list($header, $payload, $signature) = $parts;
+        
+        // Recrear la firma para verificaciÃ³n
+        $recalculatedSignature = self::base64UrlEncode(hash_hmac(
+            'sha256',
+            "$header.$payload",
+            self::$secret,
+            true
+        ));
+        
+        // Verificar firma
+        if ($signature !== $recalculatedSignature) {
+            return false;
+        }
+        
+        // Decodificar el payload
+        $payload = json_decode(self::base64UrlDecode($payload), true);
+        
+        // Verificar expiraciÃ³n
+        if (isset($payload['exp']) && $payload['exp'] < time()) {
+            return false;
+        }
+        
+        return $payload;
+    }
+    
+    private static function base64UrlEncode($data) {
+        return str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($data));
+    }
+    
+    private static function base64UrlDecode($data) {
+        $data = str_replace(['-', '_'], ['+', '/'], $data);
+        $remainder = strlen($data) % 4;
+        
+        if ($remainder) {
+            $data .= str_repeat('=', 4 - $remainder);
+        }
+        
+        return base64_decode($data);
+    }
+}
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\helpers\JWT.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\helpers\Logger.php
+# Última modificación: 2025-05-24 10:22:11
+# Tamaño: 1.86 KB
+###############################################################################
+
+<?php
+namespace App\Helpers;
+
+class Logger {
+    private static $instance = null;
+    private $logPath;
+    private $logLevels = ['ERROR', 'WARNING', 'INFO', 'DEBUG'];
+    private $currentLevel = 3; // Por defecto: DEBUG (todos los niveles)
+
+    private function __construct() {
+        $this->logPath = dirname(__DIR__) . '/logs/';
+        if (!is_dir($this->logPath)) {
+            mkdir($this->logPath, 0755, true);
+        }
+        $env = getenv('APP_ENV') ?: 'development';
+        if ($env === 'production') {
+            $this->currentLevel = 1; // Solo ERROR y WARNING
+        }
+    }
+
+    public static function getInstance() {
+        if (self::$instance === null) {
+            self::$instance = new self();
+        }
+        return self::$instance;
+    }
+
+    public function error($message, $context = []) { $this->log(0, $message, $context); }
+    public function warning($message, $context = []) { $this->log(1, $message, $context); }
+    public function info($message, $context = []) { $this->log(2, $message, $context); }
+    public function debug($message, $context = []) { $this->log(3, $message, $context); }
+
+    private function log($level, $message, $context = []) {
+        if ($level > $this->currentLevel) return;
+
+        $date = date('Y-m-d H:i:s');
+        $logLevel = $this->logLevels[$level];
+        
+        $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 2);
+        $caller = isset($backtrace[1]['class']) ? $backtrace[1]['class'] . '::' . $backtrace[1]['function'] : 'unknown';
+        
+        $contextStr = !empty($context) ? ' ' . json_encode($context, JSON_UNESCAPED_UNICODE) : '';
+        $logMessage = "[$date] [$logLevel] [$caller] $message$contextStr" . PHP_EOL;
+        
+        $filename = $this->logPath . date('Y-m-d') . '.log';
+        file_put_contents($filename, $logMessage, FILE_APPEND);
+    }
+}
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\helpers\Logger.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\helpers\Router.php
+# Última modificación: 2025-05-24 09:24:05
+# Tamaño: 5.18 KB
+###############################################################################
+
+<?php
+namespace App\Helpers;
+
+class Router {
+    private $routes = [];
+    private $params = [];
+    private $notFoundCallback;
+    
+    /**
+     * AÃ±ade una ruta al sistema
+     */
+    public function add($route, $controller, $action, $methods = ['GET'], $middleware = []) {
+        // Convertir ruta a expresiÃ³n regular para capturar parÃ¡metros
+        $route = preg_replace('/\//', '\\/', $route);
+        $route = preg_replace('/\{([a-z]+)\}/', '(?P<\1>[a-z0-9-]+)', $route);
+        $route = '/^' . $route . '$/i';
+        
+        $this->routes[] = [
+            'route' => $route,
+            'controller' => $controller,
+            'action' => $action,
+            'methods' => $methods,
+            'middleware' => $middleware
+        ];
+    }
+    
+    /**
+     * Registra callback para rutas no encontradas
+     */
+    public function setNotFound($callback) {
+        $this->notFoundCallback = $callback;
+    }
+    
+    /**
+     * MÃ©todo abreviado para rutas GET
+     */
+    public function get($route, $controller, $action, $middleware = []) {
+        $this->add($route, $controller, $action, ['GET'], $middleware);
+    }
+    
+    /**
+     * MÃ©todo abreviado para rutas POST
+     */
+    public function post($route, $controller, $action, $middleware = []) {
+        $this->add($route, $controller, $action, ['POST'], $middleware);
+    }
+    
+    /**
+     * MÃ©todo abreviado para rutas PUT
+     */
+    public function put($route, $controller, $action, $middleware = []) {
+        $this->add($route, $controller, $action, ['PUT'], $middleware);
+    }
+    
+    /**
+     * MÃ©todo abreviado para rutas DELETE
+     */
+    public function delete($route, $controller, $action, $middleware = []) {
+        $this->add($route, $controller, $action, ['DELETE'], $middleware);
+    }
+    
+    /**
+     * Despacha la ruta actual
+     */
+    public function dispatch() {
+        $url = $this->getUrl();
+        $method = $_SERVER['REQUEST_METHOD'];
+        
+        // Si se envÃ­a _method en un formulario, usar ese mÃ©todo
+        if ($method == 'POST' && isset($_POST['_method'])) {
+            $method = strtoupper($_POST['_method']);
+        }
+        
+        foreach ($this->routes as $route) {
+            if (preg_match($route['route'], $url, $matches)) {
+                // Verificar mÃ©todo HTTP
+                if (!in_array($method, $route['methods'])) {
+                    continue; // MÃ©todo no permitido, seguir buscando
+                }
+                
+                // Extraer los parÃ¡metros de la URL
+                foreach ($matches as $key => $value) {
+                    if (is_string($key)) {
+                        $this->params[$key] = $value;
+                    }
+                }
+                
+                // Ejecutar middleware si existe
+                foreach ($route['middleware'] as $middleware) {
+                    $middlewareClass = "App\\Middleware\\$middleware";
+                    if (class_exists($middlewareClass)) {
+                        $middlewareObj = new $middlewareClass();
+                        $result = $middlewareObj->handle();
+                        if (!$result) {
+                            // Si el middleware retorna falso, detener la ejecuciÃ³n
+                            return;
+                        }
+                    }
+                }
+                
+                // Cargar el controlador
+                $controllerName = "App\\Controllers\\{$route['controller']}Controller";
+                if (class_exists($controllerName)) {
+                    $controller = new $controllerName();
+                    $action = $route['action'];
+                    
+                    if (method_exists($controller, $action)) {
+                        // Ejecutar la acciÃ³n del controlador
+                        $controller->$action($this->params);
+                        return;
+                    }
+                }
+                
+                // Si llegamos aquÃ­, el controlador o acciÃ³n no existen
+                $this->handleNotFound();
+                return;
+            }
+        }
+        
+        // No se encontrÃ³ ninguna ruta
+        $this->handleNotFound();
+    }
+    
+    /**
+     * Maneja la situaciÃ³n de ruta no encontrada
+     */
+    private function handleNotFound() {
+        if ($this->notFoundCallback) {
+            call_user_func($this->notFoundCallback);
+        } else {
+            header("HTTP/1.0 404 Not Found");
+            echo '<h1>404 - PÃ¡gina no encontrada</h1>';
+            echo '<p>La pÃ¡gina que estÃ¡s buscando no existe.</p>';
+        }
+    }
+    
+    /**
+     * Obtiene la URL actual
+     */
+    private function getUrl() {
+        $url = isset($_GET['url']) ? $_GET['url'] : '';
+        $url = rtrim($url, '/');
+        $url = filter_var($url, FILTER_SANITIZE_URL);
+        return $url;
+    }
+    
+    /**
+     * Obtiene los parÃ¡metros de la URL
+     */
+    public function getParams() {
+        return $this->params;
+    }
+    
+    /**
+     * Redirige a una URL
+     */
+    public static function redirect($url) {
+        header('Location: ' . APP_URL . '/' . $url);
+        exit;
+    }
+}
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\helpers\Router.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\helpers\Validator.php
+# Última modificación: 2025-05-23 06:53:51
+# Tamaño: 1.66 KB
+###############################################################################
+
+<?php
+// filepath: /Applications/XAMPP/xamppfiles/htdocs/Encasa_Database/app/helpers/Validator.php
+namespace App\Helpers;
+
+class Validator {
+    private $errors = [];
+    
+    public function validate($data, $rules) {
+        $this->errors = [];
+        
+        foreach ($rules as $field => $fieldRules) {
+            foreach ($fieldRules as $rule) {
+                $ruleParts = explode(':', $rule);
+                $ruleName = $ruleParts[0];
+                $ruleParam = isset($ruleParts[1]) ? $ruleParts[1] : null;
+                
+                switch ($ruleName) {
+                    case 'required':
+                        if (!isset($data[$field]) || trim($data[$field]) === '') {
+                            $this->errors[$field][] = "El campo {$field} es obligatorio.";
+                        }
+                        break;
+                        
+                    case 'email':
+                        if (isset($data[$field]) && !filter_var($data[$field], FILTER_VALIDATE_EMAIL)) {
+                            $this->errors[$field][] = "El campo {$field} debe ser un email vÃ¡lido.";
+                        }
+                        break;
+                        
+                    case 'min':
+                        if (isset($data[$field]) && strlen($data[$field]) < $ruleParam) {
+                            $this->errors[$field][] = "El campo {$field} debe tener al menos {$ruleParam} caracteres.";
+                        }
+                        break;
+                }
+            }
+        }
+        
+        return empty($this->errors);
+    }
+    
+    public function getErrors() {
+        return $this->errors;
+    }
+}
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\helpers\Validator.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\helpers\View.php
+# Última modificación: 2025-05-23 06:53:51
+# Tamaño: 1.6 KB
+###############################################################################
+
+<?php
+namespace App\Helpers;
+
+class View {
+    /**
+     * Renderiza una vista
+     */
+    public function render($view, $data = []) {
+        // Extraer variables para que estÃ©n disponibles en la vista
+        extract($data);
+        
+        // Incluir la vista
+        $viewPath = VIEW_PATH . '/' . $view . '.php';
+        
+        if (file_exists($viewPath)) {
+            include $viewPath;
+        } else {
+            throw new \Exception("Vista no encontrada: {$view}");
+        }
+    }
+    
+    /**
+     * Renderiza una vista con un layout
+     */
+    public function renderWithLayout($view, $layout = 'default', $data = []) {
+        // Extraer variables para que estÃ©n disponibles en la vista y el layout
+        extract($data);
+        
+        // Capturar el contenido de la vista
+        ob_start();
+        $this->render($view, $data);
+        $content = ob_get_clean();
+        
+        // Incluir el layout
+        $layoutPath = VIEW_PATH . '/layouts/' . $layout . '.php';
+        
+        if (file_exists($layoutPath)) {
+            include $layoutPath;
+        } else {
+            throw new \Exception("Layout no encontrado: {$layout}");
+        }
+    }
+    
+    /**
+     * Incluye una vista parcial
+     */
+    public static function partial($partial, $data = []) {
+        extract($data);
+        
+        $partialPath = VIEW_PATH . '/partials/' . $partial . '.php';
+        
+        if (file_exists($partialPath)) {
+            include $partialPath;
+        } else {
+            throw new \Exception("Partial no encontrado: {$partial}");
+        }
+    }
+}
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\helpers\View.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\middleware\AdminOnly.php
+# Última modificación: 2025-05-23 16:55:27
+# Tamaño: 0.54 KB
+###############################################################################
+
+<?php
+// filepath: /Applications/XAMPP/xamppfiles/htdocs/Encasa_Database/app/middleware/AdminOnly.php
+namespace App\Middleware;
+
+class AdminOnly extends Middleware {
+    public function handle() {
+        if (!isset($_SESSION['roles']) || !in_array('Admin', $_SESSION['roles'])) {
+            $_SESSION['flash_message'] = 'No tienes permiso para acceder a esta Ã¡rea';
+            $_SESSION['flash_type'] = 'danger';
+            
+            header('Location: ' . APP_URL);
+            exit;
+        }
+        
+        return true;
+    }
+}
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\middleware\AdminOnly.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\middleware\Auth.php
+# Última modificación: 2025-05-23 16:55:27
+# Tamaño: 0.65 KB
+###############################################################################
+
+<?php
+// filepath: /Applications/XAMPP/xamppfiles/htdocs/Encasa_Database/app/middleware/Auth.php
+namespace App\Middleware;
+
+class Auth extends Middleware {
+    public function handle() {
+        if (!isset($_SESSION['user_id'])) {
+            $_SESSION['flash_message'] = 'Debes iniciar sesiÃ³n para acceder';
+            $_SESSION['flash_type'] = 'warning';
+            
+            // Guardar URL intentada para redirecciÃ³n despuÃ©s del login
+            $_SESSION['intended_url'] = $_SERVER['REQUEST_URI'];
+            
+            header('Location: ' . APP_URL . '/login');
+            exit;
+        }
+        
+        return true;
+    }
+}
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\middleware\Auth.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\middleware\AuthMiddleware.php
+# Última modificación: 2025-05-24 08:14:07
+# Tamaño: 0.84 KB
+###############################################################################
+
+<?php
+
+namespace App\Middleware;
+
+class AuthMiddleware {
+    public function handle() {
+        // Iniciar sesiÃ³n si no estÃ¡ iniciada
+        if (session_status() == PHP_SESSION_NONE) {
+            session_start();
+        }
+        
+        // Verificar si el usuario estÃ¡ autenticado
+        if (!isset($_SESSION['user_id'])) {
+            // Guardar la URL solicitada para redirigir despuÃ©s del login
+            $_SESSION['redirect_after_login'] = $_SERVER['REQUEST_URI'];
+            
+            // Mensaje de error
+            $_SESSION['flash_message'] = 'Debes iniciar sesiÃ³n para acceder a esta pÃ¡gina';
+            $_SESSION['flash_type'] = 'warning';
+            
+            // Redirigir al login
+            header('Location: ' . APP_URL . '/login');
+            exit;
+        }
+        
+        return true;
+    }
+}
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\middleware\AuthMiddleware.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\middleware\Middleware.php
+# Última modificación: 2025-05-23 16:55:27
+# Tamaño: 0.27 KB
+###############################################################################
+
+<?php
+// filepath: /Applications/XAMPP/xamppfiles/htdocs/Encasa_Database/app/middleware/Middleware.php
+namespace App\Middleware;
+
+abstract class Middleware {
+    /**
+     * MÃ©todo que se debe implementar en cada middleware
+     */
+    abstract public function handle();
+}
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\middleware\Middleware.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\middleware\RoleMiddleware.php
+# Última modificación: 2025-05-24 08:15:10
+# Tamaño: 1.27 KB
+###############################################################################
+
+<?php
+
+namespace App\Middleware;
+
+use App\Models\Usuario;
+use App\Models\Rol;
+
+class RoleMiddleware {
+    private $requiredLevel;
+    
+    public function __construct($level) {
+        $this->requiredLevel = $level;
+    }
+    
+    public function handle() {
+        // Verificar que el usuario estÃ¡ autenticado
+        if (!isset($_SESSION['user_id'])) {
+            header('Location: ' . APP_URL . '/login');
+            exit;
+        }
+        
+        // Obtener informaciÃ³n del rol del usuario
+        $userModel = new Usuario();
+        $user = $userModel->findById($_SESSION['user_id']);
+        
+        if (!$user) {
+            $_SESSION['flash_message'] = 'SesiÃ³n invÃ¡lida';
+            $_SESSION['flash_type'] = 'danger';
+            header('Location: ' . APP_URL . '/logout');
+            exit;
+        }
+        
+        // Cargar el rol
+        $rolModel = new Rol();
+        $rol = $rolModel->findById($user['rol_id']);
+        
+        // Verificar si el nivel de acceso es suficiente
+        if (!$rol || $rol['nivel_acceso'] < $this->requiredLevel) {
+            // Redirect a pÃ¡gina de acceso denegado
+            header('Location: ' . APP_URL . '/acceso-denegado');
+            exit;
+        }
+        
+        return true;
+    }
+}
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\middleware\RoleMiddleware.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\models\Miembro.php
+# Última modificación: 2025-05-23 06:53:51
+# Tamaño: 2.95 KB
+###############################################################################
+
+<?php
+namespace App\Models;
+
+class Miembro extends Model {
+    protected $table = 'InformacionGeneral';
+    protected $fillable = [
+        'nombres', 'apellidos', 'celular', 'localidad', 'barrio', 
+        'fecha_nacimiento', 'invitado_por', 'conector', 'estado_espiritual',
+        'recorrido_espiritual', 'foto', 'habeas_data'
+    ];
+    
+    /**
+     * Obtiene todos los miembros con informaciÃ³n bÃ¡sica
+     */
+    public function getAllWithBasicInfo() {
+        $sql = "SELECT m.id, m.nombres, m.apellidos, m.celular, m.localidad, 
+                m.barrio, m.fecha_ingreso, m.estado_espiritual
+                FROM {$this->table} m
+                ORDER BY m.apellidos, m.nombres";
+                
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute();
+        return $stmt->fetchAll();
+    }
+    
+    /**
+     * Obtiene un miembro con toda su informaciÃ³n relacionada
+     */
+    public function getFullProfile($id) {
+        // InformaciÃ³n general
+        $miembro = $this->findById($id);
+        
+        if (!$miembro) {
+            return null;
+        }
+        
+        // InformaciÃ³n de contacto
+        $sql = "SELECT * FROM Contacto WHERE miembro_id = :id LIMIT 1";
+        $stmt = $this->db->prepare($sql);
+        $stmt->bindValue(':id', $id);
+        $stmt->execute();
+        $miembro['contacto'] = $stmt->fetch();
+        
+        // Ministerios
+        $sql = "SELECT mm.*, m.nombre as ministerio_nombre, r.nombre as rol_nombre
+                FROM MiembrosMinisterios mm
+                JOIN Ministerios m ON mm.ministerio_id = m.id
+                JOIN Roles r ON mm.rol_id = r.id
+                WHERE mm.miembro_id = :id";
+        $stmt = $this->db->prepare($sql);
+        $stmt->bindValue(':id', $id);
+        $stmt->execute();
+        $miembro['ministerios'] = $stmt->fetchAll();
+        
+        return $miembro;
+    }
+    
+    /**
+     * Guarda un nuevo miembro con su informaciÃ³n de contacto
+     */
+    public function saveWithContacto($miembroData, $contactoData) {
+        try {
+            $this->db->beginTransaction();
+            
+            // Crear miembro
+            $miembroId = $this->create($miembroData);
+            
+            if (!$miembroId) {
+                throw new \Exception("Error al crear el miembro");
+            }
+            
+            // Crear contacto
+            $contactoData['miembro_id'] = $miembroId;
+            $contactoModel = new \App\Models\Contacto();
+            $contactoId = $contactoModel->create($contactoData);
+            
+            if (!$contactoId) {
+                throw new \Exception("Error al crear la informaciÃ³n de contacto");
+            }
+            
+            $this->db->commit();
+            return $miembroId;
+            
+        } catch (\Exception $e) {
+            $this->db->rollBack();
+            // Registrar el error
+            error_log($e->getMessage());
+            return false;
+        }
+    }
+}
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\models\Miembro.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\models\Model.php
+# Última modificación: 2025-05-23 16:55:27
+# Tamaño: 4.3 KB
+###############################################################################
+
+<?php
+namespace App\Models;
+
+abstract class Model {
+    protected $db;
+    protected $table;
+    protected $primaryKey = 'id';
+    protected $fillable = []; // Campos que se pueden asignar masivamente
+    protected $guarded = []; // Campos protegidos contra asignaciÃ³n masiva
+    
+    public function __construct() {
+        $this->db = \Database::getInstance()->getConnection();
+    }
+    
+    /**
+     * Encuentra un registro por su ID
+     */
+    public function findById($id) {
+        $query = "SELECT * FROM {$this->table} WHERE {$this->primaryKey} = :id LIMIT 1";
+        $stmt = $this->db->prepare($query);
+        $stmt->bindValue(':id', $id);
+        $stmt->execute();
+        return $stmt->fetch();
+    }
+    
+    /**
+     * Obtiene todos los registros
+     */
+    public function getAll() {
+        $query = "SELECT * FROM {$this->table}";
+        $stmt = $this->db->prepare($query);
+        $stmt->execute();
+        return $stmt->fetchAll();
+    }
+    
+    /**
+     * Crea un nuevo registro
+     */
+    public function create(array $data) {
+        // Filtrar solo los campos permitidos
+        $data = $this->filterFields($data);
+        
+        if (empty($data)) {
+            return false;
+        }
+        
+        $fields = array_keys($data);
+        $placeholders = array_map(function($field) {
+            return ':' . $field;
+        }, $fields);
+        
+        $query = "INSERT INTO {$this->table} (" . implode(', ', $fields) . ") 
+                  VALUES (" . implode(', ', $placeholders) . ")";
+        
+        $stmt = $this->db->prepare($query);
+        
+        foreach ($data as $key => $value) {
+            $stmt->bindValue(':' . $key, $value);
+        }
+        
+        $stmt->execute();
+        return $this->db->lastInsertId();
+    }
+    
+    /**
+     * Actualiza un registro existente
+     */
+    public function update($id, $data) {
+        $fields = [];
+        foreach ($data as $key => $value) {
+            $fields[] = "{$key} = :{$key}";
+        }
+        
+        $query = "UPDATE {$this->table} SET " . implode(', ', $fields) . " WHERE id = :id";
+        $stmt = $this->db->prepare($query);
+        
+        foreach ($data as $key => $value) {
+            $stmt->bindValue(":{$key}", $value);
+        }
+        
+        $stmt->bindValue(':id', $id);
+        return $stmt->execute();
+    }
+    
+    /**
+     * Elimina un registro
+     */
+    public function delete($id) {
+        $query = "DELETE FROM {$this->table} WHERE {$this->primaryKey} = :id";
+        $stmt = $this->db->prepare($query);
+        $stmt->bindValue(':id', $id);
+        return $stmt->execute();
+    }
+    
+    /**
+     * Filtra los campos segÃºn las reglas de fillable y guarded
+     */
+    protected function filterFields(array $data) {
+        if (!empty($this->fillable)) {
+            return array_intersect_key($data, array_flip($this->fillable));
+        }
+        
+        if (!empty($this->guarded)) {
+            return array_diff_key($data, array_flip($this->guarded));
+        }
+        
+        return $data;
+    }
+    
+    /**
+     * Encuentra registros por condiciÃ³n
+     */
+    public function findWhere($field, $value) {
+        $query = "SELECT * FROM {$this->table} WHERE {$field} = :value";
+        $stmt = $this->db->prepare($query);
+        $stmt->bindValue(':value', $value);
+        $stmt->execute();
+        return $stmt->fetchAll();
+    }
+    
+    /**
+     * Encuentra un Ãºnico registro por condiciÃ³n
+     */
+    public function findOneWhere($field, $value) {
+        $query = "SELECT * FROM {$this->table} WHERE {$field} = :value LIMIT 1";
+        $stmt = $this->db->prepare($query);
+        $stmt->bindValue(':value', $value);
+        $stmt->execute();
+        return $stmt->fetch();
+    }
+    
+    /**
+     * Cuenta registros totales
+     */
+    public function count() {
+        $query = "SELECT COUNT(*) as count FROM {$this->table}";
+        $stmt = $this->db->prepare($query);
+        $stmt->execute();
+        $result = $stmt->fetch();
+        return (int) $result['count'];
+    }
+    
+    /**
+     * Ejecuta una consulta personalizada
+     */
+    public function query($sql, $params = []) {
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt;
+    }
+}
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\models\Model.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\models\Permiso.php
+# Última modificación: 2025-05-24 10:19:40
+# Tamaño: 1.36 KB
+###############################################################################
+
+<?php
+
+namespace App\Models;
+
+class Permiso extends Model {
+    protected $table = 'Permisos';
+    protected $fillable = ['nombre', 'descripcion', 'categoria'];
+    
+    /**
+     * Obtiene todos los permisos agrupados por categorÃ­a
+     */
+    public function getAllByCategory() {
+        $sql = "SELECT * FROM {$this->table} ORDER BY categoria, nombre";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute();
+        $permisos = $stmt->fetchAll();
+        
+        $result = [];
+        foreach ($permisos as $permiso) {
+            $categoria = $permiso['categoria'];
+            if (!isset($result[$categoria])) {
+                $result[$categoria] = [];
+            }
+            $result[$categoria][] = $permiso;
+        }
+        
+        return $result;
+    }
+    
+    /**
+     * Verifica si un usuario tiene un permiso especÃ­fico
+     */
+    public function usuarioTienePermiso($userId, $permisoNombre) {
+        $sql = "SELECT COUNT(*) FROM Permisos p 
+                JOIN RolesPermisos rp ON p.id = rp.permiso_id 
+                JOIN Roles r ON r.id = rp.rol_id
+                JOIN Usuarios u ON u.rol_id = r.id
+                WHERE u.id = ? AND p.nombre = ?";
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$userId, $permisoNombre]);
+        return (int)$stmt->fetchColumn() > 0;
+    }
+}
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\models\Permiso.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\models\Rol.php
+# Última modificación: 2025-05-24 10:22:51
+# Tamaño: 2.18 KB
+###############################################################################
+
+<?php
+namespace App\Models;
+
+class Rol extends Model {
+    protected $table = 'Roles';
+    protected $fillable = ['nombre', 'descripcion', 'nivel_acceso'];
+    
+    /**
+     * Obtiene todos los permisos asociados a este rol
+     */
+    public function getPermisos($rolId) {
+        $sql = "SELECT p.* FROM Permisos p 
+                JOIN RolesPermisos rp ON p.id = rp.permiso_id 
+                WHERE rp.rol_id = ?";
+                
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$rolId]);
+        return $stmt->fetchAll();
+    }
+    
+    /**
+     * Verifica si el rol tiene un permiso especÃ­fico
+     */
+    public function tienePermiso($rolId, $permisoNombre) {
+        $sql = "SELECT COUNT(*) FROM Permisos p 
+                JOIN RolesPermisos rp ON p.id = rp.permiso_id 
+                WHERE rp.rol_id = ? AND p.nombre = ?";
+                
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$rolId, $permisoNombre]);
+        return (int)$stmt->fetchColumn() > 0;
+    }
+    
+    /**
+     * Asigna un permiso al rol
+     */
+    public function asignarPermiso($rolId, $permisoId) {
+        $sql = "INSERT IGNORE INTO RolesPermisos (rol_id, permiso_id) VALUES (?, ?)";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute([$rolId, $permisoId]);
+    }
+    
+    /**
+     * Revoca un permiso del rol
+     */
+    public function revocarPermiso($rolId, $permisoId) {
+        $sql = "DELETE FROM RolesPermisos WHERE rol_id = ? AND permiso_id = ?";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute([$rolId, $permisoId]);
+    }
+    
+    /**
+     * Elimina todos los permisos de un rol
+     */
+    public function eliminarTodosPermisos($rolId) {
+        $sql = "DELETE FROM RolesPermisos WHERE rol_id = ?";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute([$rolId]);
+    }
+    
+    /**
+     * Obtiene los usuarios asignados a un rol
+     */
+    public function getUsuarios($rolId) {
+        $sql = "SELECT u.* FROM Usuarios u WHERE u.rol_id = ?";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$rolId]);
+        return $stmt->fetchAll();
+    }
+}
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\models\Rol.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\models\Usuario.php
+# Última modificación: 2025-05-23 17:46:31
+# Tamaño: 5.99 KB
+###############################################################################
+
+<?php
+// filepath: c:\xampp\htdocs\ENCASA_DATABASE\app\models\Usuario.php
+namespace App\Models;
+
+class Usuario extends Model {
+    protected $table = 'usuarios';
+    // Actualizar $fillable para que coincida con la estructura de la tabla
+    protected $fillable = [
+        'username', 
+        'email', 
+        'password', 
+        'nombre_completo', 
+        'miembro_id', 
+        'rol_id',
+        'ultimo_acceso', 
+        'estado',
+        'intentos_fallidos',
+        'token_reset'
+    ];
+    
+    /**
+     * Encuentra un usuario por su nombre de usuario
+     */
+    public function findByUsername($username) {
+        return $this->findOneWhere('username', $username);
+    }
+    
+    /**
+     * Encuentra un usuario por su correo electrÃ³nico
+     */
+    public function findByEmail($email) {
+        return $this->findOneWhere('email', $email);
+    }
+    
+    /**
+     * Encuentra un registro por una condiciÃ³n especÃ­fica
+     */
+    public function findOneWhere($field, $value) {
+        $query = "SELECT * FROM {$this->table} WHERE {$field} = :value LIMIT 1";
+        $stmt = $this->db->prepare($query);
+        $stmt->bindValue(':value', $value);
+        $stmt->execute();
+        return $stmt->fetch();
+    }
+    
+    /**
+     * Autentica un usuario por su nombre de usuario/email y contraseÃ±a
+     */
+    public function authenticate($username, $password) {
+        echo "<div style='background:#f8f9fa;padding:10px;margin:10px 0;border-radius:5px;'>";
+        echo "<h4>DepuraciÃ³n de autenticaciÃ³n:</h4>";
+        
+        $user = $this->findByUsername($username);
+        echo "<p>Buscando por username: " . ($user ? "Encontrado" : "No encontrado") . "</p>";
+        
+        if (!$user) {
+            // Intentar con email
+            echo "<p>Buscando por email...</p>";
+            $user = $this->findByEmail($username);
+            echo "<p>Resultado bÃºsqueda por email: " . ($user ? "Encontrado" : "No encontrado") . "</p>";
+        }
+        
+        if (!$user) {
+            echo "<p>Usuario no encontrado</p>";
+            echo "</div>";
+            return false;
+        }
+        
+        // Verificamos si la contraseÃ±a estÃ¡ hasheada correctamente
+        echo "<p>Usuario encontrado, ID: {$user['id']}, Username: {$user['username']}</p>";
+        echo "<p>Hash almacenado: {$user['password']}</p>";
+        
+        $passwordMatch = password_verify($password, $user['password']);
+        echo "<p>ContraseÃ±a introducida: $password</p>";
+        echo "<p>Â¿ContraseÃ±a coincide?: " . ($passwordMatch ? "SÃ" : "NO") . "</p>";
+        
+        echo "</div>";
+        
+        if (!$passwordMatch) {
+            return false;
+        }
+        
+        // Actualizar Ãºltimo acceso (no Ãºltimo_login)
+        $this->update($user['id'], [
+            'ultimo_acceso' => date('Y-m-d H:i:s')
+        ]);
+        
+        return $user;
+    }
+    
+    /**
+     * Hashea una contraseÃ±a
+     */
+    public function hashPassword($password) {
+        return password_hash($password, PASSWORD_DEFAULT);
+    }
+    
+    /**
+     * Verifica si una contraseÃ±a coincide con su hash
+     */
+    public function verifyPassword($password, $hash) {
+        return password_verify($password, $hash);
+    }
+    
+    /**
+     * Crea un nuevo usuario con contraseÃ±a hasheada
+     */
+    public function register($data) {
+        // Log para depuraciÃ³n
+        error_log("Intentando registrar usuario: " . $data['username']);
+        
+        // Verificar si el usuario ya existe
+        if ($this->findByUsername($data['username'])) {
+            error_log("Usuario ya existe: " . $data['username']);
+            return false;
+        }
+        
+        // Verificar si el email ya existe
+        if (!empty($data['email']) && $this->findByEmail($data['email'])) {
+            error_log("Email ya existe: " . $data['email']);
+            return false;
+        }
+        
+        // Hashear la contraseÃ±a
+        $data['password'] = $this->hashPassword($data['password']);
+        
+        // Asegurar que tiene campos obligatorios
+        if (!isset($data['miembro_id'])) {
+            error_log("Falta miembro_id para el usuario: " . $data['username']);
+            return false;
+        }
+        
+        if (!isset($data['rol_id'])) {
+            error_log("Falta rol_id para el usuario: " . $data['username']);
+            return false;
+        }
+        
+        // Crear el usuario
+        try {
+            $id = $this->create($data);
+            error_log("Usuario creado con ID: $id");
+            return $id;
+        } catch (\PDOException $e) {
+            error_log("Error al crear usuario: " . $e->getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Obtiene los roles del usuario
+     */
+    public function getRoles($userId) {
+        $sql = "SELECT r.* FROM RolesUsuario ru
+                JOIN Roles r ON ru.rol_id = r.id
+                WHERE ru.usuario_id = :user_id";
+                
+        $stmt = $this->db->prepare($sql);
+        $stmt->bindValue(':user_id', $userId);
+        $stmt->execute();
+        
+        return $stmt->fetchAll();
+    }
+    
+    /**
+     * Verifica si un usuario tiene un rol especÃ­fico
+     */
+    public function hasRole($userId, $roleName) {
+        $sql = "SELECT COUNT(*) as count FROM RolesUsuario ru
+                JOIN Roles r ON ru.rol_id = r.id
+                WHERE ru.usuario_id = :user_id AND r.nombre = :role_name";
+                
+        $stmt = $this->db->prepare($sql);
+        $stmt->bindValue(':user_id', $userId);
+        $stmt->bindValue(':role_name', $roleName);
+        $stmt->execute();
+        
+        $result = $stmt->fetch();
+        return (int) $result['count'] > 0;
+    }
+
+    /**
+     * Obtiene todos los usuarios
+     */
+    public function getAll() {
+        $query = "SELECT * FROM {$this->table}";
+        $stmt = $this->db->prepare($query);
+        $stmt->execute();
+        return $stmt->fetchAll();
+    }
+}
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\models\Usuario.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\views\admin\roles\index.php
+# Última modificación: 2025-05-24 07:49:03
+# Tamaño: 2.91 KB
+###############################################################################
+
+<?php 
+require_once APP_PATH . '/views/partials/header.php';
+require_once APP_PATH . '/views/partials/navbar.php';
+?>
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>GestiÃ³n de Roles</h1>
+        <a href="<?= APP_URL ?>/admin/roles/crear" class="btn btn-primary">
+            <i class="fas fa-plus-circle"></i> Nuevo Rol
+        </a>
+    </div>
+    
+    <?php if(isset($_SESSION['flash_message'])): ?>
+    <div class="alert alert-<?= $_SESSION['flash_type'] ?? 'info' ?> alert-dismissible fade show">
+        <?= $_SESSION['flash_message'] ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <?php unset($_SESSION['flash_message']); unset($_SESSION['flash_type']); endif; ?>
+    
+    <div class="card shadow">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>#</th>
+                            <th>Nombre</th>
+                            <th>DescripciÃ³n</th>
+                            <th>Nivel de Acceso</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach($roles as $rol): ?>
+                        <tr>
+                            <td><?= $rol['id'] ?></td>
+                            <td><?= htmlspecialchars($rol['nombre']) ?></td>
+                            <td><?= htmlspecialchars($rol['descripcion']) ?></td>
+                            <td><?= $rol['nivel_acceso'] ?></td>
+                            <td>
+                                <a href="<?= APP_URL ?>/admin/roles/editar/<?= $rol['id'] ?>" class="btn btn-sm btn-info">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <a href="<?= APP_URL ?>/admin/roles/permisos/<?= $rol['id'] ?>" class="btn btn-sm btn-warning">
+                                    <i class="fas fa-key"></i>
+                                </a>
+                                <button class="btn btn-sm btn-danger" onclick="confirmarEliminar(<?= $rol['id'] ?>)">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function confirmarEliminar(id) {
+    if (confirm('Â¿EstÃ¡s seguro de que deseas eliminar este rol?')) {
+        window.location.href = '<?= APP_URL ?>/admin/roles/eliminar/' + id;
+    }
+}
+</script>
+
+<?php require_once APP_PATH . '/views/partials/footer.php'; ?>
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\views\admin\roles\index.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\views\admin\roles\permisos.php
+# Última modificación: 2025-05-24 07:48:11
+# Tamaño: 2.2 KB
+###############################################################################
+
+<?php
+require_once APP_PATH . '/views/partials/header.php';
+require_once APP_PATH . '/views/partials/navbar.php';
+?>
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Permisos del Rol: <?= htmlspecialchars($rol['nombre']) ?></h1>
+        <a href="<?= APP_URL ?>/admin/roles" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Volver a Roles
+        </a>
+    </div>
+    
+    <?php if(isset($_SESSION['flash_message'])): ?>
+    <div class="alert alert-<?= $_SESSION['flash_type'] ?? 'info' ?> alert-dismissible fade show">
+        <?= $_SESSION['flash_message'] ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <?php unset($_SESSION['flash_message']); unset($_SESSION['flash_type']); endif; ?>
+    
+    <div class="card shadow">
+        <div class="card-body">
+            <form action="<?= APP_URL ?>/admin/roles/permisos/<?= $rol['id'] ?>" method="post">
+                <div class="row">
+                    <?php foreach($permisos as $permiso): ?>
+                    <div class="col-md-4 mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="permisos[]" 
+                                value="<?= $permiso['id'] ?>" id="permiso_<?= $permiso['id'] ?>"
+                                <?= in_array($permiso['id'], $permisosRol) ? 'checked' : '' ?>>
+                            <label class="form-check-label" for="permiso_<?= $permiso['id'] ?>">
+                                <?= htmlspecialchars($permiso['nombre']) ?>
+                                <small class="d-block text-muted"><?= htmlspecialchars($permiso['descripcion']) ?></small>
+                            </label>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+                <div class="text-end mt-3">
+                    <button type="submit" class="btn btn-primary">Guardar Permisos</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<?php require_once APP_PATH . '/views/partials/footer.php'; ?>
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\views\admin\roles\permisos.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\views\auth\forgot-password.php
+# Última modificación: 2025-05-24 07:49:44
+# Tamaño: 1.97 KB
+###############################################################################
+
+<?php require_once APP_PATH . '/views/partials/header.php'; ?>
+
+<div class="container">
+    <div class="row justify-content-center mt-5">
+        <div class="col-md-6 col-lg-5">
+            <div class="card shadow">
+                <div class="card-body p-4">
+                    <h2 class="text-center mb-4">Recuperar ContraseÃ±a</h2>
+                    
+                    <?php if(isset($_SESSION['flash_message'])): ?>
+                    <div class="alert alert-<?= $_SESSION['flash_type'] ?? 'info' ?> alert-dismissible fade show">
+                        <?= $_SESSION['flash_message'] ?>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                    <?php unset($_SESSION['flash_message']); unset($_SESSION['flash_type']); endif; ?>
+                    
+                    <p class="text-muted mb-4">Ingresa tu direcciÃ³n de correo electrÃ³nico y te enviaremos un enlace para restablecer tu contraseÃ±a.</p>
+                    
+                    <form action="<?= APP_URL ?>/auth/reset-password-request" method="post">
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Correo ElectrÃ³nico</label>
+                            <input type="email" class="form-control" id="email" name="email" required autocomplete="email">
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">Enviar Enlace de RecuperaciÃ³n</button>
+                        </div>
+                    </form>
+                    
+                    <div class="text-center mt-3">
+                        <a href="<?= APP_URL ?>/login">Volver al Inicio de SesiÃ³n</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<?php require_once APP_PATH . '/views/partials/footer.php'; ?>
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\views\auth\forgot-password.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\views\auth\login.php
+# Última modificación: 2025-05-23 16:55:27
+# Tamaño: 1.21 KB
+###############################################################################
+
+<?php
+// filepath: /Applications/XAMPP/xamppfiles/htdocs/Encasa_Database/app/views/auth/login.php
+?>
+<div class="row justify-content-center">
+  <div class="col-md-8 col-lg-6">
+    <div class="card shadow">
+      <div class="card-header bg-primary text-white">
+        <h2 class="my-2">Iniciar SesiÃ³n</h2>
+      </div>
+      <div class="card-body">
+        <form action="<?= APP_URL ?>/auth/login" method="post">
+          <div class="mb-3">
+            <label for="username" class="form-label">Usuario o Email</label>
+            <input type="text" class="form-control" id="username" name="username" required autofocus>
+          </div>
+          
+          <div class="mb-3">
+            <label for="password" class="form-label">ContraseÃ±a</label>
+            <input type="password" class="form-control" id="password" name="password" required>
+          </div>
+          
+          <div class="d-grid gap-2">
+            <button type="submit" class="btn btn-primary">Iniciar SesiÃ³n</button>
+          </div>
+        </form>
+        
+        <div class="text-center mt-3">
+          <a href="<?= APP_URL ?>/registro">Â¿No tienes cuenta? RegÃ­strate</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\views\auth\login.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\views\auth\register.php
+# Última modificación: 2025-05-23 17:50:16
+# Tamaño: 2.44 KB
+###############################################################################
+
+<?php
+// filepath: c:\xampp\htdocs\ENCASA_DATABASE\app\views\auth\register.php
+?>
+<div class="row justify-content-center">
+  <div class="col-md-8 col-lg-6">
+    <div class="card shadow">
+      <div class="card-body">
+        <h3 class="card-title text-center mb-4">Registro de Usuario</h3>
+        
+        <?php if(isset($errors)): ?>
+        <div class="alert alert-danger">
+          <ul class="mb-0">
+            <?php foreach($errors as $error): ?>
+            <li><?= $error ?></li>
+            <?php endforeach; ?>
+          </ul>
+        </div>
+        <?php endif; ?>
+        
+        <form action="<?= APP_URL ?>/auth/registro" method="post">
+          <!-- Nombre completo -->
+          <div class="mb-3">
+            <label for="nombre_completo" class="form-label">Nombre completo</label>
+            <input type="text" class="form-control" id="nombre_completo" name="nombre_completo" required>
+          </div>
+          
+          <!-- Nombre de usuario -->
+          <div class="mb-3">
+            <label for="username" class="form-label">Nombre de usuario</label>
+            <input type="text" class="form-control" id="username" name="username" required>
+          </div>
+          
+          <!-- Correo electrÃ³nico -->
+          <div class="mb-3">
+            <label for="email" class="form-label">Correo electrÃ³nico</label>
+            <input type="email" class="form-control" id="email" name="email" required>
+          </div>
+          
+          <!-- ContraseÃ±a -->
+          <div class="mb-3">
+            <label for="password" class="form-label">ContraseÃ±a</label>
+            <input type="password" class="form-control" id="password" name="password" required>
+            <div class="form-text">MÃ­nimo 6 caracteres</div>
+          </div>
+          
+          <!-- ConfirmaciÃ³n de contraseÃ±a -->
+          <div class="mb-3">
+            <label for="password_confirmation" class="form-label">Confirmar ContraseÃ±a</label>
+            <input type="password" class="form-control" id="password_confirmation" name="password_confirmation" required>
+          </div>
+          
+          <div class="d-grid gap-2">
+            <button type="submit" class="btn btn-primary">Registrarse</button>
+          </div>
+        </form>
+        
+        <div class="text-center mt-3">
+          <a href="<?= APP_URL ?>/login">Â¿Ya tienes cuenta? Iniciar sesiÃ³n</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\views\auth\register.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\views\errors\404.php
+# Última modificación: 2025-05-23 06:53:51
+# Tamaño: 0.89 KB
+###############################################################################
+
+<?php
+// filepath: /Applications/XAMPP/xamppfiles/htdocs/Encasa_Database/app/views/errors/404.php
+?>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 - PÃ¡gina no encontrada | <?= APP_NAME ?></title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6 text-center">
+                <h1 class="display-1">404</h1>
+                <p class="lead">PÃ¡gina no encontrada</p>
+                <p>La pÃ¡gina que estÃ¡s buscando no existe o ha sido movida.</p>
+                <a href="<?= APP_URL ?>" class="btn btn-primary">Volver al inicio</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\views\errors\404.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\views\errors\acceso-denegado.php
+# Última modificación: 2025-05-24 08:16:42
+# Tamaño: 1.33 KB
+###############################################################################
+
+<?php
+ require_once APP_PATH . '/views/partials/header.php';
+?>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card border-danger shadow">
+                <div class="card-header bg-danger text-white">
+                    <h3 class="mb-0">Acceso Denegado</h3>
+                </div>
+                <div class="card-body text-center">
+                    <i class="fas fa-exclamation-triangle text-danger fa-5x mb-4"></i>
+                    <h4>No tienes permisos suficientes para acceder a esta pÃ¡gina</h4>
+                    <p class="text-muted">Por favor, contacta con el administrador si consideras que deberÃ­as tener acceso.</p>
+                    
+                    <div class="mt-4">
+                        <a href="<?= APP_URL ?>/" class="btn btn-primary">
+                            <i class="fas fa-home"></i> Volver al Inicio
+                        </a>
+                        <a href="<?= APP_URL ?>/logout" class="btn btn-outline-secondary ml-2">
+                            <i class="fas fa-sign-out-alt"></i> Cerrar SesiÃ³n
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<?php require_once APP_PATH . '/views/partials/footer.php'; ?>
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\views\errors\acceso-denegado.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\views\home\index.php
+# Última modificación: 2025-05-23 16:55:27
+# Tamaño: 3.3 KB
+###############################################################################
+
+<?php
+// filepath: /Applications/XAMPP/xamppfiles/htdocs/Encasa_Database/app/views/home/index.php
+?>
+<div class="jumbotron bg-light p-5 rounded mb-4">
+    <h1 class="display-4">Â¡Bienvenido a Iglesia En Casa!</h1>
+    <p class="lead">Sistema de gestiÃ³n de informaciÃ³n para la comunidad</p>
+    <hr class="my-4">
+    
+    <?php if (isset($user) && $user): ?>
+        <p class="mb-4">Hola, <strong><?= htmlspecialchars($user['nombre_completo'] ?? $user['username']) ?></strong>. Bienvenido al sistema de gestiÃ³n.</p>
+        
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Miembros</h5>
+                        <p class="card-text">Gestiona la informaciÃ³n de los miembros de la iglesia.</p>
+                    </div>
+                    <div class="card-footer bg-transparent border-0">
+                        <a href="<?= APP_URL ?>/miembros" class="btn btn-primary">Ver miembros</a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4 mb-3">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h5 class="card-title">Ministerios</h5>
+                        <p class="card-text">Administra los ministerios y sus participantes.</p>
+                    </div>
+                    <div class="card-footer bg-transparent border-0">
+                        <a href="<?= APP_URL ?>/ministerios" class="btn btn-primary">Ver ministerios</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    <?php else: ?>
+        <p class="mb-4">Este sistema te permite gestionar la informaciÃ³n de la Iglesia En Casa.</p>
+        <div class="d-grid gap-2 d-md-block">
+            <a class="btn btn-primary btn-lg" href="<?= APP_URL ?>/login">Iniciar sesiÃ³n</a>
+            <a class="btn btn-outline-primary btn-lg" href="<?= APP_URL ?>/registro">Registrarse</a>
+        </div>
+    <?php endif; ?>
+</div>
+
+<?php if (!isset($user) || !$user): ?>
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Â¿QuÃ© es Iglesia En Casa?</h5>
+            </div>
+            <div class="card-body">
+                <p class="card-text">Iglesia En Casa es una comunidad cristiana comprometida con compartir el amor de Dios y ayudar a otros a encontrar su propÃ³sito.</p>
+                <p class="card-text">Este sistema nos permite administrar la informaciÃ³n de nuestros miembros y ministerios de manera eficiente.</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">Contacto</h5>
+            </div>
+            <div class="card-body">
+                <p class="card-text">Si tienes alguna duda sobre el sistema o deseas mÃ¡s informaciÃ³n, no dudes en contactarnos.</p>
+                <p class="card-text">Email: contacto@iglesiaencasa.org</p>
+                <p class="card-text">TelÃ©fono: (123) 456-7890</p>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\views\home\index.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\views\layouts\auth.php
+# Última modificación: 2025-05-23 16:55:27
+# Tamaño: 1.5 KB
+###############################################################################
+
+<?php
+// filepath: /Applications/XAMPP/xamppfiles/htdocs/Encasa_Database/app/views/layouts/auth.php
+?>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?= isset($title) ? $title . ' - ' . APP_NAME : APP_NAME ?></title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <div class="container py-5">
+        <div class="text-center mb-4">
+            <h1 class="display-4 mb-3"><?= APP_NAME ?></h1>
+            <p class="lead text-muted">Sistema de gestiÃ³n de informaciÃ³n</p>
+        </div>
+        
+        <?php if (isset($_SESSION['flash_message'])): ?>
+            <div class="alert alert-<?= $_SESSION['flash_type'] ?? 'info' ?> alert-dismissible fade show">
+                <?= $_SESSION['flash_message'] ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            <?php unset($_SESSION['flash_message'], $_SESSION['flash_type']); ?>
+        <?php endif; ?>
+        
+        <?= $content ?>
+        
+        <div class="text-center mt-5">
+            <p class="text-muted">&copy; <?= date('Y') ?> - <?= APP_NAME ?></p>
+            <p><a href="<?= APP_URL ?>">Volver al inicio</a></p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\views\layouts\auth.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\views\layouts\default.php
+# Última modificación: 2025-05-23 16:55:27
+# Tamaño: 3.6 KB
+###############################################################################
+
+<?php
+// filepath: /Applications/XAMPP/xamppfiles/htdocs/Encasa_Database/app/views/layouts/default.php
+?>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?= isset($title) ? $title . ' - ' . APP_NAME : APP_NAME ?></title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="<?= APP_URL ?>">Iglesia En Casa</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="<?= APP_URL ?>">Inicio</a>
+                    </li>
+                    <?php if (isset($_SESSION['user_id'])): ?>
+                    <li class="nav-item">
+                        <a class="nav-link" href="<?= APP_URL ?>/miembros">Miembros</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="<?= APP_URL ?>/ministerios">Ministerios</a>
+                    </li>
+                    <?php endif; ?>
+                </ul>
+                
+                <ul class="navbar-nav ms-auto">
+                    <?php if (isset($_SESSION['user_id'])): ?>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+                            <?= htmlspecialchars($_SESSION['nombre_completo'] ?? $_SESSION['username']) ?>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="<?= APP_URL ?>/perfil">Mi Perfil</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="<?= APP_URL ?>/logout">Cerrar SesiÃ³n</a></li>
+                        </ul>
+                    </li>
+                    <?php else: ?>
+                    <li class="nav-item">
+                        <a class="nav-link" href="<?= APP_URL ?>/login">Iniciar SesiÃ³n</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="<?= APP_URL ?>/registro">Registrarse</a>
+                    </li>
+                    <?php endif; ?>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container my-4">
+        <?php if (isset($_SESSION['flash_message'])): ?>
+        <div class="alert alert-<?= $_SESSION['flash_type'] ?? 'info' ?> alert-dismissible fade show">
+            <?= $_SESSION['flash_message'] ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <?php 
+            unset($_SESSION['flash_message'], $_SESSION['flash_type']); 
+        endif; 
+        ?>
+        
+        <?= $content ?>
+    </main>
+
+    <footer class="bg-dark text-white py-3 mt-4">
+        <div class="container text-center">
+            &copy; <?= date('Y') ?> - <?= APP_NAME ?>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\views\layouts\default.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\views\partials\header.php
+# Última modificación: 2025-05-24 08:23:20
+# Tamaño: 1.11 KB
+###############################################################################
+
+<?php
+?>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?= $title ?? 'Iglesia En Casa' ?></title>
+    
+    <!-- SoluciÃ³n temporal: Tailwind desde CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Tus estilos existentes -->
+    <link rel="stylesheet" href="<?= APP_URL ?>/app/public/css/styles.css">
+    
+    <!-- Bootstrap CSS (opcional - puedes eliminarlo cuando migres completamente a Tailwind) -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome para iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <?php if (isset($page_specific_css)): ?>
+    <!-- CSS especÃ­fico de pÃ¡gina -->
+    <link rel="stylesheet" href="<?= APP_URL ?>/css/pages/<?= $page_specific_css ?>.css">
+    <?php endif; ?>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Contenido principal de la pÃ¡gina se insertarÃ¡ aquÃ­ -->
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\views\partials\header.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\views\partials\navbar.php
+# Última modificación: 2025-05-24 08:17:08
+# Tamaño: 0.27 KB
+###############################################################################
+
+<?php
+// AÃ±adir a tu barra de navegaciÃ³n
+
+ if (isset($_SESSION['user_id'])): ?>
+<div class="ml-auto">
+    <a href="<?= APP_URL ?>/logout" class="btn btn-outline-light btn-sm">
+        <i class="fas fa-sign-out-alt"></i> Cerrar SesiÃ³n
+    </a>
+</div>
+<?php endif; ?>
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\views\partials\navbar.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\check-progress.php
+# Última modificación: 2025-05-24 09:57:46
+# Tamaño: 8.43 KB
+###############################################################################
+
+<?php
+
+// Script para verificar el progreso del proyecto
+
+echo "<h1>VerificaciÃ³n de Progreso del Sistema</h1>";
+
+// Verificar componentes crÃ­ticos
+$components = [
+    // Etapa 1: ConfiguraciÃ³n del Entorno y Base de Datos
+    'ConexiÃ³n BD' => function() {
+        return class_exists('PDO');
+    },
+    'Estructura BD' => function() {
+        // Verificar si podemos conectar y si existe al menos una tabla clave
+        try {
+            if (!class_exists('PDO')) return false;
+            $db = new PDO('mysql:host=localhost;dbname=IglesiaEnCasa', 'root', '');
+            $stmt = $db->query("SHOW TABLES LIKE 'InformacionGeneral'");
+            return $stmt->rowCount() > 0;
+        } catch (Exception $e) {
+            return false;
+        }
+    },
+    'Entorno Configurado' => function() {
+        return file_exists('app/config/config.php');
+    },
+    
+    // Etapa 2: NÃºcleo MVC y Enrutamiento
+    'Router' => function() {
+        return file_exists('app/helpers/Router.php');
+    },
+    'Modelo Base' => function() {
+        return file_exists('app/models/Model.php') || file_exists('app/models/BaseModel.php');
+    },
+    'Controlador Base' => function() {
+        return file_exists('app/controllers/Controller.php') || file_exists('app/core/Controller.php');
+    },
+    'Sistema de Vistas' => function() {
+        return is_dir('app/views') && file_exists('app/views/layouts/default.php');
+    },
+    
+    // Etapa 3: Sistema de AutenticaciÃ³n y AutorizaciÃ³n
+    'AutenticaciÃ³n' => function() {
+        return file_exists('app/controllers/AuthController.php');
+    },
+    'Modelo Usuario' => function() {
+        return file_exists('app/models/Usuario.php');
+    },
+    'Login Funcional' => function() {
+        return file_exists('app/views/auth/login.php');
+    },
+    'Middleware Auth' => function() {
+        return file_exists('app/middleware/Auth.php') || file_exists('app/middleware/AuthMiddleware.php');
+    },
+    'Sistema de Roles' => function() {
+        return file_exists('app/models/Rol.php') || file_exists('app/models/Role.php');
+    },
+    
+    // Etapa 4: Modelos Base y CRUD de Miembros
+    'Modelo Miembro' => function() {
+        return file_exists('app/models/Miembro.php') || file_exists('app/models/InformacionGeneral.php');
+    },
+    'Controlador Miembros' => function() {
+        return file_exists('app/controllers/MiembroController.php') || file_exists('app/controllers/MiembrosController.php');
+    },
+    'Vista Listado Miembros' => function() {
+        return file_exists('app/views/miembros/index.php');
+    },
+    'Vista Formulario Miembro' => function() {
+        return file_exists('app/views/miembros/create.php') || file_exists('app/views/miembros/form.php');
+    },
+    
+    // Etapa 5: Ministerios, Roles y Tareas
+    'Modelo Ministerio' => function() {
+        return file_exists('app/models/Ministerio.php');
+    },
+    'Modelo Tarea' => function() {
+        return file_exists('app/models/Tarea.php');
+    },
+    'Controlador Ministerios' => function() {
+        return file_exists('app/controllers/MinisterioController.php') || file_exists('app/controllers/MinisteriosController.php');
+    },
+    
+    // Etapa 6: Vistas y UI/UX
+    'Layout Principal' => function() {
+        return file_exists('app/views/layouts/default.php');
+    },
+    'Layout Auth' => function() {
+        return file_exists('app/views/layouts/auth.php');
+    },
+    'Config Tailwind' => function() {
+        return file_exists('tailwind.config.js');
+    },
+    'CSS Compilado' => function() {
+        return file_exists('public/css/main.css');
+    },
+    'Dashboard' => function() {
+        return file_exists('app/views/dashboard/index.php');
+    },
+    
+    // Etapa 7: IntegraciÃ³n, Pruebas y OptimizaciÃ³n
+    'Sistema de Logs' => function() {
+        return file_exists('app/helpers/Logger.php');
+    },
+    'Visualizador de Logs' => function() {
+        return file_exists('app/controllers/LogController.php') && file_exists('app/views/admin/logs.php');
+    },
+    'Test Unitarios' => function() {
+        return is_dir('tests') && file_exists('phpunit.xml');
+    },
+    'Sistema Cache' => function() {
+        return file_exists('app/helpers/Cache.php') || file_exists('app/services/CacheService.php');
+    },
+    
+    // Etapa 8: Despliegue y DocumentaciÃ³n
+    'Manual Usuario' => function() {
+        return file_exists('Documentacion/manual_usuario.md') || file_exists('Documentacion/manual_usuario.pdf');
+    },
+    'DocumentaciÃ³n API' => function() {
+        return file_exists('Documentacion/api.md') || file_exists('api/index.html');
+    },
+    'Script Despliegue' => function() {
+        return file_exists('deploy.sh') || file_exists('deploy.php');
+    },
+    
+    // AÃ±adir mÃ¡s verificaciones para cada etapa segÃºn sea necesario
+];
+
+// Mostrar resultados
+echo "<table border='1' style='border-collapse:collapse'>";
+echo "<tr><th>Componente</th><th>Estado</th></tr>";
+
+$completedCount = 0;
+foreach ($components as $name => $checkFn) {
+    $status = $checkFn() ? "âœ… Implementado" : "âŒ Pendiente";
+    $style = $checkFn() ? "background-color: #d4edda;" : "background-color: #f8d7da;";
+    
+    echo "<tr style='$style'><td>$name</td><td>$status</td></tr>";
+    
+    if ($checkFn()) $completedCount++;
+}
+
+$percent = round(($completedCount / count($components)) * 100);
+echo "</table>";
+echo "<p>Progreso general: <b>$percent%</b></p>";
+
+// Generar reporte de progreso por etapas
+echo "<h2>Progreso por Etapas</h2>";
+$etapas = [
+    'Etapa 1: Config y BD' => ['ConexiÃ³n BD', 'Estructura BD', 'Entorno Configurado'],
+    'Etapa 2: NÃºcleo MVC' => ['Router', 'Modelo Base', 'Controlador Base', 'Sistema de Vistas'],
+    'Etapa 3: AutenticaciÃ³n' => ['AutenticaciÃ³n', 'Modelo Usuario', 'Login Funcional', 'Middleware Auth', 'Sistema de Roles'],
+    'Etapa 4: CRUD Miembros' => ['Modelo Miembro', 'Controlador Miembros', 'Vista Listado Miembros', 'Vista Formulario Miembro'],
+    'Etapa 5: Ministerios/Tareas' => ['Modelo Ministerio', 'Modelo Tarea', 'Controlador Ministerios'],
+    'Etapa 6: Vistas y UI/UX' => ['Layout Principal', 'Layout Auth', 'Config Tailwind', 'CSS Compilado', 'Dashboard'],
+    'Etapa 7: IntegraciÃ³n/Pruebas' => ['Sistema de Logs', 'Visualizador de Logs', 'Test Unitarios', 'Sistema Cache'],
+    'Etapa 8: Despliegue/Docs' => ['Manual Usuario', 'DocumentaciÃ³n API', 'Script Despliegue']
+];
+
+echo "<table border='1' style='border-collapse:collapse'>";
+echo "<tr><th>Etapa</th><th>Componentes Completados</th><th>Progreso</th></tr>";
+
+foreach ($etapas as $etapa => $componentesEtapa) {
+    $completados = 0;
+    $total = count($componentesEtapa);
+    
+    foreach ($componentesEtapa as $componente) {
+        if (isset($components[$componente]) && $components[$componente]()) {
+            $completados++;
+        }
+    }
+    
+    $porcentajeEtapa = $total > 0 ? round(($completados / $total) * 100) : 0;
+    $styleEtapa = $porcentajeEtapa == 100 ? "background-color: #d4edda;" : 
+                 ($porcentajeEtapa > 0 ? "background-color: #fff3cd;" : "background-color: #f8d7da;");
+    
+    echo "<tr style='$styleEtapa'><td>$etapa</td><td>$completados / $total</td><td>$porcentajeEtapa%</td></tr>";
+}
+
+echo "</table>";
+
+// Mostrar grÃ¡fico visual de progreso (opcional)
+echo "<h2>GrÃ¡fico de Progreso</h2>";
+echo "<div style='width:100%; background-color:#eee; height:30px; border-radius:5px; overflow:hidden;'>";
+echo "<div style='width:$percent%; background-color:#4CAF50; height:30px; text-align:center; line-height:30px; color:white;'>$percent%</div>";
+echo "</div>";
+
+// Mostrar prÃ³ximos pasos
+echo "<h2>PrÃ³ximos Pasos Recomendados</h2>";
+echo "<ul>";
+
+// Analizar componentes faltantes prioritarios
+$prioridadAlta = [];
+
+// Revisar etapa 3 - AutenticaciÃ³n
+if (!$components['Sistema de Roles']()) {
+    $prioridadAlta[] = "Completar implementaciÃ³n del sistema de roles y permisos";
+}
+
+// Revisar etapa 4 - CRUD Miembros
+if (!$components['Controlador Miembros']()) {
+    $prioridadAlta[] = "Implementar controlador de miembros con operaciones CRUD bÃ¡sicas";
+}
+
+// Revisar nuevos componentes
+if (!$components['Sistema de Logs']()) {
+    $prioridadAlta[] = "Implementar sistema de logs para monitoreo de errores";
+}
+
+if (!$components['Config Tailwind']()) {
+    $prioridadAlta[] = "Configurar Tailwind CSS para la interfaz de usuario";
+}
+
+foreach ($prioridadAlta as $paso) {
+    echo "<li>$paso</li>";
+}
+
+echo "</ul>";
+?>
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\check-progress.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\database\permisos.php
+# Última modificación: 2025-05-24 10:24:00
+# Tamaño: 2.51 KB
+###############################################################################
+
+<?php
+
+require_once __DIR__ . '/../app/config/database.php';
+
+try {
+    $db = Database::getInstance()->getConnection();
+    
+    // Crear tabla de Permisos
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS Permisos (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            nombre VARCHAR(50) NOT NULL UNIQUE,
+            descripcion VARCHAR(255) NOT NULL,
+            categoria VARCHAR(50) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )
+    ");
+    
+    // Crear tabla pivot RolesPermisos
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS RolesPermisos (
+            rol_id INT,
+            permiso_id INT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (rol_id, permiso_id),
+            FOREIGN KEY (rol_id) REFERENCES Roles(id) ON DELETE CASCADE,
+            FOREIGN KEY (permiso_id) REFERENCES Permisos(id) ON DELETE CASCADE
+        )
+    ");
+    
+    // Insertar permisos bÃ¡sicos
+    $permisos = [
+        // Miembros
+        ['ver_miembros', 'Ver listado de miembros', 'Miembros'],
+        ['crear_miembro', 'Crear nuevos miembros', 'Miembros'],
+        ['editar_miembro', 'Editar informaciÃ³n de miembros', 'Miembros'],
+        ['eliminar_miembro', 'Eliminar miembros del sistema', 'Miembros'],
+        
+        // Ministerios
+        ['ver_ministerios', 'Ver listado de ministerios', 'Ministerios'],
+        ['crear_ministerio', 'Crear nuevos ministerios', 'Ministerios'],
+        ['editar_ministerio', 'Editar informaciÃ³n de ministerios', 'Ministerios'],
+        ['eliminar_ministerio', 'Eliminar ministerios', 'Ministerios'],
+        
+        // Sistema
+        ['gestionar_roles', 'Gestionar roles y permisos', 'Sistema'],
+        ['ver_logs', 'Ver registros del sistema', 'Sistema'],
+        ['configurar_sistema', 'Configurar parÃ¡metros del sistema', 'Sistema']
+    ];
+    
+    $stmt = $db->prepare("INSERT IGNORE INTO Permisos (nombre, descripcion, categoria) VALUES (?, ?, ?)");
+    
+    foreach ($permisos as $permiso) {
+        $stmt->execute($permiso);
+    }
+    
+    // Asignar todos los permisos al rol Admin (rol_id = 1)
+    $db->exec("
+        INSERT IGNORE INTO RolesPermisos (rol_id, permiso_id)
+        SELECT 1, id FROM Permisos
+    ");
+    
+    echo "âœ… Tablas de permisos creadas y datos iniciales insertados correctamente\n";
+    
+} catch (PDOException $e) {
+    echo "âŒ Error: " . $e->getMessage() . "\n";
+}
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\database\permisos.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\database\seed.php
+# Última modificación: 2025-05-23 06:53:51
+# Tamaño: 6.54 KB
+###############################################################################
+
+<?php
+
+require_once __DIR__ . '/../app/config/database.php';
+
+class DatabaseSeeder {
+    private $db;
+    
+    public function __construct() {
+        $this->db = Database::getInstance()->getConnection();
+    }
+    
+    public function seed() {
+        try {
+            $this->db->beginTransaction();
+            
+            $this->seedRoles();
+            $this->seedInformacionGeneral();
+            $this->seedContacto();
+            $this->seedMinisterios();
+            $this->seedMiembrosMinisterios();
+            $this->seedUsuarios();
+            
+            $this->db->commit();
+            return true;
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            $this->logError($e->getMessage());
+            return false;
+        }
+    }
+    
+    private function seedRoles() {
+        $roles = [
+            ['Admin', 'Administrador del sistema', 5],
+            ['LÃ­der', 'LÃ­der de ministerio', 4],
+            ['Coordinador', 'Coordinador de Ã¡rea', 3],
+            ['Servidor', 'Servidor en ministerio', 2],
+            ['Miembro', 'Miembro regular', 1]
+        ];
+        
+        $stmt = $this->db->prepare("INSERT INTO Roles (nombre, descripcion, nivel_permiso) VALUES (?, ?, ?)");
+        
+        foreach ($roles as $role) {
+            $stmt->execute($role);
+        }
+    }
+    
+    private function seedInformacionGeneral() {
+        $miembros = [
+            ['Juan', 'PÃ©rez', '+573101234567', 'Kennedy', 'Patio Bonito', '1985-06-15', NULL, 'InvitaciÃ³n directa'],
+            ['MarÃ­a', 'LÃ³pez', '+573119876543', 'Suba', 'RincÃ³n', '1990-03-22', NULL, 'Familiar'],
+            ['Carlos', 'RodrÃ­guez', '+573157894561', 'Chapinero', 'La Soledad', '1982-11-07', NULL, 'Redes sociales'],
+            ['Ana', 'MartÃ­nez', '+573203216547', 'UsaquÃ©n', 'Santa BÃ¡rbara', '1988-09-30', NULL, 'Amigo'],
+            ['Pedro', 'GonzÃ¡lez', '+573174563210', 'FontibÃ³n', 'Modelia', '1979-04-18', NULL, 'Familiar']
+        ];
+        
+        $stmt = $this->db->prepare("
+            INSERT INTO InformacionGeneral 
+            (nombres, apellidos, celular, localidad, barrio, fecha_nacimiento, invitado_por, conector) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+        
+        foreach ($miembros as $index => $miembro) {
+            // Para el primer registro no tendrÃ¡ invitado_por
+            if ($index === 0) {
+                $miembro[6] = NULL;
+            } else {
+                // Los demÃ¡s fueron invitados por el primero
+                $miembro[6] = 1;
+            }
+            $stmt->execute($miembro);
+        }
+    }
+    
+    private function seedContacto() {
+        $contactos = [
+            [1, 'CC', '1023456789', '6013456789', 'Colombia', 'BogotÃ¡', 'Cra 15 #45-67', 'Casado', 'juan.perez@email.com'],
+            [2, 'CC', '1034567890', '6014567890', 'Colombia', 'BogotÃ¡', 'Calle 80 #23-45', 'Soltera', 'maria.lopez@email.com'],
+            [3, 'CC', '1045678901', '6015678901', 'Colombia', 'BogotÃ¡', 'Av 68 #34-56', 'Casado', 'carlos.rodriguez@email.com'],
+            [4, 'CE', '1056789012', '6016789012', 'Colombia', 'BogotÃ¡', 'Cra 7 #56-78', 'Casada', 'ana.martinez@email.com'],
+            [5, 'CC', '1067890123', '6017890123', 'Colombia', 'BogotÃ¡', 'Calle 100 #67-89', 'Soltero', 'pedro.gonzalez@email.com']
+        ];
+        
+        $stmt = $this->db->prepare("
+            INSERT INTO Contacto 
+            (miembro_id, tipo_documento, numero_documento, telefono, pais, ciudad, direccion, estado_civil, correo_electronico) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+        
+        foreach ($contactos as $contacto) {
+            $stmt->execute($contacto);
+        }
+    }
+    
+    private function seedMinisterios() {
+        $ministerios = [
+            ['Alabanza', 'Ministerio de mÃºsica y adoraciÃ³n', 1],
+            ['NiÃ±os', 'Ministerio de atenciÃ³n a niÃ±os', 2],
+            ['JÃ³venes', 'Ministerio juvenil', 3],
+            ['Matrimonios', 'Ministerio para parejas casadas', 4],
+            ['Servicio', 'Ministerio de apoyo logÃ­stico', 5]
+        ];
+        
+        $stmt = $this->db->prepare("
+            INSERT INTO Ministerios 
+            (nombre, descripcion, lider_id) 
+            VALUES (?, ?, ?)
+        ");
+        
+        foreach ($ministerios as $ministerio) {
+            $stmt->execute($ministerio);
+        }
+    }
+    
+    private function seedMiembrosMinisterios() {
+        $miembrosMinisterios = [
+            [1, 1, 1, '2022-01-15', NULL],
+            [2, 2, 2, '2022-02-20', NULL],
+            [3, 3, 2, '2022-03-10', NULL],
+            [4, 4, 2, '2022-04-05', NULL],
+            [5, 5, 2, '2022-05-12', NULL],
+            [1, 3, 3, '2022-06-18', NULL],
+            [2, 4, 3, '2022-07-22', NULL],
+            [3, 5, 3, '2022-08-30', NULL]
+        ];
+        
+        $stmt = $this->db->prepare("
+            INSERT INTO MiembrosMinisterios 
+            (miembro_id, ministerio_id, rol_id, fecha_inicio, fecha_fin) 
+            VALUES (?, ?, ?, ?, ?)
+        ");
+        
+        foreach ($miembrosMinisterios as $mm) {
+            $stmt->execute($mm);
+        }
+    }
+    
+    private function seedUsuarios() {
+        $usuarios = [
+            [1, 'admin', password_hash('admin123', PASSWORD_DEFAULT), 1],
+            [2, 'maria', password_hash('maria123', PASSWORD_DEFAULT), 2],
+            [3, 'carlos', password_hash('carlos123', PASSWORD_DEFAULT), 3],
+            [4, 'ana', password_hash('ana123', PASSWORD_DEFAULT), 4],
+            [5, 'pedro', password_hash('pedro123', PASSWORD_DEFAULT), 5]
+        ];
+        
+        $stmt = $this->db->prepare("
+            INSERT INTO Usuarios 
+            (miembro_id, nombre_usuario, password_hash, rol_id) 
+            VALUES (?, ?, ?, ?)
+        ");
+        
+        foreach ($usuarios as $usuario) {
+            $stmt->execute($usuario);
+        }
+    }
+    
+    private function logError($message) {
+        $logFile = __DIR__ . '/../app/logs/seed_errors.log';
+        $directory = dirname($logFile);
+        
+        if (!is_dir($directory)) {
+            mkdir($directory, 0755, true);
+        }
+        
+        $timestamp = date('Y-m-d H:i:s');
+        $logMessage = "[$timestamp] Error de seeding: $message" . PHP_EOL;
+        file_put_contents($logFile, $logMessage, FILE_APPEND);
+    }
+}
+
+// Ejecutar el seeder
+$seeder = new DatabaseSeeder();
+if ($seeder->seed()) {
+    echo "Base de datos poblada correctamente." . PHP_EOL;
+} else {
+    echo "Error al poblar la base de datos. Revisa los logs." . PHP_EOL;
+}
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\database\seed.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\database\setup_database.php
+# Última modificación: 2025-05-24 11:03:26
+# Tamaño: 1.52 KB
+###############################################################################
+
+<?php
+
+try {
+    // Conectar sin especificar una base de datos
+    $pdo = new PDO("mysql:host=localhost", "root", "");
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    
+    // Crear la base de datos si no existe
+    $pdo->exec("CREATE DATABASE IF NOT EXISTS IglesiaEnCasa CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+    
+    echo "âœ… Base de datos 'IglesiaEnCasa' verificada/creada correctamente\n";
+    
+    // Seleccionar la base de datos
+    $pdo->exec("USE IglesiaEnCasa");
+    
+    // Crear tabla de Roles si no existe (necesaria para el script permisos.php)
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS Roles (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            nombre VARCHAR(50) NOT NULL UNIQUE,
+            descripcion VARCHAR(255) NOT NULL,
+            nivel_acceso INT NOT NULL DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )
+    ");
+    
+    // Insertar rol de administrador si no existe
+    $stmt = $pdo->prepare("INSERT IGNORE INTO Roles (id, nombre, descripcion, nivel_acceso) VALUES (1, 'Administrador', 'Control total del sistema', 100)");
+    $stmt->execute();
+    
+    echo "âœ… Tabla de Roles creada y rol de administrador verificado\n";
+    
+} catch (PDOException $e) {
+    echo "âŒ Error: " . $e->getMessage() . "\n";
+    exit(1);
+}
+
+echo "\nâœ… ConfiguraciÃ³n de base de datos completada. Ahora puedes ejecutar otros scripts.\n";
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\database\setup_database.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\database\update_usuarios.php
+# Última modificación: 2025-05-24 10:23:47
+# Tamaño: 0.77 KB
+###############################################################################
+
+<?php
+// database/update_usuarios.php
+require_once __DIR__ . '/../app/config/database.php';
+
+try {
+    $db = Database::getInstance()->getConnection();
+    
+    // AÃ±adir campos necesarios para JWT y reset de contraseÃ±a
+    $db->exec("
+        ALTER TABLE Usuarios 
+        ADD COLUMN remember_token VARCHAR(255) NULL,
+        ADD COLUMN token_reset VARCHAR(255) NULL,
+        ADD COLUMN token_expira DATETIME NULL
+    ");
+    
+    echo "âœ… Campos para JWT y reset de contraseÃ±a aÃ±adidos a la tabla Usuarios\n";
+    
+} catch (PDOException $e) {
+    if (strpos($e->getMessage(), "Duplicate column name") !== false) {
+        echo "â„¹ï¸ Las columnas ya existen en la tabla Usuarios\n";
+    } else {
+        echo "âŒ Error: " . $e->getMessage() . "\n";
+    }
+}
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\database\update_usuarios.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\debug.php
+# Última modificación: 2025-05-23 16:55:27
+# Tamaño: 2.87 KB
+###############################################################################
+
+<?php
+// filepath: /Applications/XAMPP/xamppfiles/htdocs/Encasa_Database/debug.php
+
+// ConfiguraciÃ³n
+define('BASE_PATH', __DIR__);
+define('APP_PATH', BASE_PATH . '/app');
+define('CONFIG_PATH', APP_PATH . '/config');
+
+// Cargar autoloader
+require_once CONFIG_PATH . '/config.php';
+require_once CONFIG_PATH . '/database.php';
+require_once CONFIG_PATH . '/autoload.php';
+
+// Crear instancia del modelo Usuario
+$userModel = new \App\Models\Usuario();
+
+// FunciÃ³n para mostrar resultados
+function showResult($title, $data) {
+    echo "<h3>$title</h3>";
+    echo "<pre>";
+    print_r($data);
+    echo "</pre>";
+    echo "<hr>";
+}
+
+// 1. Mostrar todos los usuarios
+$users = $userModel->getAll();
+foreach ($users as &$user) {
+    // Ocultar contraseÃ±a completa
+    $user['password'] = substr($user['password'], 0, 15) . '...';
+}
+showResult("Usuarios registrados", $users);
+
+// 2. Crear un usuario de prueba (descomentar si necesitas crear uno)
+/*
+$newUser = [
+    'username' => 'testuser',
+    'email' => 'test@example.com',
+    'password' => '123456',
+    'nombre_completo' => 'Usuario de Prueba',
+    'activo' => 1
+];
+
+$userID = $userModel->register($newUser);
+showResult("Resultado de creaciÃ³n de usuario", $userID ? "Usuario creado con ID: $userID" : "Error al crear usuario");
+*/
+
+// Descomentar esta secciÃ³n para crear un usuario nuevo
+$newUser = [
+    'username' => 'admin2',
+    'email' => 'admin2@ejemplo.com',
+    'password' => 'password123',
+    'nombre_completo' => 'Administrador 2',
+    'activo' => 1
+];
+
+$userID = $userModel->register($newUser);
+showResult("Resultado de creaciÃ³n de usuario", $userID ? "Usuario creado con ID: $userID" : "Error al crear usuario");
+
+// 3. Probar autenticaciÃ³n con un usuario existente
+$testAuth = $userModel->authenticate('rafa.gzfr@gmail.com', 'Amor2025+'); // cambia por credenciales reales
+showResult("Prueba de autenticaciÃ³n", $testAuth ? "AutenticaciÃ³n exitosa" : "AutenticaciÃ³n fallida");
+
+// 4. Ver registro especÃ­fico
+if (!empty($users)) {
+    $firstUser = $users[0];
+    $userId = $firstUser['id'];
+    $user = $userModel->findById($userId);
+    showResult("Usuario con ID $userId", $user);
+}
+
+// 1. Primero, cambia la contraseÃ±a
+$userId = 1;
+$newPassword = 'Amor2025+';
+
+$stmt = $userModel->db->prepare("UPDATE Usuarios SET password = :password WHERE id = :id");
+$stmt->bindValue(':password', $userModel->hashPassword($newPassword));
+$stmt->bindValue(':id', $userId);
+$result = $stmt->execute();
+
+showResult("Cambio de contraseÃ±a para usuario ID $userId", 
+    $result ? "ContraseÃ±a actualizada correctamente" : "Error al actualizar contraseÃ±a");
+
+// 2. Luego, prueba la autenticaciÃ³n con la nueva contraseÃ±a
+$testAuth = $userModel->authenticate('rafa.gzfr@gmail.com', 'Amor2025+');
+showResult("Prueba de autenticaciÃ³n", $testAuth ? "AutenticaciÃ³n exitosa" : "AutenticaciÃ³n fallida");
+?>
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\debug.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\debug_users.php
+# Última modificación: 2025-05-23 16:55:27
+# Tamaño: 0.55 KB
+###############################################################################
+
+<?php
+// Archivo temporal para depuraciÃ³n: /Applications/XAMPP/xamppfiles/htdocs/Encasa_Database/debug_users.php
+
+// Incluir configuraciÃ³n bÃ¡sica
+require_once 'index.php';
+
+// Obtener instancia del modelo
+$userModel = new \App\Models\Usuario();
+
+// Mostrar todos los usuarios
+echo "<h2>Usuarios registrados:</h2>";
+$users = $userModel->getAll();
+
+echo "<pre>";
+foreach ($users as $user) {
+    // Ocultar la contraseÃ±a completa por seguridad
+    $user['password'] = substr($user['password'], 0, 10) . '...';
+    print_r($user);
+}
+echo "</pre>";
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\debug_users.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\index.php
+# Última modificación: 2025-05-24 09:24:05
+# Tamaño: 1.37 KB
+###############################################################################
+
+<?php
+// Al inicio del archivo index.php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+// Configurar visualizaciÃ³n de errores para desarrollo
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+// Definir constantes del sistema
+define('BASE_PATH', __DIR__);
+define('APP_PATH', BASE_PATH . '/app');
+define('CONTROLLER_PATH', APP_PATH . '/controllers');
+define('MODEL_PATH', APP_PATH . '/models');
+define('VIEW_PATH', APP_PATH . '/views');
+define('CONFIG_PATH', APP_PATH . '/config');
+
+// Cargar configuraciÃ³n
+require_once CONFIG_PATH . '/config.php';
+require_once CONFIG_PATH . '/database.php';
+require_once CONFIG_PATH . '/autoload.php';
+
+// ConfiguraciÃ³n de sesiones
+ini_set('session.cookie_httponly', 1);
+ini_set('session.use_only_cookies', 1);
+ini_set('session.use_strict_mode', 1);
+if (APP_ENV === 'production') {
+    ini_set('session.cookie_secure', 1);
+}
+
+// Iniciar sesiÃ³n
+session_start();
+
+// Cargar y ejecutar el router
+$router = require_once CONFIG_PATH . '/routes.php';
+try {
+    $router->dispatch();
+} catch (Exception $e) {
+    echo '<pre>';
+    echo 'Error: ' . $e->getMessage();
+    echo '<br>En archivo: ' . $e->getFile() . ' lÃ­nea: ' . $e->getLine();
+    echo '<br>Stack trace:<br>';
+    echo $e->getTraceAsString();
+    echo '</pre>';
+    die();
+}
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\index.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\login-test.php
+# Última modificación: 2025-05-24 08:37:02
+# Tamaño: 1.08 KB
+###############################################################################
+
+<?php
+// filepath: c:\xampp\htdocs\ENCASA_DATABASE\login-test.php
+
+// Mostrar errores
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
+echo "Inicio del script<br>";
+
+// ConfiguraciÃ³n inicial
+require_once __DIR__ . '/app/config/config.php';
+echo "Config cargado<br>";
+
+require_once __DIR__ . '/app/helpers/functions.php';
+echo "Helpers cargados<br>";
+
+// Autoload con diagnÃ³stico
+spl_autoload_register(function($className) {
+    $classFile = str_replace('\\', '/', $className) . '.php';
+    $filepath = __DIR__ . '/' . $classFile;
+    
+    echo "Intentando cargar: $filepath<br>";
+    
+    if (file_exists($filepath)) {
+        require_once $filepath;
+        echo "Clase $className cargada<br>";
+    } else {
+        echo "Clase $className no encontrada<br>";
+    }
+});
+
+try {
+    // Cargar controlador directamente
+    echo "Intentando crear instancia de AuthController<br>";
+    $controller = new App\Controllers\AuthController();
+    echo "Instancia creada<br>";
+    $controller->login();
+} catch (Exception $e) {
+    echo "Error: " . $e->getMessage();
+}
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\login-test.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\phpinfo.php
+# Última modificación: 2025-05-24 09:08:24
+# Tamaño: 0.04 KB
+###############################################################################
+
+<?php phpinfo(); ?>
+
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\phpinfo.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\test.php
+# Última modificación: 2025-05-24 08:36:26
+# Tamaño: 0.05 KB
+###############################################################################
+
+<?php
+
+echo "Prueba de servidor funcionando";
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\test.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\tests\JWTTest.php
+# Última modificación: 2025-05-24 10:17:17
+# Tamaño: 2.91 KB
+###############################################################################
+
+<?php
+
+// Incluir el autoloader
+require_once __DIR__ . '/../app/config/config.php';
+require_once __DIR__ . '/../app/helpers/JWT.php';
+
+use App\Helpers\JWT;
+
+// Clase de pruebas simple
+class JWTTest {
+    
+    public function testEncodeAndDecode() {
+        // Configurar una clave secreta especÃ­fica para las pruebas
+        JWT::init('test_secret_key');
+        
+        // Crear un payload
+        $payload = [
+            'user_id' => 123,
+            'username' => 'testuser'
+        ];
+        
+        // Codificar el token
+        $token = JWT::encode($payload, 60); // 60 segundos de expiraciÃ³n
+        
+        // Verificar que el token se creÃ³ y tiene el formato correcto
+        echo "Token Creado: ";
+        $tokenParts = explode('.', $token);
+        echo (count($tokenParts) === 3) ? "PASÃ“ âœ“" : "FALLÃ“ âœ—";
+        echo "\n";
+        
+        // Decodificar el token
+        $decoded = JWT::decode($token);
+        
+        // Verificar que la decodificaciÃ³n fue exitosa
+        echo "DecodificaciÃ³n: ";
+        echo ($decoded !== false) ? "PASÃ“ âœ“" : "FALLÃ“ âœ—";
+        echo "\n";
+        
+        // Verificar que el payload se mantiene intacto
+        echo "VerificaciÃ³n de user_id: ";
+        echo ($decoded['user_id'] === 123) ? "PASÃ“ âœ“" : "FALLÃ“ âœ—";
+        echo "\n";
+        
+        echo "VerificaciÃ³n de username: ";
+        echo ($decoded['username'] === 'testuser') ? "PASÃ“ âœ“" : "FALLÃ“ âœ—";
+        echo "\n";
+    }
+    
+    public function testExpiredToken() {
+        // Configurar una clave secreta
+        JWT::init('test_secret_key');
+        
+        // Crear un payload con expiraciÃ³n inmediata
+        $payload = ['test' => 'data'];
+        
+        // Codificar el token con expiraciÃ³n de 1 segundo
+        $token = JWT::encode($payload, 1);
+        
+        // Esperar 2 segundos para que expire
+        sleep(2);
+        
+        // Intentar decodificar el token expirado
+        $decoded = JWT::decode($token);
+        
+        // Verificar que la decodificaciÃ³n falla
+        echo "VerificaciÃ³n de expiraciÃ³n: ";
+        echo ($decoded === false) ? "PASÃ“ âœ“" : "FALLÃ“ âœ—";
+        echo "\n";
+    }
+    
+    public function testInvalidToken() {
+        // Configurar una clave secreta
+        JWT::init('test_secret_key');
+        
+        // Token malformado
+        $token = "header.payload.invalid_signature";
+        
+        // Intentar decodificar
+        $decoded = JWT::decode($token);
+        
+        // Verificar que la decodificaciÃ³n falla
+        echo "VerificaciÃ³n de token invÃ¡lido: ";
+        echo ($decoded === false) ? "PASÃ“ âœ“" : "FALLÃ“ âœ—";
+        echo "\n";
+    }
+    
+    public function runTests() {
+        $this->testEncodeAndDecode();
+        $this->testExpiredToken();
+        $this->testInvalidToken();
+    }
+}
+
+// Ejecutar pruebas
+$test = new JWTTest();
+$test->runTests();
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\tests\JWTTest.php
+###############################################################################
+
+
+###############################################################################
+# ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\tests\LoggerTest.php
+# Última modificación: 2025-05-24 12:17:34
+# Tamaño: 2.37 KB
+###############################################################################
+
+<?php
+
+// Incluir el autoloader
+require_once __DIR__ . '/../app/config/config.php';
+require_once __DIR__ . '/../app/helpers/Logger.php';
+require_once __DIR__ . '/../app/helpers/functions.php';
+
+use App\Helpers\Logger;
+
+// Clase de pruebas simple
+class LoggerTest {
+    public $logFile; // Cambiar de private a public
+    
+    public function __construct() {
+        $this->logFile = dirname(__DIR__) . '/app/logs/' . date('Y-m-d') . '.log';
+    }
+    
+    // AÃ±adir este mÃ©todo getter
+    public function getLogFile() {
+        return $this->logFile;
+    }
+    
+    public function testSingleton() {
+        $instance1 = Logger::getInstance();
+        $instance2 = Logger::getInstance();
+        
+        // Verificar que ambas instancias son el mismo objeto
+        echo "Prueba Singleton: ";
+        echo ($instance1 === $instance2) ? "PASÃ“ âœ“" : "FALLÃ“ âœ—";
+        echo "\n";
+    }
+    
+    public function testLogLevels() {
+        // Limpiar archivo de log para la prueba
+        if (file_exists($this->logFile)) {
+            $initialSize = filesize($this->logFile);
+        } else {
+            $initialSize = 0;
+        }
+        
+        // Registrar mensajes en diferentes niveles
+        log_error("Mensaje de error de prueba");
+        log_warning("Mensaje de advertencia de prueba");
+        log_info("Mensaje informativo de prueba");
+        log_debug("Mensaje de depuraciÃ³n de prueba");
+        
+        // Verificar que se escribieron los logs
+        clearstatcache();
+        $newSize = file_exists($this->logFile) ? filesize($this->logFile) : 0;
+        
+        echo "Prueba Logging: ";
+        echo ($newSize > $initialSize) ? "PASÃ“ âœ“" : "FALLÃ“ âœ—";
+        echo "\n";
+        
+        // Verificar contenido
+        $content = file_get_contents($this->logFile);
+        
+        echo "Contenido Error: ";
+        echo (strpos($content, "ERROR") !== false) ? "PASÃ“ âœ“" : "FALLÃ“ âœ—";
+        echo "\n";
+        
+        echo "Contenido Warning: ";
+        echo (strpos($content, "WARNING") !== false) ? "PASÃ“ âœ“" : "FALLÃ“ âœ—";
+        echo "\n";
+    }
+    
+    public function runTests() {
+        $this->testSingleton();
+        $this->testLogLevels();
+    }
+}
+
+// Ejecutar pruebas
+$test = new LoggerTest();
+$test->runTests();
+
+echo "\nPruebas completadas. Verifica el archivo de log en: " . $test->logFile;
+
+###############################################################################
+# FIN DEL ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\tests\LoggerTest.php
+###############################################################################
+
+
