@@ -225,122 +225,85 @@ echo "</ul>";
 
 
 =============================================================
-ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\debug.php
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\check_miembro.php
 =============================================================
 
 <?php
-// filepath: /Applications/XAMPP/xamppfiles/htdocs/Encasa_Database/debug.php
+// filepath: c:\xampp\htdocs\ENCASA_DATABASE\check_miembro.php
 
-// Configuración
-define('BASE_PATH', __DIR__);
-define('APP_PATH', BASE_PATH . '/app');
-define('CONFIG_PATH', APP_PATH . '/config');
+require_once __DIR__ . '/app/config/config.php';
+require_once __DIR__ . '/app/config/database.php';
+require_once __DIR__ . '/app/models/Model.php';
+require_once __DIR__ . '/app/models/Miembro.php';
 
-// Cargar autoloader
-require_once CONFIG_PATH . '/config.php';
-require_once CONFIG_PATH . '/database.php';
-require_once CONFIG_PATH . '/autoload.php';
+$id = isset($_GET['id']) ? (int)$_GET['id'] : 2;
+$model = new \App\Models\Miembro();
+$miembro = $model->getFullProfile($id);
 
-// Crear instancia del modelo Usuario
-$userModel = new \App\Models\Usuario();
-
-// Función para mostrar resultados
-function showResult($title, $data) {
-    echo "<h3>$title</h3>";
-    echo "<pre>";
-    print_r($data);
-    echo "</pre>";
-    echo "<hr>";
-}
-
-// 1. Mostrar todos los usuarios
-$users = $userModel->getAll();
-foreach ($users as &$user) {
-    // Ocultar contraseña completa
-    $user['password'] = substr($user['password'], 0, 15) . '...';
-}
-showResult("Usuarios registrados", $users);
-
-// 2. Crear un usuario de prueba (descomentar si necesitas crear uno)
-/*
-$newUser = [
-    'username' => 'testuser',
-    'email' => 'test@example.com',
-    'password' => '123456',
-    'nombre_completo' => 'Usuario de Prueba',
-    'activo' => 1
-];
-
-$userID = $userModel->register($newUser);
-showResult("Resultado de creación de usuario", $userID ? "Usuario creado con ID: $userID" : "Error al crear usuario");
-*/
-
-// Descomentar esta sección para crear un usuario nuevo
-$newUser = [
-    'username' => 'admin2',
-    'email' => 'admin2@ejemplo.com',
-    'password' => 'password123',
-    'nombre_completo' => 'Administrador 2',
-    'activo' => 1
-];
-
-$userID = $userModel->register($newUser);
-showResult("Resultado de creación de usuario", $userID ? "Usuario creado con ID: $userID" : "Error al crear usuario");
-
-// 3. Probar autenticación con un usuario existente
-$testAuth = $userModel->authenticate('rafa.gzfr@gmail.com', 'Amor2025+'); // cambia por credenciales reales
-showResult("Prueba de autenticación", $testAuth ? "Autenticación exitosa" : "Autenticación fallida");
-
-// 4. Ver registro específico
-if (!empty($users)) {
-    $firstUser = $users[0];
-    $userId = $firstUser['id'];
-    $user = $userModel->findById($userId);
-    showResult("Usuario con ID $userId", $user);
-}
-
-// 1. Primero, cambia la contraseña
-$userId = 1;
-$newPassword = 'Amor2025+';
-
-$stmt = $userModel->db->prepare("UPDATE Usuarios SET password = :password WHERE id = :id");
-$stmt->bindValue(':password', $userModel->hashPassword($newPassword));
-$stmt->bindValue(':id', $userId);
-$result = $stmt->execute();
-
-showResult("Cambio de contraseña para usuario ID $userId", 
-    $result ? "Contraseña actualizada correctamente" : "Error al actualizar contraseña");
-
-// 2. Luego, prueba la autenticación con la nueva contraseña
-$testAuth = $userModel->authenticate('rafa.gzfr@gmail.com', 'Amor2025+');
-showResult("Prueba de autenticación", $testAuth ? "Autenticación exitosa" : "Autenticación fallida");
-?>
-
-
-=============================================================
-ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\debug_users.php
-=============================================================
-
-<?php
-// Archivo temporal para depuración: /Applications/XAMPP/xamppfiles/htdocs/Encasa_Database/debug_users.php
-
-// Incluir configuración básica
-require_once 'index.php';
-
-// Obtener instancia del modelo
-$userModel = new \App\Models\Usuario();
-
-// Mostrar todos los usuarios
-echo "<h2>Usuarios registrados:</h2>";
-$users = $userModel->getAll();
-
+echo "<h1>Verificación del modelo con ID: {$id}</h1>";
 echo "<pre>";
-foreach ($users as $user) {
-    // Ocultar la contraseña completa por seguridad
-    $user['password'] = substr($user['password'], 0, 10) . '...';
-    print_r($user);
-}
+print_r($miembro);
 echo "</pre>";
+echo "<p><a href='miembros/{$id}'>Ver página de perfil</a></p>";
+
+
+=============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\direct_test.php
+=============================================================
+
+<?php
+// filepath: c:\xampp\htdocs\ENCASA_DATABASE\direct_test.php
+
+// Script para probar la extracción directa de un miembro
+require_once __DIR__ . '/app/config/config.php';
+require_once __DIR__ . '/app/config/database.php';
+
+echo "<h1>Prueba directa de acceso a la base de datos</h1>";
+
+// ID a verificar
+$id = isset($_GET['id']) ? (int)$_GET['id'] : 2;
+
+echo "<p>Buscando miembro con ID: {$id}</p>";
+
+try {
+    // Conectar directamente a la BD
+    $db = Database::getInstance()->getConnection();
+    
+    // Consulta SQL directa
+    $sql = "SELECT * FROM InformacionGeneral WHERE id = ?";
+    $stmt = $db->prepare($sql);
+    $stmt->execute([$id]);
+    $miembro = $stmt->fetch(\PDO::FETCH_ASSOC);
+    
+    if ($miembro) {
+        echo "<h2>Datos básicos encontrados:</h2>";
+        echo "<pre>";
+        print_r($miembro);
+        echo "</pre>";
+        
+        // Recuperar datos relacionados
+        $tablas = ['Contacto', 'EstudiosTrabajo', 'Tallas', 'CarreraBiblica'];
+        
+        foreach ($tablas as $tabla) {
+            $sql = "SELECT * FROM {$tabla} WHERE miembro_id = ?";
+            $stmt = $db->prepare($sql);
+            $stmt->execute([$id]);
+            $datos = $stmt->fetch(\PDO::FETCH_ASSOC);
+            
+            echo "<h3>Datos de {$tabla}:</h3>";
+            echo "<pre>";
+            print_r($datos ?: "No hay datos");
+            echo "</pre>";
+        }
+        
+        // Link para ver la visualización normal
+        echo "<p><a href='miembros/{$id}?force=true' target='_blank'>Ver perfil en sistema</a></p>";
+    } else {
+        echo "<p style='color:red'>No se encontró ningún miembro con ID {$id}</p>";
+    }
+} catch (Exception $e) {
+    echo "<p style='color:red'>Error: " . $e->getMessage() . "</p>";
+}
 
 
 =============================================================
@@ -396,86 +359,152 @@ try {
 
 
 =============================================================
-ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\login-test.php
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\test_logs.php
 =============================================================
 
 <?php
-// filepath: c:\xampp\htdocs\ENCASA_DATABASE\login-test.php
+// filepath: c:\xampp\htdocs\ENCASA_DATABASE\test_logs.php
 
-// Mostrar errores
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
+// Script para probar la configuración de logs
+echo "<h1>Diagnóstico de logs de PHP</h1>";
 
-echo "Inicio del script<br>";
+// Mostrar configuración actual de error_log
+echo "<h2>Configuración de logs</h2>";
+echo "<p>error_log configurado en: " . ini_get('error_log') . "</p>";
+echo "<p>error_reporting: " . ini_get('error_reporting') . "</p>";
+echo "<p>display_errors: " . ini_get('display_errors') . "</p>";
+echo "<p>log_errors: " . ini_get('log_errors') . "</p>";
 
-// Configuración inicial
+// Intentar crear un directorio de logs si no existe
+$logDir = "C:/xampp/php/logs";
+if (!file_exists($logDir)) {
+    echo "<p>Directorio de logs no existe. Intentando crear...</p>";
+    mkdir($logDir, 0777, true);
+    echo "<p>Directorio creado: " . (file_exists($logDir) ? "SÍ" : "NO") . "</p>";
+}
+
+// Escribir en el log para probarlo
+error_log("Prueba de escritura en log desde test_logs.php");
+echo "<p>Se ha intentado escribir en el log. Verifica si el archivo se ha creado.</p>";
+
+// Intentar con una ruta alternativa
+$altLogPath = __DIR__ . '/debug.log';
+error_log("Prueba de escritura en log alternativo", 3, $altLogPath);
+echo "<p>Log alternativo creado en: {$altLogPath}</p>";
+
+// Mostrar los archivos en el directorio de logs
+echo "<h2>Archivos en el directorio de logs</h2>";
+echo "<pre>";
+if (file_exists($logDir)) {
+    print_r(scandir($logDir));
+} else {
+    echo "El directorio de logs no existe.";
+}
+echo "</pre>";
+
+
+=============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\test_router.php
+=============================================================
+
+<?php
+// filepath: c:\xampp\htdocs\ENCASA_DATABASE\test_router.php
+
+// Script para probar la gestión de parámetros en rutas
 require_once __DIR__ . '/app/config/config.php';
-echo "Config cargado<br>";
+require_once __DIR__ . '/app/helpers/Router.php';
 
-require_once __DIR__ . '/app/helpers/functions.php';
-echo "Helpers cargados<br>";
+echo "<h1>Prueba de Router y Parámetros</h1>";
 
-// Autoload con diagnóstico
-spl_autoload_register(function($className) {
-    $classFile = str_replace('\\', '/', $className) . '.php';
-    $filepath = __DIR__ . '/' . $classFile;
-    
-    echo "Intentando cargar: $filepath<br>";
-    
-    if (file_exists($filepath)) {
-        require_once $filepath;
-        echo "Clase $className cargada<br>";
-    } else {
-        echo "Clase $className no encontrada<br>";
+// Clase de prueba simple
+class TestController {
+    public function test($id = null) {
+        echo "<p>Método test() recibió ID: " . ($id ?? "null") . "</p>";
+        return true;
     }
-});
+}
 
-try {
-    // Cargar controlador directamente
-    echo "Intentando crear instancia de AuthController<br>";
-    $controller = new App\Controllers\AuthController();
-    echo "Instancia creada<br>";
-    $controller->login();
-} catch (Exception $e) {
-    echo "Error: " . $e->getMessage();
+// Crear router de prueba
+$router = new \App\Helpers\Router();
+$router->get('test/{id}', 'Test', 'test');
+
+// Simular solicitudes
+echo "<h2>Probando ruta: test/123</h2>";
+$_SERVER['REQUEST_URI'] = '/Encasa_Database/test/123';
+$router->setControllerTestMode(new TestController());
+$router->dispatch();
+
+echo "<p><a href='miembros/2'>Ir a miembros/2</a></p>";
+
+
+=============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\test_router_simple.php
+=============================================================
+
+<?php
+// filepath: c:\xampp\htdocs\ENCASA_DATABASE\test_router_simple.php
+
+// Script simplificado para probar la gestión de rutas
+require_once __DIR__ . '/app/config/config.php';
+
+// Mostrar la URI actual para depuración
+echo "<h1>Información de la URL actual</h1>";
+echo "<p>REQUEST_URI: " . $_SERVER['REQUEST_URI'] . "</p>";
+echo "<p>URL para prueba: <a href='miembros/2'>miembros/2</a></p>";
+
+// Analizar manualmente la URL para simular el comportamiento del router
+$requestUri = $_SERVER['REQUEST_URI'];
+$basePath = '/Encasa_Database/';
+$route = str_replace($basePath, '', $requestUri);
+
+echo "<p>Ruta extraída: " . htmlspecialchars($route) . "</p>";
+
+// Analizar parámetros de URL
+if (preg_match('#^miembros/(\d+)$#', $route, $matches)) {
+    echo "<p>ID detectado: " . $matches[1] . "</p>";
 }
 
 
 =============================================================
-ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\phpinfo.php
-=============================================================
-
-<?php phpinfo(); ?>
-
-
-=============================================================
-ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\test.php
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\verify_router.php
 =============================================================
 
 <?php
+// filepath: c:\xampp\htdocs\ENCASA_DATABASE\verify_router.php
 
-echo "Prueba de servidor funcionando";
+require_once __DIR__ . '/app/config/config.php';
+require_once __DIR__ . '/app/Controllers/MiembrosController.php';
+require_once __DIR__ . '/app/models/Miembro.php';
+require_once __DIR__ . '/app/config/database.php';
 
+echo "<h1>Verificación de Router y Controlador</h1>";
 
-=============================================================
-ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\test_mail.php
-=============================================================
+// Simular una solicitud a miembros/2
+$_SERVER['REQUEST_URI'] = '/Encasa_Database/miembros/2';
 
-<?php
-// filepath: c:\xampp\htdocs\ENCASA_DATABASE\test_mail.php
-require_once 'index.php';
+echo "<p>Simulando acceso a URI: {$_SERVER['REQUEST_URI']}</p>";
 
-// Crear instancia del servicio de email
-$emailService = new \App\Helpers\EmailService();
+// Extracción manual del ID como lo haría el router
+if (preg_match('#/miembros/(\d+)#', $_SERVER['REQUEST_URI'], $matches)) {
+    $id = (int)$matches[1];
+    echo "<p>ID extraído: {$id}</p>";
+    
+    // Crear instancia del controlador y llamar al método directamente
+    try {
+        $controller = new \App\Controllers\MiembrosController();
+        echo "<p>Controlador instanciado correctamente</p>";
+        
+        // Llamar al método ver() directamente
+        $result = $controller->ver($id);
+        echo "<p>Método ver() ejecutado con resultado: " . ($result ? "OK" : "Error") . "</p>";
+    } catch (Exception $e) {
+        echo "<p style='color:red'>Error al ejecutar el controlador: " . $e->getMessage() . "</p>";
+    }
+} else {
+    echo "<p style='color:red'>No se pudo extraer ID de la URI</p>";
+}
 
-// Intentar enviar un correo de prueba
-$result = $emailService->sendVerificationCode(
-    'rafa.gzfr@gmail.com', // Reemplaza con tu correo
-    'Usuario de Prueba', 
-    '123456'
-);
-
-echo $result ? '✅ Correo enviado correctamente' : '❌ Error al enviar el correo';
+echo "<p><a href='miembros/2?nocache=" . time() . "' target='_blank'>Intentar acceso normal</a></p>";
 
 
 =============================================================
@@ -536,17 +565,25 @@ define('APP_ENV', 'development'); // 'development' o 'production'
 // Configuración de zona horaria
 date_default_timezone_set('America/Bogota');
 
-// Configuración de correo electrónico
-define('SMTP_HOST', 'smtp.gmail.com');
-define('SMTP_PORT', 587);
-define('SMTP_USER', 'rafa.gzfr@gmail.com'); // Cambia esto por tu email real
-define('SMTP_PASS', 'gvxo crnm bmeh rail'); // Usa contraseña de aplicación para Gmail
-define('MAIL_FROM', 'noreply@iglesiaencasa.org');
+// Configuración de correo electrónico con cuenta de Gmail para autenticación
+define('SMTP_HOST', 'smtp.gmail.com');  // Servidor SMTP de Gmail
+define('SMTP_PORT', 587);  // Puerto para TLS
+define('SMTP_SECURE', 'tls');  // Tipo de seguridad
+define('SMTP_AUTH', true);  // Requiere autenticación
+define('SMTP_USER', 'iglesiaencasautenticador@gmail.com');  // Nueva cuenta de correo
+define('SMTP_PASS', 'uhko nczq nclq uzkx');  // Nueva contraseña de aplicación
+define('MAIL_FROM', 'iglesiaencasautenticador@gmail.com');  // Actualizado
 define('MAIL_FROM_NAME', 'Iglesia En Casa');
 
 // Controles para la verificación
-define('REQUIRE_EMAIL_VERIFICATION', true); // Cambiar a true cuando estés listo para activar
+define('REQUIRE_EMAIL_VERIFICATION', true);
 define('REQUIRE_2FA_LOGIN', true);
+
+// Constantes de Base de Datos
+define('DB_HOST', 'localhost');
+define('DB_NAME', 'IglesiaEnCasa');
+define('DB_USER', 'root');
+define('DB_PASS', '');
 
 
 =============================================================
@@ -554,61 +591,53 @@ ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\config\database.php
 =============================================================
 
 <?php
+// filepath: c:\xampp\htdocs\ENCASA_DATABASE\app\config\database.php
 
-// Configuración de la base de datos
-define('DB_HOST', 'localhost');
-define('DB_NAME', 'IglesiaEnCasa');
-define('DB_USER', 'root');
-define('DB_PASS', '');
+// Eliminar estas líneas que causan la redefinición de constantes
+// define('DB_HOST', 'localhost');
+// define('DB_NAME', 'IglesiaEnCasa');
+// define('DB_USER', 'root');
+// define('DB_PASS', '');
+
+// Solo mantener las que no están en config.php
 define('DB_PORT', '3306');
 define('DB_CHARSET', 'utf8mb4');
 
 // Clase Singleton para conexión a la base de datos
 class Database {
     private static $instance = null;
-    private $connection;
+    private $conn;
     
     private function __construct() {
+        // Usar las constantes ya definidas en config.php
         try {
-            $dsn = "mysql:host=".DB_HOST.";dbname=".DB_NAME.";charset=".DB_CHARSET;
+            $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET;
             $options = [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                PDO::ATTR_EMULATE_PREPARES => false
+                PDO::ATTR_EMULATE_PREPARES => false,
             ];
-            $this->connection = new PDO($dsn, DB_USER, DB_PASS, $options);
+            $this->conn = new PDO($dsn, DB_USER, DB_PASS, $options);
         } catch (PDOException $e) {
-            $this->logError($e->getMessage()); // Pasamos el mensaje de error
-            die("Error de conexión a la base de datos: " . $e->getMessage());
+            die('Error de conexión: ' . $e->getMessage());
         }
     }
     
     public static function getInstance() {
-        if (self::$instance === null) {
-            self::$instance = new self();
+        if (self::$instance == null) {
+            self::$instance = new Database();
         }
         return self::$instance;
     }
     
     public function getConnection() {
-        return $this->connection;
-    }
-    
-    private function logError($errorMessage) {
-        // Verificar si APP_PATH está definido, si no, usar una ruta relativa
-        $logPath = defined('APP_PATH') ? APP_PATH . '/logs/database_error.log' : __DIR__ . '/../../logs/database_error.log';
-        
-        // Asegurarse que el directorio existe
-        $logDir = dirname($logPath);
-        if (!is_dir($logDir)) {
-            mkdir($logDir, 0755, true);
-        }
-        
-        // Usar el mensaje recibido como parámetro en lugar de connection->errorInfo
-        $logMessage = date('Y-m-d H:i:s') . " - MySQL Error: " . $errorMessage . PHP_EOL;
-        file_put_contents($logPath, $logMessage, FILE_APPEND);
+        return $this->conn;
     }
 }
+
+// Crear una instancia de la base de datos global para uso general
+$database = Database::getInstance();
+$db = $database->getConnection();
 
 
 =============================================================
@@ -783,9 +812,6 @@ $router->get('miembros', 'Miembros', 'index', ['Auth']);
 $router->get('miembros/crear', 'Miembros', 'crear', ['Auth']);
 $router->post('miembros/guardar', 'Miembros', 'guardar', ['Auth']);
 $router->get('miembros/{id}', 'Miembros', 'ver', ['Auth']);
-$router->get('miembros/{id}/editar', 'Miembros', 'editar', ['Auth']);
-$router->post('miembros/{id}/actualizar', 'Miembros', 'actualizar', ['Auth']);
-$router->post('miembros/{id}/eliminar', 'Miembros', 'eliminar', ['Auth', 'AdminOnly']);
 
 // Rutas de ministerios
 $router->get('ministerios', 'Ministerios', 'index', ['Auth']);
@@ -1339,164 +1365,227 @@ class HomeController extends Controller {
 
 
 =============================================================
-ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\Controllers\MiembroController.php
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\Controllers\MiembrosController.php
 =============================================================
 
 <?php
 
 namespace App\Controllers;
 
-use App\Models\InformacionGeneral;
+use App\Models\Miembro;
 use App\Models\Contacto;
+use App\Models\EstudiosTrabajo;
+use App\Models\Tallas;
+use App\Models\CarreraBiblica;
 
-class MiembroController extends Controller {
+class MiembrosController extends Controller {
     private $miembroModel;
-    private $contactoModel;
     
     public function __construct() {
         parent::__construct();
-        $this->miembroModel = new InformacionGeneral();
-        $this->contactoModel = new Contacto();
+        $this->miembroModel = new Miembro();
     }
     
+    /**
+     * Muestra el listado de miembros
+     */
     public function index() {
-        // Verificar permisos
-        if (!$this->tienePermiso('ver_miembros')) {
-            $this->redirect('acceso-denegado');
-            return;
-        }
-        
-        $filtros = [];
-        $busqueda = $_GET['buscar'] ?? '';
-        $estado = $_GET['estado'] ?? '';
-        
-        if (!empty($busqueda)) {
-            $filtros['busqueda'] = $busqueda;
-        }
-        
-        if (!empty($estado)) {
-            $filtros['estado'] = $estado;
-        }
-        
-        // Paginación
+        // Obtener parámetros de filtrado y paginación
+        $busqueda = isset($_GET['busqueda']) ? $_GET['busqueda'] : '';
         $pagina = isset($_GET['pagina']) ? (int)$_GET['pagina'] : 1;
         $porPagina = 10;
         
-        $miembros = $this->miembroModel->obtenerMiembrosConFiltros($filtros, $pagina, $porPagina);
-        $totalMiembros = $this->miembroModel->contarMiembrosConFiltros($filtros);
-        $totalPaginas = ceil($totalMiembros / $porPagina);
+        // Obtener miembros según filtros
+        if (!empty($busqueda)) {
+            $miembros = $this->miembroModel->buscar($busqueda);
+            $totalMiembros = count($miembros);
+        } else {
+            $miembros = $this->miembroModel->getAll();
+            $totalMiembros = count($miembros);
+        }
         
-        $this->view('miembros/index', [
-            'miembros' => $miembros,
+        // Implementar paginación manual básica
+        $totalPaginas = ceil($totalMiembros / $porPagina);
+        $offset = ($pagina - 1) * $porPagina;
+        $miembrosPaginados = array_slice($miembros, $offset, $porPagina);
+        
+        return $this->renderWithLayout('miembros/index', 'default', [
+            'miembros' => $miembrosPaginados,
             'busqueda' => $busqueda,
-            'estado' => $estado,
             'pagina' => $pagina,
             'totalPaginas' => $totalPaginas,
-            'title' => 'Listado de Miembros'
+            'title' => 'Directorio de Miembros'
         ]);
     }
     
+    /**
+     * Muestra el formulario para crear un nuevo miembro
+     */
     public function crear() {
-        // Verificar permisos
-        if (!$this->tienePermiso('crear_miembro')) {
-            $this->redirect('acceso-denegado');
-            return;
-        }
-        
-        $this->view('miembros/crear', [
-            'title' => 'Registro de Nuevo Miembro'
+        return $this->renderWithLayout('miembros/crear', 'default', [
+            'title' => 'Registrar Nuevo Miembro'
         ]);
     }
     
+    /**
+     * Método para guardar un nuevo miembro
+     */
     public function guardar() {
-        // Verificar que sea POST y tenga permisos
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !$this->tienePermiso('crear_miembro')) {
-            $this->redirect('acceso-denegado');
+        // Verificar que sea una petición POST
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('miembros');
             return;
         }
         
+        // Obtener y validar datos básicos
         $datos = [
-            'nombres' => $_POST['nombres'] ?? '',
-            'apellidos' => $_POST['apellidos'] ?? '',
+            'nombres' => htmlspecialchars($_POST['nombres'] ?? ''),
+            'apellidos' => htmlspecialchars($_POST['apellidos'] ?? ''),
+            'celular' => htmlspecialchars($_POST['celular'] ?? ''),
+            'localidad' => htmlspecialchars($_POST['localidad'] ?? ''),
+            'barrio' => htmlspecialchars($_POST['barrio'] ?? ''),
             'fecha_nacimiento' => $_POST['fecha_nacimiento'] ?? null,
-            'genero' => $_POST['genero'] ?? '',
-            'estado_civil' => $_POST['estado_civil'] ?? '',
-            'profesion' => $_POST['profesion'] ?? '',
-            'estado_espiritual' => $_POST['estado_espiritual'] ?? 'Visitante',
-            // Otros campos
+            'invitado_por' => !empty($_POST['invitado_por']) ? (int)$_POST['invitado_por'] : null,
+            'conector' => htmlspecialchars($_POST['conector'] ?? ''),
+            'recorrido_espiritual' => htmlspecialchars($_POST['recorrido_espiritual'] ?? ''),
+            'estado_espiritual' => htmlspecialchars($_POST['estado_espiritual'] ?? ''),
+            'habeas_data' => isset($_POST['habeas_data']) ? 1 : 0,
         ];
         
-        // Validar datos
-        $errores = $this->validarDatosMiembro($datos);
-        
-        if (!empty($errores)) {
-            $_SESSION['errores'] = $errores;
-            $_SESSION['datos_form'] = $datos;
-            $this->redirect('miembros/crear');
-            return;
-        }
-        
-        // Procesar imagen si se subió
-        if (isset($_FILES['foto']) && $_FILES['foto']['error'] === UPLOAD_ERR_OK) {
-            $foto = $this->procesarImagen($_FILES['foto']);
-            if ($foto) {
-                $datos['foto'] = $foto;
-            }
-        }
-        
-        // Crear miembro
-        $miembroId = $this->miembroModel->create($datos);
-        
-        if (!$miembroId) {
-            $_SESSION['flash_message'] = 'Error al crear el miembro';
+        // Validar campos requeridos
+        if (empty($datos['nombres']) || empty($datos['apellidos']) || empty($datos['celular'])) {
+            $_SESSION['flash_message'] = 'Por favor complete los campos obligatorios';
             $_SESSION['flash_type'] = 'danger';
             $this->redirect('miembros/crear');
             return;
         }
         
-        // Crear contacto relacionado
-        $datosContacto = [
-            'miembro_id' => $miembroId,
-            'telefono' => $_POST['telefono'] ?? '',
-            'celular' => $_POST['celular'] ?? '',
-            'email' => $_POST['email'] ?? '',
-            'direccion' => $_POST['direccion'] ?? '',
-            // Otros datos de contacto
-        ];
+        // Procesar la foto si se subió
+        if (!empty($_FILES['foto']['name'])) {
+            $foto = $this->procesarFoto($_FILES['foto']);
+            if ($foto) {
+                $datos['foto'] = $foto;
+            }
+        }
         
-        $this->contactoModel->create($datosContacto);
+        // Guardar información general y obtener el ID insertado
+        $miembroId = $this->miembroModel->crear($datos);
         
-        $_SESSION['flash_message'] = 'Miembro registrado correctamente';
+        if (!$miembroId) {
+            $_SESSION['flash_message'] = 'Error al guardar la información del miembro';
+            $_SESSION['flash_type'] = 'danger';
+            $this->redirect('miembros/crear');
+            return;
+        }
+        
+        // Guardar información de contacto
+        if (isset($_POST['contacto']) && is_array($_POST['contacto'])) {
+            $contacto = $_POST['contacto'];
+            $contacto['miembro_id'] = $miembroId;
+            $this->miembroModel->guardarContacto($contacto);
+        }
+        
+        // Guardar información de estudios y trabajo
+        if (isset($_POST['estudios']) && is_array($_POST['estudios'])) {
+            $estudios = $_POST['estudios'];
+            $estudios['miembro_id'] = $miembroId;
+            $this->miembroModel->guardarEstudiosTrabajo($estudios);
+        }
+        
+        // Guardar tallas
+        if (isset($_POST['tallas']) && is_array($_POST['tallas'])) {
+            $tallas = $_POST['tallas'];
+            $tallas['miembro_id'] = $miembroId;
+            $this->miembroModel->guardarTallas($tallas);
+        }
+        
+        // Guardar información de carrera bíblica
+        if (isset($_POST['carrera']) && is_array($_POST['carrera'])) {
+            $carrera = $_POST['carrera'];
+            $carrera['miembro_id'] = $miembroId;
+            $this->miembroModel->guardarCarreraBiblica($carrera);
+        }
+        
+        $_SESSION['flash_message'] = 'Miembro registrado exitosamente';
         $_SESSION['flash_type'] = 'success';
-        $this->redirect('miembros');
+        $this->redirect('miembros/' . $miembroId);
     }
-    
-    // Implementar los métodos restantes: ver, editar, actualizar, eliminar, etc.
-    
-    private function validarDatosMiembro($datos) {
-        $errores = [];
+
+    /**
+     * Procesa y guarda la foto subida
+     */
+    private function procesarFoto($archivo) {
+        // Directorio para guardar las fotos
+        $directorio = __DIR__ . '/../../public/uploads/miembros/';
         
-        if (empty($datos['nombres'])) {
-            $errores['nombres'] = 'El nombre es obligatorio';
+        // Crear directorio si no existe
+        if (!file_exists($directorio)) {
+            mkdir($directorio, 0777, true);
         }
         
-        if (empty($datos['apellidos'])) {
-            $errores['apellidos'] = 'Los apellidos son obligatorios';
+        // Validar el archivo
+        $tiposPermitidos = ['image/jpeg', 'image/png', 'image/gif'];
+        if (!in_array($archivo['type'], $tiposPermitidos)) {
+            return false;
         }
         
-        return $errores;
+        // Generar nombre único
+        $nombreArchivo = uniqid() . '_' . basename($archivo['name']);
+        $rutaArchivo = $directorio . $nombreArchivo;
+        
+        // Mover el archivo
+        if (move_uploaded_file($archivo['tmp_name'], $rutaArchivo)) {
+            return $nombreArchivo;
+        }
+        
+        return false;
     }
     
-    private function procesarImagen($archivo) {
-        // Implementar procesamiento de imagen
-        // Validar tipo, tamaño, etc.
-        // Guardar y retornar path
-        return 'default.jpg'; // Placeholder
+    /**
+     * Obtiene y muestra el perfil completo del miembro
+     */
+    public function ver($id = null) {
+        // Validar y sanitizar ID
+        if (!$id) {
+            $uri = $_SERVER['REQUEST_URI'];
+            if (preg_match('#/miembros/(\d+)#', $uri, $matches)) {
+                $id = (int)$matches[1];
+            } else {
+                $_SESSION['flash_message'] = 'ID de miembro no especificado';
+                $_SESSION['flash_type'] = 'danger';
+                $this->redirect('miembros');
+                return;
+            }
+        }
+        
+        // Asegurar que ID es entero
+        $id = (int)$id;
+        
+        // Obtener datos del miembro
+        $miembro = $this->miembroModel->getFullProfile($id);
+        
+        // Log seguro usando json_encode para arrays
+        error_log("Datos del miembro: " . ($miembro ? json_encode($miembro) : "no encontrado"));
+        
+        if (!$miembro) {
+            $_SESSION['flash_message'] = 'Miembro no encontrado';
+            $_SESSION['flash_type'] = 'danger';
+            $this->redirect('miembros');
+            return;
+        }
+        
+        // Renderizar la vista con los datos
+        return $this->renderWithLayout('miembros/ver', 'default', [
+            'miembro' => $miembro,
+            'title' => "Perfil de {$miembro['nombres']} {$miembro['apellidos']}"
+        ]);
     }
-    
-    private function tienePermiso($permiso) {
-        // Implementar verificación de permisos
-        return true; // Placeholder
+
+    /**
+     * Obtiene los parámetros de la URL
+     */
+    private function getParams() {
+        return isset($GLOBALS['router']) ? $GLOBALS['router']->getParams() : [];
     }
 }
 
@@ -1532,7 +1621,7 @@ class EmailService {
             $this->mailer->SMTPDebug = 0; // 0 = sin depuración
         }
         
-        // No verificar certificado SSL para desarrollo
+        // Esto debería usarse solo en desarrollo
         $this->mailer->SMTPOptions = [
             'ssl' => [
                 'verify_peer' => false,
@@ -1544,10 +1633,10 @@ class EmailService {
         // Configurar servidor SMTP
         $this->mailer->isSMTP();
         $this->mailer->Host = SMTP_HOST;
-        $this->mailer->SMTPAuth = true;
+        $this->mailer->SMTPAuth = SMTP_AUTH; // Usar la constante en lugar de hardcodear true
         $this->mailer->Username = SMTP_USER;
         $this->mailer->Password = SMTP_PASS;
-        $this->mailer->SMTPSecure = 'tls';
+        $this->mailer->SMTPSecure = SMTP_SECURE; // Usar la constante en lugar de hardcodear 'tls'
         $this->mailer->Port = SMTP_PORT;
         $this->mailer->CharSet = 'UTF-8';
         
@@ -2202,6 +2291,130 @@ class RoleMiddleware {
 
 
 =============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\models\CarreraBiblica.php
+=============================================================
+
+<?php
+// filepath: c:\xampp\htdocs\ENCASA_DATABASE\app\models\CarreraBiblica.php
+namespace App\Models;
+
+class CarreraBiblica extends Model {
+    protected $table = 'CarreraBiblica';
+    protected $fillable = [
+        'miembro_id', 'carrera_biblica', 'miembro_de', 'casa_de_palabra_y_vida',
+        'cobertura', 'estado', 'anotaciones', 'recorrido_espiritual'
+    ];
+    
+    /**
+     * Encuentra la información de carrera bíblica por ID de miembro
+     */
+    public function findByMiembro($miembroId) {
+        $sql = "SELECT * FROM {$this->table} WHERE miembro_id = :miembro_id LIMIT 1";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['miembro_id' => $miembroId]);
+        return $stmt->fetch();
+    }
+    
+    /**
+     * Actualiza o crea un registro de carrera bíblica para un miembro
+     */
+    public function actualizarOCrear($miembroId, $datos) {
+        $actual = $this->findByMiembro($miembroId);
+        
+        if ($actual) {
+            return $this->update($actual['id'], $datos);
+        } else {
+            $datos['miembro_id'] = $miembroId;
+            return $this->create($datos);
+        }
+    }
+}
+
+
+=============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\models\Contacto.php
+=============================================================
+
+<?php
+// filepath: c:\xampp\htdocs\ENCASA_DATABASE\app\models\Contacto.php
+namespace App\Models;
+
+class Contacto extends Model {
+    protected $table = 'Contacto';
+    protected $fillable = [
+        'miembro_id', 'tipo_documento', 'numero_documento', 'telefono', 'pais',
+        'ciudad', 'direccion', 'estado_civil', 'correo_electronico',
+        'instagram', 'facebook', 'notas', 'familiares'
+    ];
+    
+    /**
+     * Encuentra el contacto por ID de miembro
+     */
+    public function findByMiembro($miembroId) {
+        $sql = "SELECT * FROM {$this->table} WHERE miembro_id = :miembro_id LIMIT 1";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['miembro_id' => $miembroId]);
+        return $stmt->fetch();
+    }
+    
+    /**
+     * Actualiza o crea un registro de contacto para un miembro
+     */
+    public function actualizarOCrear($miembroId, $datos) {
+        $actual = $this->findByMiembro($miembroId);
+        
+        if ($actual) {
+            return $this->update($actual['id'], $datos);
+        } else {
+            $datos['miembro_id'] = $miembroId;
+            return $this->create($datos);
+        }
+    }
+}
+
+
+=============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\models\EstudiosTrabajo.php
+=============================================================
+
+<?php
+// filepath: c:\xampp\htdocs\ENCASA_DATABASE\app\models\EstudiosTrabajo.php
+namespace App\Models;
+
+class EstudiosTrabajo extends Model {
+    protected $table = 'EstudiosTrabajo';
+    protected $fillable = [
+        'miembro_id', 'nivel_estudios', 'profesion', 'otros_estudios',
+        'empresa', 'direccion_empresa', 'emprendimientos'
+    ];
+    
+    /**
+     * Encuentra la información de estudios y trabajo por ID de miembro
+     */
+    public function findByMiembro($miembroId) {
+        $sql = "SELECT * FROM {$this->table} WHERE miembro_id = :miembro_id LIMIT 1";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['miembro_id' => $miembroId]);
+        return $stmt->fetch();
+    }
+    
+    /**
+     * Actualiza o crea un registro de estudios/trabajo para un miembro
+     */
+    public function actualizarOCrear($miembroId, $datos) {
+        $actual = $this->findByMiembro($miembroId);
+        
+        if ($actual) {
+            return $this->update($actual['id'], $datos);
+        } else {
+            $datos['miembro_id'] = $miembroId;
+            return $this->create($datos);
+        }
+    }
+}
+
+
+=============================================================
 ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\models\Miembro.php
 =============================================================
 
@@ -2213,88 +2426,255 @@ class Miembro extends Model {
     protected $fillable = [
         'nombres', 'apellidos', 'celular', 'localidad', 'barrio', 
         'fecha_nacimiento', 'invitado_por', 'conector', 'estado_espiritual',
-        'recorrido_espiritual', 'foto', 'habeas_data'
+        'recorrido_espiritual', 'foto', 'habeas_data', 'fecha_ingreso'
     ];
     
     /**
      * Obtiene todos los miembros con información básica
      */
-    public function getAllWithBasicInfo() {
-        $sql = "SELECT m.id, m.nombres, m.apellidos, m.celular, m.localidad, 
-                m.barrio, m.fecha_ingreso, m.estado_espiritual
-                FROM {$this->table} m
-                ORDER BY m.apellidos, m.nombres";
-                
+    public function getAll($order = 'apellidos', $dir = 'ASC') {
+        $sql = "SELECT * FROM {$this->table} ORDER BY {$order} {$dir}";
         $stmt = $this->db->prepare($sql);
         $stmt->execute();
         return $stmt->fetchAll();
     }
     
     /**
-     * Obtiene un miembro con toda su información relacionada
+     * Busca miembros por criterios
+     */
+    public function buscar($termino) {
+        $termino = "%{$termino}%";
+        $sql = "SELECT * FROM {$this->table} 
+                WHERE nombres LIKE ? 
+                OR apellidos LIKE ? 
+                OR celular LIKE ?
+                OR barrio LIKE ?
+                OR localidad LIKE ?
+                ORDER BY apellidos, nombres";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$termino, $termino, $termino, $termino, $termino]);
+        return $stmt->fetchAll();
+    }
+    
+    /**
+     * Obtiene un listado básico de miembros para selector
+     */
+    public function getParaSelector() {
+        $sql = "SELECT id, CONCAT(nombres, ' ', apellidos) as nombre_completo 
+                FROM {$this->table} 
+                ORDER BY apellidos, nombres";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute();
+        return $stmt->fetchAll();
+    }
+    
+    /**
+     * Crea un nuevo miembro con sus datos relacionados
+     */
+    public function crearCompleto($datos) {
+        try {
+            $this->db->beginTransaction();
+            
+            // 1. Crear registro principal en InformacionGeneral
+            $miembroId = $this->create($datos['informacion_general']);
+            
+            if (!$miembroId) {
+                $this->db->rollBack();
+                return false;
+            }
+            
+            // 2. Crear registro de contacto si hay datos
+            if (!empty($datos['contacto'])) {
+                $datos['contacto']['miembro_id'] = $miembroId;
+                $contactoModel = new Contacto();
+                if (!$contactoModel->create($datos['contacto'])) {
+                    $this->db->rollBack();
+                    return false;
+                }
+            }
+            
+            // 3. Crear registro de estudios/trabajo si hay datos
+            if (!empty($datos['estudios_trabajo'])) {
+                $datos['estudios_trabajo']['miembro_id'] = $miembroId;
+                $estudiosModel = new EstudiosTrabajo();
+                if (!$estudiosModel->create($datos['estudios_trabajo'])) {
+                    $this->db->rollBack();
+                    return false;
+                }
+            }
+            
+            // 4. Crear registro de tallas si hay datos
+            if (!empty($datos['tallas'])) {
+                $datos['tallas']['miembro_id'] = $miembroId;
+                $tallasModel = new Tallas();
+                if (!$tallasModel->create($datos['tallas'])) {
+                    $this->db->rollBack();
+                    return false;
+                }
+            }
+            
+            // 5. Crear registro de carrera bíblica si hay datos
+            if (!empty($datos['carrera_biblica'])) {
+                $datos['carrera_biblica']['miembro_id'] = $miembroId;
+                $carreraModel = new CarreraBiblica();
+                if (!$carreraModel->create($datos['carrera_biblica'])) {
+                    $this->db->rollBack();
+                    return false;
+                }
+            }
+            
+            $this->db->commit();
+            return $miembroId;
+        } catch (\Exception $e) {
+            $this->db->rollBack();
+            error_log("Error al crear miembro: " . $e->getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Obtiene el perfil completo de un miembro
      */
     public function getFullProfile($id) {
-        // Información general
-        $miembro = $this->findById($id);
+        // Asegurar que el ID es un entero
+        $id = (int)$id;
+        
+        // Preparar consulta principal
+        $sql = "SELECT * FROM InformacionGeneral WHERE id = ?";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$id]);
+        $miembro = $stmt->fetch(\PDO::FETCH_ASSOC);
         
         if (!$miembro) {
             return null;
         }
         
-        // Información de contacto
-        $sql = "SELECT * FROM Contacto WHERE miembro_id = :id LIMIT 1";
+        // Obtener datos de contacto
+        $sql = "SELECT * FROM Contacto WHERE miembro_id = ?";
         $stmt = $this->db->prepare($sql);
-        $stmt->bindValue(':id', $id);
-        $stmt->execute();
-        $miembro['contacto'] = $stmt->fetch();
+        $stmt->execute([$id]);
+        $contacto = $stmt->fetch(\PDO::FETCH_ASSOC);
+        if ($contacto) {
+            $miembro['contacto'] = $contacto;
+        }
         
-        // Ministerios
-        $sql = "SELECT mm.*, m.nombre as ministerio_nombre, r.nombre as rol_nombre
-                FROM MiembrosMinisterios mm
-                JOIN Ministerios m ON mm.ministerio_id = m.id
-                JOIN Roles r ON mm.rol_id = r.id
-                WHERE mm.miembro_id = :id";
+        // Obtener datos de estudios y trabajo
+        $sql = "SELECT * FROM EstudiosTrabajo WHERE miembro_id = ?";
         $stmt = $this->db->prepare($sql);
-        $stmt->bindValue(':id', $id);
-        $stmt->execute();
-        $miembro['ministerios'] = $stmt->fetchAll();
+        $stmt->execute([$id]);
+        $estudios = $stmt->fetch(\PDO::FETCH_ASSOC);
+        if ($estudios) {
+            $miembro['estudios'] = $estudios;
+        }
+        
+        // Obtener datos de tallas
+        $sql = "SELECT * FROM Tallas WHERE miembro_id = ?";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$id]);
+        $tallas = $stmt->fetch(\PDO::FETCH_ASSOC);
+        if ($tallas) {
+            $miembro['tallas'] = $tallas;
+        }
+        
+        // Obtener datos de carrera bíblica
+        $sql = "SELECT * FROM CarreraBiblica WHERE miembro_id = ?";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$id]);
+        $carrera = $stmt->fetch(\PDO::FETCH_ASSOC);
+        if ($carrera) {
+            $miembro['carrera'] = $carrera;
+        }
         
         return $miembro;
     }
     
     /**
-     * Guarda un nuevo miembro con su información de contacto
+     * Verifica si un miembro existe en la base de datos
      */
-    public function saveWithContacto($miembroData, $contactoData) {
+    public function checkMemberExists($id) {
+        $sql = "SELECT id FROM {$this->table} WHERE id = :id";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['id' => $id]);
+        return $stmt->rowCount() > 0;
+    }
+    
+    /**
+     * Crea un nuevo registro en la tabla de información general
+     */
+    public function crear($datos) {
         try {
-            $this->db->beginTransaction();
+            // Preparar consulta
+            $campos = array_keys($datos);
+            $valores = array_values($datos);
             
-            // Crear miembro
-            $miembroId = $this->create($miembroData);
+            $campos_str = implode(', ', $campos);
+            $placeholders = implode(', ', array_fill(0, count($campos), '?'));
             
-            if (!$miembroId) {
-                throw new \Exception("Error al crear el miembro");
-            }
+            $sql = "INSERT INTO InformacionGeneral ($campos_str) VALUES ($placeholders)";
             
-            // Crear contacto
-            $contactoData['miembro_id'] = $miembroId;
-            $contactoModel = new \App\Models\Contacto();
-            $contactoId = $contactoModel->create($contactoData);
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($valores);
             
-            if (!$contactoId) {
-                throw new \Exception("Error al crear la información de contacto");
-            }
-            
-            $this->db->commit();
-            return $miembroId;
-            
-        } catch (\Exception $e) {
-            $this->db->rollBack();
-            // Registrar el error
-            error_log($e->getMessage());
+            return $this->db->lastInsertId();
+        } catch (\PDOException $e) {
+            error_log("Error al crear miembro: " . $e->getMessage());
             return false;
         }
     }
+    
+    /**
+     * Guarda datos de contacto de un miembro
+     */
+    public function guardarContacto($datos) {
+        try {
+            // Verificar si ya existe un registro para este miembro
+            $stmt = $this->db->prepare("SELECT id FROM Contacto WHERE miembro_id = ?");
+            $stmt->execute([$datos['miembro_id']]);
+            $existe = $stmt->fetch(\PDO::FETCH_ASSOC);
+            
+            if ($existe) {
+                // Actualizar registro existente
+                $id = $existe['id'];
+                
+                // Eliminar miembro_id del array para la actualización
+                $miembro_id = $datos['miembro_id'];
+                unset($datos['miembro_id']);
+                
+                $sets = [];
+                foreach ($datos as $campo => $valor) {
+                    $sets[] = "$campo = ?";
+                }
+                $sets_str = implode(', ', $sets);
+                
+                $sql = "UPDATE Contacto SET $sets_str WHERE id = ?";
+                
+                $stmt = $this->db->prepare($sql);
+                $stmt->execute([...array_values($datos), $id]);
+            } else {
+                // Insertar nuevo registro
+                $campos = array_keys($datos);
+                $valores = array_values($datos);
+                
+                $campos_str = implode(', ', $campos);
+                $placeholders = implode(', ', array_fill(0, count($campos), '?'));
+                
+                $sql = "INSERT INTO Contacto ($campos_str) VALUES ($placeholders)";
+                
+                $stmt = $this->db->prepare($sql);
+                $stmt->execute($valores);
+            }
+            
+            return true;
+        } catch (\PDOException $e) {
+            error_log("Error al guardar contacto: " . $e->getMessage());
+            return false;
+        }
+    }
+    
+    // Implementar métodos similares para las otras tablas:
+    // - guardarEstudiosTrabajo()
+    // - guardarTallas()
+    // - guardarCarreraBiblica()
 }
 
 
@@ -2308,19 +2688,18 @@ namespace App\Models;
 abstract class Model {
     protected $db;
     protected $table;
-    protected $primaryKey = 'id';
-    protected $fillable = []; // Campos que se pueden asignar masivamente
-    protected $guarded = []; // Campos protegidos contra asignación masiva
+    protected $fillable = [];
     
     public function __construct() {
-        $this->db = \Database::getInstance()->getConnection();
+        $database = \Database::getInstance(); // Usamos el namespace global
+        $this->db = $database->getConnection();
     }
     
     /**
      * Encuentra un registro por su ID
      */
     public function findById($id) {
-        $query = "SELECT * FROM {$this->table} WHERE {$this->primaryKey} = :id LIMIT 1";
+        $query = "SELECT * FROM {$this->table} WHERE id = :id LIMIT 1";
         $stmt = $this->db->prepare($query);
         $stmt->bindValue(':id', $id);
         $stmt->execute();
@@ -2390,7 +2769,7 @@ abstract class Model {
      * Elimina un registro
      */
     public function delete($id) {
-        $query = "DELETE FROM {$this->table} WHERE {$this->primaryKey} = :id";
+        $query = "DELETE FROM {$this->table} WHERE id = :id";
         $stmt = $this->db->prepare($query);
         $stmt->bindValue(':id', $id);
         return $stmt->execute();
@@ -2402,10 +2781,6 @@ abstract class Model {
     protected function filterFields(array $data) {
         if (!empty($this->fillable)) {
             return array_intersect_key($data, array_flip($this->fillable));
-        }
-        
-        if (!empty($this->guarded)) {
-            return array_diff_key($data, array_flip($this->guarded));
         }
         
         return $data;
@@ -2451,6 +2826,19 @@ abstract class Model {
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         return $stmt;
+    }
+    
+    /**
+     * Obtiene una fila de la base de datos
+     * 
+     * @param string $sql Consulta SQL
+     * @param array $params Parámetros para la consulta
+     * @return array|null Fila encontrada o null
+     */
+    protected function getRow($sql, $params = []) {
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetch(\PDO::FETCH_ASSOC);
     }
 }
 
@@ -2577,6 +2965,47 @@ class Rol extends Model {
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$rolId]);
         return $stmt->fetchAll();
+    }
+}
+
+
+=============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\models\Tallas.php
+=============================================================
+
+<?php
+// filepath: c:\xampp\htdocs\ENCASA_DATABASE\app\models\Tallas.php
+namespace App\Models;
+
+class Tallas extends Model {
+    protected $table = 'Tallas';
+    protected $fillable = [
+        'miembro_id', 'talla_camisa', 'talla_camiseta', 'talla_pantalon',
+        'talla_zapatos'
+    ];
+    
+    /**
+     * Encuentra la información de tallas por ID de miembro
+     */
+    public function findByMiembro($miembroId) {
+        $sql = "SELECT * FROM {$this->table} WHERE miembro_id = :miembro_id LIMIT 1";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['miembro_id' => $miembroId]);
+        return $stmt->fetch();
+    }
+    
+    /**
+     * Actualiza o crea un registro de tallas para un miembro
+     */
+    public function actualizarOCrear($miembroId, $datos) {
+        $actual = $this->findByMiembro($miembroId);
+        
+        if ($actual) {
+            return $this->update($actual['id'], $datos);
+        } else {
+            $datos['miembro_id'] = $miembroId;
+            return $this->create($datos);
+        }
     }
 }
 
@@ -3638,6 +4067,500 @@ ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\views\layouts\default.php
 
 
 =============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\views\miembros\crear.php
+=============================================================
+
+<?php
+// filepath: c:\xampp\htdocs\ENCASA_DATABASE\app\views\miembros\crear.php
+
+// Verificar si es modo edición
+$esEdicion = isset($miembro) && !empty($miembro);
+$titulo = $esEdicion ? 'Editar Miembro' : 'Registrar Nuevo Miembro';
+?>
+
+<div class="container mt-4">
+    <h1><?= $titulo ?></h1>
+    
+    <form action="<?= APP_URL ?>/miembros/<?= $esEdicion ? 'actualizar/'.$miembro['id'] : 'guardar' ?>" method="POST" enctype="multipart/form-data">
+        <!-- Si es edición, añadir campo oculto con ID -->
+        <?php if($esEdicion): ?>
+            <input type="hidden" name="id" value="<?= $miembro['id'] ?>">
+        <?php endif; ?>
+
+        <!-- Navegación por pestañas -->
+        <ul class="nav nav-tabs mb-4" id="miembroTabs" role="tablist">
+            <li class="nav-item">
+                <a class="nav-link active" id="datos-tab" data-bs-toggle="tab" href="#datos" role="tab">Información General</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="contacto-tab" data-bs-toggle="tab" href="#contacto" role="tab">Contacto</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="estudios-tab" data-bs-toggle="tab" href="#estudios" role="tab">Estudios/Trabajo</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="tallas-tab" data-bs-toggle="tab" href="#tallas" role="tab">Tallas</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="espiritual-tab" data-bs-toggle="tab" href="#espiritual" role="tab">Carrera Bíblica</a>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="miembroTabContent">
+            <!-- Pestaña de Información General -->
+            <div class="tab-pane fade show active" id="datos" role="tabpanel">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="nombres" class="form-label">Nombres *</label>
+                        <input type="text" class="form-control" id="nombres" name="nombres" required 
+                               value="<?= $esEdicion ? htmlspecialchars($miembro['nombres']) : '' ?>">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="apellidos" class="form-label">Apellidos *</label>
+                        <input type="text" class="form-control" id="apellidos" name="apellidos" required 
+                               value="<?= $esEdicion ? htmlspecialchars($miembro['apellidos']) : '' ?>">
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="celular" class="form-label">Celular *</label>
+                        <input type="tel" class="form-control" id="celular" name="celular" required 
+                               value="<?= $esEdicion ? htmlspecialchars($miembro['celular']) : '' ?>">
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="fecha_nacimiento" class="form-label">Fecha de Nacimiento</label>
+                        <input type="date" class="form-control" id="fecha_nacimiento" name="fecha_nacimiento" 
+                               value="<?= $esEdicion && $miembro['fecha_nacimiento'] ? $miembro['fecha_nacimiento'] : '' ?>">
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="foto" class="form-label">Foto</label>
+                        <input type="file" class="form-control" id="foto" name="foto" accept="image/*">
+                        <?php if($esEdicion && !empty($miembro['foto'])): ?>
+                            <div class="mt-2">
+                                <img src="<?= APP_URL ?>/uploads/miembros/<?= $miembro['foto'] ?>" alt="Foto actual" class="img-thumbnail" style="max-height: 100px;">
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="localidad" class="form-label">Localidad</label>
+                        <input type="text" class="form-control" id="localidad" name="localidad" 
+                               value="<?= $esEdicion ? htmlspecialchars($miembro['localidad'] ?? '') : '' ?>">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="barrio" class="form-label">Barrio</label>
+                        <input type="text" class="form-control" id="barrio" name="barrio" 
+                               value="<?= $esEdicion ? htmlspecialchars($miembro['barrio'] ?? '') : '' ?>">
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="invitado_por" class="form-label">Invitado por</label>
+                        <select class="form-select" id="invitado_por" name="invitado_por">
+                            <option value="">-- Seleccione --</option>
+                            <!-- Aquí cargar dinámicamente los miembros disponibles -->
+                            <?php if(isset($miembros) && is_array($miembros)): ?>
+                                <?php foreach($miembros as $m): ?>
+                                    <option value="<?= $m['id'] ?>" <?= $esEdicion && $miembro['invitado_por'] == $m['id'] ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($m['nombres'] . ' ' . $m['apellidos']) ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="conector" class="form-label">Conector</label>
+                        <input type="text" class="form-control" id="conector" name="conector" 
+                               placeholder="Familiar, Amigo, Redes sociales, etc." 
+                               value="<?= $esEdicion ? htmlspecialchars($miembro['conector'] ?? '') : '' ?>">
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="estado_espiritual" class="form-label">Estado Espiritual</label>
+                        <select class="form-select" id="estado_espiritual" name="estado_espiritual">
+                            <option value="">-- Seleccione --</option>
+                            <option value="Visitante" <?= $esEdicion && ($miembro['estado_espiritual'] ?? '') == 'Visitante' ? 'selected' : '' ?>>Visitante</option>
+                            <option value="Nuevo Creyente" <?= $esEdicion && ($miembro['estado_espiritual'] ?? '') == 'Nuevo Creyente' ? 'selected' : '' ?>>Nuevo Creyente</option>
+                            <option value="Discípulo" <?= $esEdicion && ($miembro['estado_espiritual'] ?? '') == 'Discípulo' ? 'selected' : '' ?>>Discípulo</option>
+                            <option value="Líder" <?= $esEdicion && ($miembro['estado_espiritual'] ?? '') == 'Líder' ? 'selected' : '' ?>>Líder</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="form-check mt-4">
+                            <input class="form-check-input" type="checkbox" id="habeas_data" name="habeas_data" value="1" 
+                                  <?= $esEdicion && ($miembro['habeas_data'] ?? 0) ? 'checked' : '' ?>>
+                            <label class="form-check-label" for="habeas_data">
+                                Autoriza tratamiento de datos personales
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="recorrido_espiritual" class="form-label">Recorrido Espiritual</label>
+                    <textarea class="form-control" id="recorrido_espiritual" name="recorrido_espiritual" rows="3"><?= $esEdicion ? htmlspecialchars($miembro['recorrido_espiritual'] ?? '') : '' ?></textarea>
+                </div>
+            </div>
+
+            <!-- Pestaña de Contacto -->
+            <div class="tab-pane fade" id="contacto" role="tabpanel">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="tipo_documento" class="form-label">Tipo de Documento</label>
+                        <select class="form-select" id="tipo_documento" name="contacto[tipo_documento]">
+                            <option value="">-- Seleccione --</option>
+                            <option value="CC" <?= $esEdicion && isset($miembro['contacto']['tipo_documento']) && $miembro['contacto']['tipo_documento'] == 'CC' ? 'selected' : '' ?>>Cédula de Ciudadanía</option>
+                            <option value="CE" <?= $esEdicion && isset($miembro['contacto']['tipo_documento']) && $miembro['contacto']['tipo_documento'] == 'CE' ? 'selected' : '' ?>>Cédula de Extranjería</option>
+                            <option value="TI" <?= $esEdicion && isset($miembro['contacto']['tipo_documento']) && $miembro['contacto']['tipo_documento'] == 'TI' ? 'selected' : '' ?>>Tarjeta de Identidad</option>
+                            <option value="Pasaporte" <?= $esEdicion && isset($miembro['contacto']['tipo_documento']) && $miembro['contacto']['tipo_documento'] == 'Pasaporte' ? 'selected' : '' ?>>Pasaporte</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="numero_documento" class="form-label">Número de Documento</label>
+                        <input type="text" class="form-control" id="numero_documento" name="contacto[numero_documento]" 
+                               value="<?= $esEdicion && isset($miembro['contacto']['numero_documento']) ? htmlspecialchars($miembro['contacto']['numero_documento']) : '' ?>">
+                    </div>
+                </div>
+
+                <!-- Continuar con el resto de campos de contacto: teléfono, país, ciudad, dirección, etc. -->
+            </div>
+
+            <!-- Pestaña de Estudios/Trabajo -->
+            <div class="tab-pane fade" id="estudios" role="tabpanel">
+                <!-- Campos para Estudios y Trabajo -->
+            </div>
+
+            <!-- Pestaña de Tallas -->
+            <div class="tab-pane fade" id="tallas" role="tabpanel">
+                <!-- Campos para Tallas -->
+            </div>
+
+            <!-- Pestaña de Carrera Bíblica -->
+            <div class="tab-pane fade" id="espiritual" role="tabpanel">
+                <!-- Campos para Carrera Bíblica -->
+            </div>
+        </div>
+
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary">
+                <?= $esEdicion ? 'Actualizar' : 'Registrar' ?> Miembro
+            </button>
+            <a href="<?= APP_URL ?>/miembros" class="btn btn-secondary ms-2">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+
+=============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\views\miembros\index.php
+=============================================================
+
+<?php
+// filepath: c:\xampp\htdocs\ENCASA_DATABASE\app\views\miembros\index.php
+?>
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Directorio de Miembros</h1>
+        <a href="<?= APP_URL ?>/miembros/crear" class="btn btn-primary">
+            <i class="fas fa-plus-circle"></i> Nuevo Miembro
+        </a>
+    </div>
+    
+    <?php if (isset($_SESSION['flash_message'])): ?>
+        <div class="alert alert-<?= $_SESSION['flash_type'] ?? 'info' ?> alert-dismissible fade show">
+            <?= $_SESSION['flash_message'] ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <?php 
+        unset($_SESSION['flash_message']);
+        unset($_SESSION['flash_type']);
+        ?>
+    <?php endif; ?>
+    
+    <!-- Formulario de búsqueda -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form action="<?= APP_URL ?>/miembros" method="get" class="row g-3">
+                <div class="col-md-8">
+                    <input type="text" name="busqueda" class="form-control" 
+                           placeholder="Buscar por nombre, apellido, celular, localidad..." 
+                           value="<?= htmlspecialchars($busqueda ?? '') ?>">
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-search"></i> Buscar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div class="card shadow">
+        <div class="card-body">
+            <?php if (empty($miembros)): ?>
+                <div class="alert alert-info">
+                    <?= !empty($busqueda) ? 'No se encontraron resultados para tu búsqueda.' : 'No hay miembros registrados todavía.' ?>
+                </div>
+            <?php else: ?>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nombre completo</th>
+                                <th>Celular</th>
+                                <th>Localidad</th>
+                                <th>Estado espiritual</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($miembros as $miembro): ?>
+                                <tr>
+                                    <td><?= $miembro['id'] ?></td>
+                                    <td><?= htmlspecialchars($miembro['nombres'] . ' ' . $miembro['apellidos']) ?></td>
+                                    <td><?= htmlspecialchars($miembro['celular'] ?? 'No registrado') ?></td>
+                                    <td><?= htmlspecialchars($miembro['localidad'] ?? 'No registrada') ?></td>
+                                    <td><?= htmlspecialchars($miembro['estado_espiritual'] ?? 'No registrado') ?></td>
+                                    <td>
+                                        <a href="<?= APP_URL ?>/miembros/<?= $miembro['id'] ?>" class="btn btn-sm btn-info" title="Ver detalles">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Paginación -->
+                <?php if ($totalPaginas > 1): ?>
+                    <nav aria-label="Navegación de páginas">
+                        <ul class="pagination justify-content-center">
+                            <?php if ($pagina > 1): ?>
+                                <li class="page-item">
+                                    <a class="page-link" href="<?= APP_URL ?>/miembros?pagina=<?= $pagina - 1 ?><?= !empty($busqueda) ? '&busqueda=' . urlencode($busqueda) : '' ?>">
+                                        &laquo; Anterior
+                                    </a>
+                                </li>
+                            <?php endif; ?>
+                            
+                            <?php for ($i = 1; $i <= $totalPaginas; $i++): ?>
+                                <li class="page-item <?= $i === $pagina ? 'active' : '' ?>">
+                                    <a class="page-link" href="<?= APP_URL ?>/miembros?pagina=<?= $i ?><?= !empty($busqueda) ? '&busqueda=' . urlencode($busqueda) : '' ?>">
+                                        <?= $i ?>
+                                    </a>
+                                </li>
+                            <?php endfor; ?>
+                            
+                            <?php if ($pagina < $totalPaginas): ?>
+                                <li class="page-item">
+                                    <a class="page-link" href="<?= APP_URL ?>/miembros?pagina=<?= $pagina + 1 ?><?= !empty($busqueda) ? '&busqueda=' . urlencode($busqueda) : '' ?>">
+                                        Siguiente &raquo;
+                                    </a>
+                                </li>
+                            <?php endif; ?>
+                        </ul>
+                    </nav>
+                <?php endif; ?>
+            <?php endif; ?>
+        </div>
+    </div>
+</div>
+
+
+=============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\views\miembros\ver.php
+=============================================================
+
+<?php
+// filepath: c:\xampp\htdocs\ENCASA_DATABASE\app\views\miembros\ver.php
+
+// IMPORTANTE: Primero detectar el ID de la URL 
+$uri = $_SERVER['REQUEST_URI'];
+$debug_id = null;
+if (preg_match('#/miembros/(\d+)#', $uri, $matches)) {
+    $debug_id = (int)$matches[1];
+    error_log("ID detectado en URL: {$debug_id}");
+}
+
+// Verificar si los datos del miembro corresponden al ID de la URL
+if ($debug_id && (!isset($miembro['id']) || $miembro['id'] != $debug_id)) {
+    error_log("ID del miembro en datos ({$miembro['id']}) no coincide con ID en URL ({$debug_id})");
+    
+    // Forzar la obtención de datos correctos (solución de emergencia)
+    require_once __DIR__ . '/../../models/Miembro.php';
+    $model = new \App\Models\Miembro();
+    $miembro = $model->getFullProfile($debug_id);
+    
+    error_log("Datos forzados obtenidos: " . json_encode(array_keys($miembro)));
+}
+
+// Añadir comentario de depuración
+echo "<!-- DEBUG: ID URL: {$debug_id} | ID miembro: {$miembro['id']} -->";
+// Añadir esta línea de depuración temporal
+echo "<!-- DEBUG: " . htmlspecialchars(json_encode($miembro)) . " -->";
+?>
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><?= htmlspecialchars($miembro['nombres'] . ' ' . $miembro['apellidos']) ?></h1>
+        <div>
+            <a href="<?= APP_URL ?>/miembros/editar/<?= $miembro['id'] ?>" class="btn btn-primary me-2">
+                <i class="fas fa-edit"></i> Editar
+            </a>
+            <a href="<?= APP_URL ?>/miembros" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Volver
+            </a>
+        </div>
+    </div>
+
+    <!-- Información de perfil en pestañas -->
+    <ul class="nav nav-tabs" id="perfilTabs" role="tablist">
+        <li class="nav-item">
+            <a class="nav-link active" id="general-tab" data-bs-toggle="tab" href="#general" role="tab">Información General</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" id="contacto-tab" data-bs-toggle="tab" href="#contacto" role="tab">Contacto</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" id="estudios-tab" data-bs-toggle="tab" href="#estudios" role="tab">Estudios/Trabajo</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" id="tallas-tab" data-bs-toggle="tab" href="#tallas" role="tab">Tallas</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" id="carrera-tab" data-bs-toggle="tab" href="#carrera" role="tab">Carrera Bíblica</a>
+        </li>
+    </ul>
+
+    <div class="tab-content mt-4" id="perfilTabsContent">
+        <!-- Pestaña de Información General -->
+        <div class="tab-pane fade show active" id="general" role="tabpanel">
+            <div class="row">
+                <div class="col-md-4 mb-4">
+                    <!-- Foto del miembro -->
+                    <div class="text-center">
+                        <?php if(!empty($miembro['foto'])): ?>
+                            <img src="<?= APP_URL ?>/uploads/miembros/<?= $miembro['foto'] ?>" alt="Foto de <?= htmlspecialchars($miembro['nombres']) ?>" 
+                                 class="img-fluid rounded-circle" style="width: 200px; height: 200px; object-fit: cover;">
+                        <?php else: ?>
+                            <div class="bg-light rounded-circle d-flex align-items-center justify-content-center" 
+                                 style="width: 200px; height: 200px; margin: 0 auto;">
+                                <i class="fas fa-user fa-5x text-secondary"></i>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Datos Personales</h5>
+                            <table class="table table-striped">
+                                <tbody>
+                                    <tr>
+                                        <th scope="row" style="width: 30%">Celular:</th>
+                                        <td><?= htmlspecialchars($miembro['celular'] ?? 'No disponible') ?></td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Localidad:</th>
+                                        <td><?= htmlspecialchars($miembro['localidad'] ?? 'No disponible') ?></td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Barrio:</th>
+                                        <td><?= htmlspecialchars($miembro['barrio'] ?? 'No disponible') ?></td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Fecha de Nacimiento:</th>
+                                        <td><?= $miembro['fecha_nacimiento'] ? date('d/m/Y', strtotime($miembro['fecha_nacimiento'])) : 'No disponible' ?></td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Estado Espiritual:</th>
+                                        <td><?= htmlspecialchars($miembro['estado_espiritual'] ?? 'No disponible') ?></td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Fecha de Ingreso:</th>
+                                        <td><?= $miembro['fecha_ingreso'] ? date('d/m/Y', strtotime($miembro['fecha_ingreso'])) : 'No disponible' ?></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <?php if(isset($miembro['recorrido_espiritual']) && !empty($miembro['recorrido_espiritual'])): ?>
+            <div class="card mt-3">
+                <div class="card-body">
+                    <h5 class="card-title">Recorrido Espiritual</h5>
+                    <p class="card-text"><?= nl2br(htmlspecialchars($miembro['recorrido_espiritual'])) ?></p>
+                </div>
+            </div>
+            <?php endif; ?>
+        </div>
+
+        <!-- Pestaña de Contacto -->
+        <div class="tab-pane fade" id="contacto" role="tabpanel">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Información de Contacto</h5>
+                    <?php if(isset($miembro['contacto'])): ?>
+                        <table class="table table-striped">
+                            <tbody>
+                                <tr>
+                                    <th scope="row" style="width: 30%">Tipo de Documento:</th>
+                                    <td><?= htmlspecialchars($miembro['contacto']['tipo_documento'] ?? 'No disponible') ?></td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Número de Documento:</th>
+                                    <td><?= htmlspecialchars($miembro['contacto']['numero_documento'] ?? 'No disponible') ?></td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Teléfono:</th>
+                                    <td><?= htmlspecialchars($miembro['contacto']['telefono'] ?? 'No disponible') ?></td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">País:</th>
+                                    <td><?= htmlspecialchars($miembro['contacto']['pais'] ?? 'No disponible') ?></td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Ciudad:</th>
+                                    <td><?= htmlspecialchars($miembro['contacto']['ciudad'] ?? 'No disponible') ?></td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Dirección:</th>
+                                    <td><?= htmlspecialchars($miembro['contacto']['direccion'] ?? 'No disponible') ?></td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Estado Civil:</th>
+                                    <td><?= htmlspecialchars($miembro['contacto']['estado_civil'] ?? 'No disponible') ?></td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Correo Electrónico:</th>
+                                    <td><?= htmlspecialchars($miembro['contacto']['correo_electronico'] ?? 'No disponible') ?></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    <?php else: ?>
+                        <div class="alert alert-info">No hay información de contacto disponible.</div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+
+        <!-- Incluir otras pestañas: estudios, tallas, carrera bíblica -->
+
+    </div>
+</div>
+
+
+=============================================================
 ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\views\partials\header.php
 =============================================================
 
@@ -4021,6 +4944,262 @@ try {
 
 
 =============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\tests\check_members.php
+=============================================================
+
+<?php
+// filepath: c:\xampp\htdocs\ENCASA_DATABASE\tests\check_member.php
+require_once __DIR__ . '/../app/config/config.php';
+require_once __DIR__ . '/../app/config/database.php';
+
+// ID a verificar (puedes cambiarlo por GET)
+$id = isset($_GET['id']) ? (int)$_GET['id'] : 2;
+
+echo "<h1>Verificación de miembro con ID: {$id}</h1>";
+
+try {
+    // Obtener conexión directa
+    $database = Database::getInstance();
+    $db = $database->getConnection();
+    
+    // Consulta directa para verificar información general
+    $stmt = $db->prepare("SELECT * FROM InformacionGeneral WHERE id = :id");
+    $stmt->execute(['id' => $id]);
+    $miembro = $stmt->fetch();
+    
+    if (!$miembro) {
+        echo "<div style='color:red'>No se encontró ningún miembro con ID {$id} en la base de datos.</div>";
+    } else {
+        echo "<h2>Datos básicos del miembro:</h2>";
+        echo "<pre>";
+        print_r($miembro);
+        echo "</pre>";
+        
+        // Verificar tablas relacionadas
+        echo "<h2>Datos relacionados:</h2>";
+        
+        // Contacto
+        $stmt = $db->prepare("SELECT * FROM Contacto WHERE miembro_id = :id");
+        $stmt->execute(['id' => $id]);
+        $contacto = $stmt->fetch();
+        echo "<h3>Contacto:</h3>";
+        echo "<pre>";
+        print_r($contacto ?: "No hay datos de contacto");
+        echo "</pre>";
+        
+        // EstudiosTrabajo
+        $stmt = $db->prepare("SELECT * FROM EstudiosTrabajo WHERE miembro_id = :id");
+        $stmt->execute(['id' => $id]);
+        $estudios = $stmt->fetch();
+        echo "<h3>Estudios y Trabajo:</h3>";
+        echo "<pre>";
+        print_r($estudios ?: "No hay datos de estudios");
+        echo "</pre>";
+        
+        // Tallas
+        $stmt = $db->prepare("SELECT * FROM Tallas WHERE miembro_id = :id");
+        $stmt->execute(['id' => $id]);
+        $tallas = $stmt->fetch();
+        echo "<h3>Tallas:</h3>";
+        echo "<pre>";
+        print_r($tallas ?: "No hay datos de tallas");
+        echo "</pre>";
+        
+        // CarreraBiblica
+        $stmt = $db->prepare("SELECT * FROM CarreraBiblica WHERE miembro_id = :id");
+        $stmt->execute(['id' => $id]);
+        $carrera = $stmt->fetch();
+        echo "<h3>Carrera Bíblica:</h3>";
+        echo "<pre>";
+        print_r($carrera ?: "No hay datos de carrera bíblica");
+        echo "</pre>";
+        
+        echo "<p>Enlaces de prueba:</p>";
+        echo "<ul>";
+        echo "<li><a href='" . APP_URL . "/miembros/{$id}' target='_blank'>Ver en sistema (miembros/{$id})</a></li>";
+        echo "<li><a href='check_member.php?id=" . ($id+1) . "'>Verificar miembro " . ($id+1) . "</a></li>";
+        echo "<li><a href='check_member.php?id=" . ($id-1) . "'>Verificar miembro " . ($id-1) . "</a></li>";
+        echo "</ul>";
+    }
+} catch (PDOException $e) {
+    echo "<div style='color:red'>Error en la base de datos: " . $e->getMessage() . "</div>";
+}
+
+
+=============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\tests\debug.php
+=============================================================
+
+<?php
+// filepath: /Applications/XAMPP/xamppfiles/htdocs/Encasa_Database/debug.php
+
+// Configuración
+define('BASE_PATH', __DIR__);
+define('APP_PATH', BASE_PATH . '/app');
+define('CONFIG_PATH', APP_PATH . '/config');
+
+// Cargar autoloader
+require_once CONFIG_PATH . '/config.php';
+require_once CONFIG_PATH . '/database.php';
+require_once CONFIG_PATH . '/autoload.php';
+
+// Crear instancia del modelo Usuario
+$userModel = new \App\Models\Usuario();
+
+// Función para mostrar resultados
+function showResult($title, $data) {
+    echo "<h3>$title</h3>";
+    echo "<pre>";
+    print_r($data);
+    echo "</pre>";
+    echo "<hr>";
+}
+
+// 1. Mostrar todos los usuarios
+$users = $userModel->getAll();
+foreach ($users as &$user) {
+    // Ocultar contraseña completa
+    $user['password'] = substr($user['password'], 0, 15) . '...';
+}
+showResult("Usuarios registrados", $users);
+
+// 2. Crear un usuario de prueba (descomentar si necesitas crear uno)
+/*
+$newUser = [
+    'username' => 'testuser',
+    'email' => 'test@example.com',
+    'password' => '123456',
+    'nombre_completo' => 'Usuario de Prueba',
+    'activo' => 1
+];
+
+$userID = $userModel->register($newUser);
+showResult("Resultado de creación de usuario", $userID ? "Usuario creado con ID: $userID" : "Error al crear usuario");
+*/
+
+// Descomentar esta sección para crear un usuario nuevo
+$newUser = [
+    'username' => 'admin2',
+    'email' => 'admin2@ejemplo.com',
+    'password' => 'password123',
+    'nombre_completo' => 'Administrador 2',
+    'activo' => 1
+];
+
+$userID = $userModel->register($newUser);
+showResult("Resultado de creación de usuario", $userID ? "Usuario creado con ID: $userID" : "Error al crear usuario");
+
+// 3. Probar autenticación con un usuario existente
+$testAuth = $userModel->authenticate('rafa.gzfr@gmail.com', 'Amor2025+'); // cambia por credenciales reales
+showResult("Prueba de autenticación", $testAuth ? "Autenticación exitosa" : "Autenticación fallida");
+
+// 4. Ver registro específico
+if (!empty($users)) {
+    $firstUser = $users[0];
+    $userId = $firstUser['id'];
+    $user = $userModel->findById($userId);
+    showResult("Usuario con ID $userId", $user);
+}
+
+// 1. Primero, cambia la contraseña
+$userId = 1;
+$newPassword = 'Amor2025+';
+
+$stmt = $userModel->db->prepare("UPDATE Usuarios SET password = :password WHERE id = :id");
+$stmt->bindValue(':password', $userModel->hashPassword($newPassword));
+$stmt->bindValue(':id', $userId);
+$result = $stmt->execute();
+
+showResult("Cambio de contraseña para usuario ID $userId", 
+    $result ? "Contraseña actualizada correctamente" : "Error al actualizar contraseña");
+
+// 2. Luego, prueba la autenticación con la nueva contraseña
+$testAuth = $userModel->authenticate('rafa.gzfr@gmail.com', 'Amor2025+');
+showResult("Prueba de autenticación", $testAuth ? "Autenticación exitosa" : "Autenticación fallida");
+?>
+
+
+=============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\tests\debug_miembro.php
+=============================================================
+
+<?php
+// filepath: c:\xampp\htdocs\ENCASA_DATABASE\debug_miembro.php
+
+// Script para verificar directamente un miembro en la base de datos
+require_once __DIR__ . '/app/config/config.php';
+require_once __DIR__ . '/app/config/database.php';
+
+// ID a verificar (opcional por GET)
+$id = isset($_GET['id']) ? (int)$_GET['id'] : 2;
+
+echo "<h1>Depuración de Miembro ID: {$id}</h1>";
+
+try {
+    // Conexión directa a la base de datos
+    $db = Database::getInstance()->getConnection();
+    
+    // Consulta básica para obtener datos del miembro
+    $stmt = $db->prepare("SELECT * FROM InformacionGeneral WHERE id = ?");
+    $stmt->execute([$id]);
+    $miembro = $stmt->fetch();
+    
+    if ($miembro) {
+        echo "<h2>Miembro encontrado:</h2>";
+        echo "<pre>";
+        print_r($miembro);
+        echo "</pre>";
+        
+        // Mostrar datos relacionados
+        $tablas = ['Contacto', 'EstudiosTrabajo', 'Tallas', 'CarreraBiblica'];
+        
+        foreach ($tablas as $tabla) {
+            $stmt = $db->prepare("SELECT * FROM {$tabla} WHERE miembro_id = ?");
+            $stmt->execute([$id]);
+            $datos = $stmt->fetch();
+            
+            echo "<h3>Datos de {$tabla}:</h3>";
+            echo "<pre>";
+            print_r($datos ?: "No hay datos relacionados");
+            echo "</pre>";
+        }
+        
+        echo "<p><a href='" . APP_URL . "/miembros/{$id}' target='_blank'>Ver en el sistema</a></p>";
+    } else {
+        echo "<p style='color:red'>No se encontró ningún miembro con ID {$id}</p>";
+    }
+} catch (Exception $e) {
+    echo "<p style='color:red'>Error: " . $e->getMessage() . "</p>";
+}
+
+
+=============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\tests\debug_users.php
+=============================================================
+
+<?php
+// Archivo temporal para depuración: /Applications/XAMPP/xamppfiles/htdocs/Encasa_Database/debug_users.php
+
+// Incluir configuración básica
+require_once 'index.php';
+
+// Obtener instancia del modelo
+$userModel = new \App\Models\Usuario();
+
+// Mostrar todos los usuarios
+echo "<h2>Usuarios registrados:</h2>";
+$users = $userModel->getAll();
+
+echo "<pre>";
+foreach ($users as $user) {
+    // Ocultar la contraseña completa por seguridad
+    $user['password'] = substr($user['password'], 0, 10) . '...';
+    print_r($user);
+}
+echo "</pre>";
+
+
+=============================================================
 ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\tests\JWTTest.php
 =============================================================
 
@@ -4203,5 +5382,205 @@ $test = new LoggerTest();
 $test->runTests();
 
 echo "\nPruebas completadas. Verifica el archivo de log en: " . $test->logFile;
+
+
+=============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\tests\login-test.php
+=============================================================
+
+<?php
+// filepath: c:\xampp\htdocs\ENCASA_DATABASE\login-test.php
+
+// Mostrar errores
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
+echo "Inicio del script<br>";
+
+// Configuración inicial
+require_once __DIR__ . '/app/config/config.php';
+echo "Config cargado<br>";
+
+require_once __DIR__ . '/app/helpers/functions.php';
+echo "Helpers cargados<br>";
+
+// Autoload con diagnóstico
+spl_autoload_register(function($className) {
+    $classFile = str_replace('\\', '/', $className) . '.php';
+    $filepath = __DIR__ . '/' . $classFile;
+    
+    echo "Intentando cargar: $filepath<br>";
+    
+    if (file_exists($filepath)) {
+        require_once $filepath;
+        echo "Clase $className cargada<br>";
+    } else {
+        echo "Clase $className no encontrada<br>";
+    }
+});
+
+try {
+    // Cargar controlador directamente
+    echo "Intentando crear instancia de AuthController<br>";
+    $controller = new App\Controllers\AuthController();
+    echo "Instancia creada<br>";
+    $controller->login();
+} catch (Exception $e) {
+    echo "Error: " . $e->getMessage();
+}
+
+
+=============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\tests\ModelsTest.php
+=============================================================
+
+<?php
+// filepath: c:\xampp\htdocs\ENCASA_DATABASE\tests\ModelsTest.php
+require_once __DIR__ . '/../app/config/config.php';
+require_once __DIR__ . '/../app/config/database.php'; // Agregar esta línea
+require_once __DIR__ . '/../app/models/Model.php';
+require_once __DIR__ . '/../app/models/Miembro.php';
+require_once __DIR__ . '/../app/models/Contacto.php';
+require_once __DIR__ . '/../app/models/EstudiosTrabajo.php';
+require_once __DIR__ . '/../app/models/Tallas.php';
+require_once __DIR__ . '/../app/models/CarreraBiblica.php';
+
+use App\Models\Miembro;
+use App\Models\Contacto;
+use App\Models\EstudiosTrabajo;
+use App\Models\Tallas;
+use App\Models\CarreraBiblica;
+
+// Prueba de modelos
+echo "<h1>Prueba de modelos para Miembros</h1>";
+
+// Instanciar modelos
+$miembroModel = new Miembro();
+$contactoModel = new Contacto();
+$estudiosModel = new EstudiosTrabajo();
+$tallasModel = new Tallas();
+$carreraModel = new CarreraBiblica();
+
+echo "<pre>";
+echo "Modelos cargados correctamente:";
+echo "\nMiembro: " . (class_exists('App\Models\Miembro') ? 'OK' : 'ERROR');
+echo "\nContacto: " . (class_exists('App\Models\Contacto') ? 'OK' : 'ERROR');
+echo "\nEstudiosTrabajo: " . (class_exists('App\Models\EstudiosTrabajo') ? 'OK' : 'ERROR');
+echo "\nTallas: " . (class_exists('App\Models\Tallas') ? 'OK' : 'ERROR');
+echo "\nCarreraBiblica: " . (class_exists('App\Models\CarreraBiblica') ? 'OK' : 'ERROR');
+echo "</pre>";
+
+// Prueba: obtener todos los miembros
+echo "<h2>Listado de miembros existentes:</h2>";
+$miembros = $miembroModel->getAll();
+if (empty($miembros)) {
+    echo "<p>No hay miembros registrados aún.</p>";
+} else {
+    echo "<table border='1' style='border-collapse: collapse; width: 100%;'>";
+    echo "<tr><th>ID</th><th>Nombre</th><th>Apellido</th><th>Celular</th><th>Localidad</th></tr>";
+    foreach ($miembros as $miembro) {
+        echo "<tr>";
+        echo "<td>{$miembro['id']}</td>";
+        echo "<td>{$miembro['nombres']}</td>";
+        echo "<td>{$miembro['apellidos']}</td>";
+        echo "<td>{$miembro['celular']}</td>";
+        echo "<td>{$miembro['localidad']}</td>";
+        echo "</tr>";
+    }
+    echo "</table>";
+}
+
+echo "<h2>Estado de las tablas relacionadas:</h2>";
+echo "<pre>";
+echo "Contacto: " . ($contactoModel ? 'Modelo cargado' : 'Error');
+echo "\nEstudiosTrabajo: " . ($estudiosModel ? 'Modelo cargado' : 'Error');
+echo "\nTallas: " . ($tallasModel ? 'Modelo cargado' : 'Error');
+echo "\nCarreraBiblica: " . ($carreraModel ? 'Modelo cargado' : 'Error');
+echo "</pre>";
+
+echo "<p>Fase 1 completada: Modelos básicos implementados.</p>";
+
+
+=============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\tests\phpinfo.php
+=============================================================
+
+<?php phpinfo(); ?>
+
+
+=============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\tests\test.php
+=============================================================
+
+<?php
+
+echo "Prueba de servidor funcionando";
+
+
+=============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\tests\test_mail.php
+=============================================================
+
+<?php
+// filepath: c:\xampp\htdocs\ENCASA_DATABASE\test_mail.php
+require_once 'index.php';
+
+// Crear instancia del servicio de email
+$emailService = new \App\Helpers\EmailService();
+
+// Intentar enviar un correo de prueba
+$result = $emailService->sendVerificationCode(
+    'rafa.gzfr@gmail.com', // Reemplaza con tu correo
+    'Usuario de Prueba', 
+    '123456'
+);
+
+echo $result ? '✅ Correo enviado correctamente' : '❌ Error al enviar el correo';
+
+
+=============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\tests\test_miembro.php
+=============================================================
+
+<?php
+// filepath: c:\xampp\htdocs\ENCASA_DATABASE\test_miembro.php
+
+require_once __DIR__ . '/app/config/config.php';
+require_once __DIR__ . '/app/config/database.php';
+require_once __DIR__ . '/app/models/Model.php';
+require_once __DIR__ . '/app/models/Miembro.php';
+
+$id = isset($_GET['id']) ? (int)$_GET['id'] : 2;
+
+echo "<h1>Prueba de miembro ID: {$id}</h1>";
+
+try {
+    // Inicializar modelo
+    $miembroModel = new \App\Models\Miembro();
+    
+    // Verificar existencia
+    $exists = $miembroModel->checkMemberExists($id);
+    echo "<p>¿Existe el miembro?: " . ($exists ? 'SÍ' : 'NO') . "</p>";
+    
+    if ($exists) {
+        // Obtener perfil
+        $miembro = $miembroModel->getFullProfile($id);
+        
+        echo "<h2>Datos del perfil:</h2>";
+        echo "<pre>";
+        print_r($miembro);
+        echo "</pre>";
+        
+        echo "<p>URL de perfil: <a href='" . APP_URL . "/miembros/{$id}' target='_blank'>Ver perfil en sistema</a></p>";
+    }
+} catch (Exception $e) {
+    echo "<p style='color:red'>Error: " . $e->getMessage() . "</p>";
+}
+
+
+=============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\tests\test_router.php
+=============================================================
+
 
 

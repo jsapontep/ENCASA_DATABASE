@@ -1,10 +1,13 @@
 <?php
+// filepath: c:\xampp\htdocs\ENCASA_DATABASE\app\config\database.php
 
-// Configuración de la base de datos
-define('DB_HOST', 'localhost');
-define('DB_NAME', 'IglesiaEnCasa');
-define('DB_USER', 'root');
-define('DB_PASS', '');
+// Eliminar estas líneas que causan la redefinición de constantes
+// define('DB_HOST', 'localhost');
+// define('DB_NAME', 'IglesiaEnCasa');
+// define('DB_USER', 'root');
+// define('DB_PASS', '');
+
+// Solo mantener las que no están en config.php
 define('DB_PORT', '3306');
 define('DB_CHARSET', 'utf8mb4');
 
@@ -14,9 +17,9 @@ class Database {
     private $conn;
     
     private function __construct() {
-        // Usando constantes ya definidas en config.php
+        // Usar las constantes ya definidas en config.php
         try {
-            $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4";
+            $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET;
             $options = [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
@@ -40,6 +43,6 @@ class Database {
     }
 }
 
-// Crear una instancia de conexión si no existe
+// Crear una instancia de la base de datos global para uso general
 $database = Database::getInstance();
 $db = $database->getConnection();

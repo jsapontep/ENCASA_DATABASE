@@ -113,27 +113,146 @@ class Miembro extends Model {
     }
     
     /**
-     * Obtiene un miembro con toda su información relacionada
+     * Obtiene el perfil completo de un miembro
      */
     public function getFullProfile($id) {
-        // Información general
-        $miembro = $this->findById($id);
+        // Asegurar que el ID es un entero
+        $id = (int)$id;
+        
+        // Preparar consulta principal
+        $sql = "SELECT * FROM InformacionGeneral WHERE id = ?";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$id]);
+        $miembro = $stmt->fetch(\PDO::FETCH_ASSOC);
         
         if (!$miembro) {
             return null;
         }
         
-        // Obtener datos relacionados
-        $contactoModel = new Contacto();
-        $estudiosModel = new EstudiosTrabajo();
-        $tallasModel = new Tallas();
-        $carreraModel = new CarreraBiblica();
+        // Obtener datos de contacto
+        $sql = "SELECT * FROM Contacto WHERE miembro_id = ?";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$id]);
+        $contacto = $stmt->fetch(\PDO::FETCH_ASSOC);
+        if ($contacto) {
+            $miembro['contacto'] = $contacto;
+        }
         
-        $miembro['contacto'] = $contactoModel->findByMiembro($id);
-        $miembro['estudios_trabajo'] = $estudiosModel->findByMiembro($id);
-        $miembro['tallas'] = $tallasModel->findByMiembro($id);
-        $miembro['carrera_biblica'] = $carreraModel->findByMiembro($id);
+        // Obtener datos de estudios y trabajo
+        $sql = "SELECT * FROM EstudiosTrabajo WHERE miembro_id = ?";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$id]);
+        $estudios = $stmt->fetch(\PDO::FETCH_ASSOC);
+        if ($estudios) {
+            $miembro['estudios'] = $estudios;
+        }
+        
+        // Obtener datos de tallas
+        $sql = "SELECT * FROM Tallas WHERE miembro_id = ?";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$id]);
+        $tallas = $stmt->fetch(\PDO::FETCH_ASSOC);
+        if ($tallas) {
+            $miembro['tallas'] = $tallas;
+        }
+        
+        // Obtener datos de carrera bíblica
+        $sql = "SELECT * FROM CarreraBiblica WHERE miembro_id = ?";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$id]);
+        $carrera = $stmt->fetch(\PDO::FETCH_ASSOC);
+        if ($carrera) {
+            $miembro['carrera'] = $carrera;
+        }
         
         return $miembro;
     }
+    
+    /**
+     * Verifica si un miembro existe en la base de datos
+     */
+    public function checkMemberExists($id) {
+        $sql = "SELECT id FROM {$this->table} WHERE id = :id";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['id' => $id]);
+        return $stmt->rowCount() > 0;
+    }
+    
+    /**
+     * Crea un nuevo registro en la tabla de información general
+     */
+    public function crear($datos) {
+        try {
+            // Preparar consulta
+            $campos = array_keys($datos);
+            $valores = array_values($datos);
+            
+            $campos_str = implode(', ', $campos);
+            $placeholders = implode(', ', array_fill(0, count($campos), '?'));
+            
+            $sql = "INSERT INTO InformacionGeneral ($campos_str) VALUES ($placeholders)";
+            
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($valores);
+            
+            return $this->db->lastInsertId();
+        } catch (\PDOException $e) {
+            error_log("Error al crear miembro: " . $e->getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Guarda datos de contacto de un miembro
+     */
+    public function guardarContacto($datos) {
+        try {
+            // Verificar si ya existe un registro para este miembro
+            $stmt = $this->db->prepare("SELECT id FROM Contacto WHERE miembro_id = ?");
+            $stmt->execute([$datos['miembro_id']]);
+            $existe = $stmt->fetch(\PDO::FETCH_ASSOC);
+            
+            if ($existe) {
+                // Actualizar registro existente
+                $id = $existe['id'];
+                
+                // Eliminar miembro_id del array para la actualización
+                $miembro_id = $datos['miembro_id'];
+                unset($datos['miembro_id']);
+                
+                $sets = [];
+                foreach ($datos as $campo => $valor) {
+                    $sets[] = "$campo = ?";
+                }
+                $sets_str = implode(', ', $sets);
+                
+                $sql = "UPDATE Contacto SET $sets_str WHERE id = ?";
+                
+                $stmt = $this->db->prepare($sql);
+                $stmt->execute([...array_values($datos), $id]);
+            } else {
+                // Insertar nuevo registro
+                $campos = array_keys($datos);
+                $valores = array_values($datos);
+                
+                $campos_str = implode(', ', $campos);
+                $placeholders = implode(', ', array_fill(0, count($campos), '?'));
+                
+                $sql = "INSERT INTO Contacto ($campos_str) VALUES ($placeholders)";
+                
+                $stmt = $this->db->prepare($sql);
+                $stmt->execute($valores);
+            }
+            
+            return true;
+        } catch (\PDOException $e) {
+            error_log("Error al guardar contacto: " . $e->getMessage());
+            return false;
+        }
+    }
+    
+    // Implementar métodos similares para las otras tablas:
+    // - guardarEstudiosTrabajo()
+    // - guardarTallas()
+    // - guardarCarreraBiblica()
 }

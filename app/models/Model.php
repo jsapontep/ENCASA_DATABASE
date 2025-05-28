@@ -143,4 +143,17 @@ abstract class Model {
         $stmt->execute($params);
         return $stmt;
     }
+    
+    /**
+     * Obtiene una fila de la base de datos
+     * 
+     * @param string $sql Consulta SQL
+     * @param array $params Parámetros para la consulta
+     * @return array|null Fila encontrada o null
+     */
+    protected function getRow($sql, $params = []) {
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetch(\PDO::FETCH_ASSOC);
+    }
 }

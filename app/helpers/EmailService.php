@@ -25,7 +25,7 @@ class EmailService {
             $this->mailer->SMTPDebug = 0; // 0 = sin depuración
         }
         
-        // No verificar certificado SSL para desarrollo
+        // Esto debería usarse solo en desarrollo
         $this->mailer->SMTPOptions = [
             'ssl' => [
                 'verify_peer' => false,
@@ -37,10 +37,10 @@ class EmailService {
         // Configurar servidor SMTP
         $this->mailer->isSMTP();
         $this->mailer->Host = SMTP_HOST;
-        $this->mailer->SMTPAuth = true;
+        $this->mailer->SMTPAuth = SMTP_AUTH; // Usar la constante en lugar de hardcodear true
         $this->mailer->Username = SMTP_USER;
         $this->mailer->Password = SMTP_PASS;
-        $this->mailer->SMTPSecure = 'tls';
+        $this->mailer->SMTPSecure = SMTP_SECURE; // Usar la constante en lugar de hardcodear 'tls'
         $this->mailer->Port = SMTP_PORT;
         $this->mailer->CharSet = 'UTF-8';
         
