@@ -29,50 +29,62 @@ class AuthController extends Controller {
      * Procesa el intento de login
      */
     public function authenticate() {
-        // Validar el formulario
-        $validation = $this->validate($_POST, [
-            'username' => ['required'],
-            'password' => ['required']
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('login');
+            return;
+        }
+
+        $email_or_username = $_POST['email_or_username'] ?? '';
+        $password = $_POST['password'] ?? '';
+
+        if (empty($email_or_username) || empty($password)) {
+            return $this->renderWithLayout('auth/login', 'auth', [
+                'error' => 'Por favor ingrese su correo/usuario y contraseña',
+                'title' => 'Iniciar Sesión'
+            ]);
+        }
+
+        $userModel = new \App\Models\Usuario();
+        $user = $userModel->findByEmailOrUsername($email_or_username);
+
+        // Este es el cambio clave: primero verifica las credenciales, luego el estado
+        if ($user && password_verify($password, $user['password'])) {
+            // Si las credenciales son correctas, verificar el estado del usuario
+            if (strtolower($user['estado']) != 'activo') {
+                // Usuario no activo - Mostrar mensaje de verificación pendiente
+                $_SESSION['pending_verification'] = [
+                    'user_id' => $user['id'],
+                    'email' => $user['email'],
+                    'name' => $user['nombre_completo']
+                ];
+                
+                $_SESSION['flash_message'] = 'Tu cuenta aún no ha sido verificada. Por favor revisa tu correo electrónico para el código de verificación.';
+                $_SESSION['flash_type'] = 'warning';
+                
+                // Añadir un enlace para reenviar el código
+                $_SESSION['flash_action'] = '<a href="'.APP_URL.'/auth/resendCode" class="btn btn-sm btn-primary mt-2">Reenviar código</a>';
+                
+                return $this->renderWithLayout('auth/login', 'auth', [
+                    'error' => 'Tu cuenta aún no ha sido verificada.',
+                    'title' => 'Iniciar Sesión'
+                ]);
+            }
+            
+            // Si el usuario está activo, procede con el inicio de sesión normal
+            $_SESSION['user_id'] = $user['id'];
+            $_SESSION['user_name'] = $user['nombre_completo'];
+            $_SESSION['user_role'] = $user['rol_id'];
+            
+            // Redireccionar al panel adecuado
+            $this->redirect(''); // Redirige a la página de inicio
+            return;
+        }
+        
+        // Si llegamos aquí, las credenciales son incorrectas
+        return $this->renderWithLayout('auth/login', 'auth', [
+            'error' => 'Credenciales incorrectas',
+            'title' => 'Iniciar Sesión'
         ]);
-        
-        if (!$validation) {
-            $_SESSION['flash_message'] = 'Por favor completa todos los campos';
-            $_SESSION['flash_type'] = 'danger';
-            $this->redirect('login');
-            return;
-        }
-        
-        $username = trim($_POST['username']);
-        $password = $_POST['password'];
-        
-        // Intentar autenticar
-        $user = $this->userModel->authenticate($username, $password);
-        
-        if (!$user) {
-            $_SESSION['flash_message'] = 'Credenciales incorrectas';
-            $_SESSION['flash_type'] = 'danger';
-            $this->redirect('login');
-            return;
-        }
-        
-        // Verificar si el usuario está activo
-        if ($user['estado'] !== 'Activo') {
-            $_SESSION['flash_message'] = 'Tu cuenta está desactivada';
-            $_SESSION['flash_type'] = 'warning';
-            $this->redirect('login');
-            return;
-        }
-        
-        // Iniciar sesión
-        $_SESSION['user_id'] = $user['id'];
-        $_SESSION['username'] = $user['username'];
-        $_SESSION['nombre_completo'] = $user['nombre_completo'];
-        
-        $_SESSION['flash_message'] = 'Has iniciado sesión correctamente';
-        $_SESSION['flash_type'] = 'success';
-        
-        // Redirigir al dashboard
-        $this->redirect('');
     }
     
     /**
@@ -120,10 +132,10 @@ class AuthController extends Controller {
             'email' => $_POST['email'] ?? '',
             'password' => $_POST['password'] ?? '',
             'password_confirmation' => $_POST['password_confirmation'] ?? '',
-            // Añadir campos obligatorios para la BD
-            'miembro_id' => 1,  // Asegúrate de que este ID exista en InformacionGeneral
-            'rol_id' => 5,      // Asegúrate de que este ID exista en Roles
-            'estado' => 'Activo'
+            'miembro_id' => 1,
+            'rol_id' => 5,
+            // Cambiar esto:
+            'estado' => defined('REQUIRE_EMAIL_VERIFICATION') && REQUIRE_EMAIL_VERIFICATION ? 'Pendiente' : 'Activo'
         ];
         
         // Validar datos
@@ -149,22 +161,148 @@ class AuthController extends Controller {
         
         // Si hay errores, mostrar formulario con errores
         if (!empty($errors)) {
-            return $this->view('auth/register', ['errors' => $errors]);
+            return $this->renderWithLayout('auth/register', 'auth', [
+                'errors' => $errors,
+                'title' => 'Registro de Usuario',
+                'data' => $data // Para mantener los datos ingresados
+            ]);
         }
         
         // Intentar registrar al usuario
+        error_log('Estado del usuario al registrar: ' . $data['estado']);
+
         $userModel = new \App\Models\Usuario();
         $result = $userModel->register($data);
         
         if ($result) {
-            // Registro exitoso
-            $_SESSION['success_message'] = "Registro exitoso. Ahora puedes iniciar sesión.";
-            header('Location: ' . APP_URL . '/login');
-            exit;
+            $userId = $result;
+            
+            // Verificar si se requiere verificación por correo
+            if (defined('REQUIRE_EMAIL_VERIFICATION') && REQUIRE_EMAIL_VERIFICATION) {
+                $userModel->update($userId, ['estado' => 'Pendiente']);
+                
+                // Generar código de verificación
+                $verificationModel = new \App\Models\VerificationCode();
+                $code = $verificationModel->createForUser($userId);
+                
+                // Guardar datos en sesión para la verificación
+                $_SESSION['pending_verification'] = [
+                    'user_id' => $userId,
+                    'email' => $data['email'],  // Asegúrate de que esta variable existe en tu contexto
+                    'name' => $data['nombre_completo']   // Asegúrate de que esta variable existe en tu contexto
+                ];
+                
+                // Enviar código por correo
+                $emailService = new \App\Helpers\EmailService();
+                $emailService->sendVerificationCode($data['email'], $data['nombre_completo'], $code);
+                
+                // Redirigir a la página de verificación
+                $this->redirect('auth/verify');
+                return;
+            } else {
+                // Si no se requiere verificación, continuar con el flujo normal
+                $_SESSION['flash_message'] = 'Registro exitoso. Ya puedes iniciar sesión.';
+                $_SESSION['flash_type'] = 'success';
+                $this->redirect('login');
+                return;
+            }
         } else {
             // Error en el registro
             $errors[] = "No se pudo completar el registro. El usuario o correo ya existe.";
-            return $this->view('auth/register', ['errors' => $errors]);
+            return $this->renderWithLayout('auth/register', 'auth', [
+                'errors' => $errors,
+                'title' => 'Registro de Usuario',
+                'data' => $data // Para mantener los datos ingresados
+            ]);
         }
+    }
+    
+    /**
+     * Muestra y procesa la verificación del código
+     */
+    public function verify() {
+        // Si no hay verificación pendiente, redirigir a login
+        if (!isset($_SESSION['pending_verification'])) {
+            $this->redirect('login');
+            return;
+        }
+        
+        // Si es POST, verificar el código
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $code = trim($_POST['code'] ?? '');
+            $userId = $_SESSION['pending_verification']['user_id'];
+            
+            if (empty($code)) {
+                return $this->renderWithLayout('auth/verify', 'auth', [
+                    'error' => 'Ingrese el código de verificación',
+                    'email' => $_SESSION['pending_verification']['email'],
+                    'title' => 'Verificación de Cuenta'
+                ]);
+            }
+            
+            // Verificar el código
+            $verificationModel = new \App\Models\VerificationCode();
+            $isValid = $verificationModel->verifyCode($userId, $code);
+            
+            if ($isValid) {
+                // Activar el usuario
+                $userModel = new \App\Models\Usuario();
+                $userModel->update($userId, ['estado' => 'Activo']);
+                
+                // Limpiar datos de verificación pendiente
+                unset($_SESSION['pending_verification']);
+                
+                // Mensaje de éxito
+                $_SESSION['flash_message'] = 'Cuenta verificada correctamente. Ya puedes iniciar sesión.';
+                $_SESSION['flash_type'] = 'success';
+                
+                $this->redirect('login');
+                return;
+            } else {
+                return $this->renderWithLayout('auth/verify', 'auth', [
+                    'error' => 'Código de verificación inválido o expirado',
+                    'email' => $_SESSION['pending_verification']['email'],
+                    'title' => 'Verificación de Cuenta'
+                ]);
+            }
+        }
+        
+        // Mostrar formulario de verificación
+        return $this->renderWithLayout('auth/verify', 'auth', [
+            'email' => $_SESSION['pending_verification']['email'],
+            'title' => 'Verificación de Cuenta'
+        ]);
+    }
+    
+    /**
+     * Reenvía el código de verificación
+     */
+    public function resendCode() {
+        if (!isset($_SESSION['pending_verification'])) {
+            $this->redirect('login');
+            return;
+        }
+        
+        $userId = $_SESSION['pending_verification']['user_id'];
+        $email = $_SESSION['pending_verification']['email'];
+        $name = $_SESSION['pending_verification']['name'];
+        
+        // Generar nuevo código
+        $verificationModel = new \App\Models\VerificationCode();
+        $code = $verificationModel->createForUser($userId);
+        
+        // Enviar código
+        $emailService = new \App\Helpers\EmailService();
+        $sent = $emailService->sendVerificationCode($email, $name, $code);
+        
+        if ($sent) {
+            $_SESSION['flash_message'] = 'Código de verificación reenviado correctamente.';
+            $_SESSION['flash_type'] = 'success';
+        } else {
+            $_SESSION['flash_message'] = 'Error al enviar el código. Inténtelo de nuevo.';
+            $_SESSION['flash_type'] = 'danger';
+        }
+        
+        $this->redirect('auth/verify');
     }
 }

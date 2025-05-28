@@ -35,6 +35,11 @@ $router->get('logout', 'Auth', 'logout');
 $router->get('registro', 'Auth', 'register');
 $router->post('auth/registro', 'Auth', 'store');
 
+// Rutas de verificación
+$router->get('auth/verify', 'Auth', 'verify');
+$router->post('auth/verify', 'Auth', 'verify');
+$router->get('auth/resendCode', 'Auth', 'resendCode');
+
 // Rutas de error
 $router->setNotFound(function() {
     include VIEW_PATH . '/errors/404.php';

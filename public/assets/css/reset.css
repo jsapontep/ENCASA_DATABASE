@@ -1,0 +1,86 @@
+/* NORMALIZACIÓN Y RESET */
+
+/* Box sizing para todos los elementos */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* Reset de márgenes y paddings */
+html, body, div, span, h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+a, abbr, address, cite, code, img, small, strike, strong, sub, sup,
+dl, dt, dd, ol, ul, li, fieldset, form, label, legend, table, caption,
+tbody, tfoot, thead, tr, th, td, article, aside, canvas, details, embed,
+figure, figcaption, footer, header, menu, nav, output, ruby, section,
+summary, time, mark, audio, video {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  vertical-align: baseline;
+}
+
+/* HTML5 display-role reset para navegadores antiguos */
+article, aside, details, figcaption, figure, 
+footer, header, main, menu, nav, section {
+  display: block;
+}
+
+/* Arregla la línea base */
+html {
+  line-height: 1.15;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Hacer las imágenes responsivas */
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Listas sin estilo por defecto */
+ul, ol {
+  list-style: none;
+}
+
+/* Hacer los enlaces sin decoración y heredar colores */
+a {
+  text-decoration: none;
+  color: inherit;
+  background-color: transparent;
+}
+
+a:hover {
+  text-decoration: underline;
+  color: var(--primary);
+}
+
+/* Hacer formularios consistentes */
+button,
+input,
+optgroup,
+select,
+textarea {
+  font-family: inherit;
+  font-size: 100%;
+  line-height: 1.15;
+  margin: 0;
+}
+
+button,
+input {
+  overflow: visible;
+}
+
+button,
+select {
+  text-transform: none;
+}
+
+button,
+[type="button"],
+[type="reset"],
+[type="submit"] {
+  -webkit-appearance: button;
+}
