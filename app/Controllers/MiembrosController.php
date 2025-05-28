@@ -411,6 +411,102 @@ class MiembrosController extends Controller {
     }
 
     /**
+     * Verifica que el token CSRF sea válido
+     */
+    private function validarCsrfToken() {
+        if (!isset($_POST['csrf_token'])) {
+            error_log("CSRF token no proporcionado");
+            return false;
+        }
+        
+        if (!isset($_SESSION['csrf_token'])) {
+            error_log("No hay token CSRF en la sesión");
+            return false;
+        }
+        
+        if ($_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+            error_log("CSRF tokens no coinciden: POST=" . $_POST['csrf_token'] . ", SESSION=" . $_SESSION['csrf_token']);
+            return false;
+        }
+        
+        return true;
+    }
+
+    /**
+     * Elimina un miembro y todos sus registros relacionados
+     */
+    public function eliminar($id = null) {
+        // Verificar que sea una petición POST para evitar eliminaciones accidentales
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $_SESSION['flash_message'] = 'Método no permitido';
+            $_SESSION['flash_type'] = 'danger';
+            $this->redirect('miembros');
+            return;
+        }
+        
+        // Validar y sanitizar ID
+        if (!$id) {
+            $uri = $_SERVER['REQUEST_URI'];
+            if (preg_match('#/miembros/eliminar/(\d+)#', $uri, $matches)) {
+                $id = (int)$matches[1];
+            } else {
+                $_SESSION['flash_message'] = 'ID de miembro no especificado';
+                $_SESSION['flash_type'] = 'danger';
+                $this->redirect('miembros');
+                return;
+            }
+        }
+        
+        // Verificar token CSRF para mayor seguridad
+        if (!$this->validarCsrfToken()) {
+            // Regenerar token para evitar bloqueos
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+            
+            $_SESSION['flash_message'] = 'Error de seguridad: Token inválido. Por favor, inténtalo nuevamente.';
+            $_SESSION['flash_type'] = 'danger';
+            $this->redirect('miembros');
+            return;
+        }
+        
+        // Verificar que el miembro existe
+        $miembro = $this->miembroModel->getById($id);
+        if (!$miembro) {
+            $_SESSION['flash_message'] = 'Miembro no encontrado';
+            $_SESSION['flash_type'] = 'danger';
+            $this->redirect('miembros');
+            return;
+        }
+        
+        // Agregar depuración antes de eliminar
+        error_log("Intentando eliminar miembro con ID: $id");
+        
+        // Intentar eliminar el miembro y todos sus registros relacionados
+        $resultado = $this->miembroModel->eliminarCompleto($id);
+        
+        // Verificar si se eliminó correctamente
+        if ($resultado) {
+            error_log("Miembro eliminado correctamente");
+            // Verificación adicional
+            $verificacion = $this->miembroModel->getById($id);
+            if ($verificacion) {
+                error_log("ERROR: El miembro sigue existiendo en la base de datos");
+            } else {
+                error_log("VERIFICADO: El miembro ya no existe en la base de datos");
+            }
+            
+            $_SESSION['flash_message'] = 'Miembro eliminado exitosamente';
+            $_SESSION['flash_type'] = 'success';
+        } else {
+            error_log("Error al eliminar el miembro");
+            $_SESSION['flash_message'] = 'Error al eliminar el miembro';
+            $_SESSION['flash_type'] = 'danger';
+        }
+        
+        // Redireccionar al listado de miembros
+        $this->redirect('miembros');
+    }
+
+    /**
      * Obtiene los parámetros de la URL
      */
     private function getParams() {

@@ -4,8 +4,6 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-// Configurar visualización de errores para desarrollo
-
 // Definir constantes del sistema
 define('BASE_PATH', __DIR__);
 define('APP_PATH', BASE_PATH . '/app');
@@ -19,6 +17,7 @@ require_once CONFIG_PATH . '/config.php';
 require_once CONFIG_PATH . '/database.php';
 require_once CONFIG_PATH . '/autoload.php';
 require_once CONFIG_PATH . '/mail_autoload.php';
+require_once APP_PATH . '/helpers/functions.php'; // Nueva línea añadida
 
 // Configuración de sesiones
 ini_set('session.cookie_httponly', 1);

@@ -365,4 +365,50 @@ echo "<!-- DEBUG: " . htmlspecialchars(json_encode($miembro)) . " -->";
             </div>
         </div>
     </div>
+
+    <!-- Botón de Eliminar -->
+    <div class="mt-4 text-center">
+        <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#eliminarModal">
+            <i class="fas fa-trash-alt"></i> Eliminar Miembro
+        </button>
+    </div>
+
+    <!-- Modal de Confirmación -->
+    <div class="modal fade" id="eliminarModal" tabindex="-1" aria-labelledby="eliminarModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="eliminarModalLabel">Confirmar Eliminación</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i> 
+                        <strong>¡Advertencia!</strong> Esta acción eliminará permanentemente todos los datos de:
+                    </div>
+                    <p class="text-center fs-5">
+                        <?= htmlspecialchars($miembro['nombres'] . ' ' . $miembro['apellidos']) ?>
+                    </p>
+                    <p>Esta acción no se puede deshacer. Se eliminarán permanentemente:</p>
+                    <ul>
+                        <li>Información personal y de contacto</li>
+                        <li>Datos de estudios y trabajo</li>
+                        <li>Información de tallas</li>
+                        <li>Datos de carrera bíblica</li>
+                        <li>Información de salud y emergencias</li>
+                        <li>Fotografía del miembro</li>
+                    </ul>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <form action="<?= APP_URL ?>/miembros/eliminar/<?= $miembro['id'] ?>" method="post">
+                        <?= csrf_field() ?>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-trash-alt"></i> Eliminar Definitivamente
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>

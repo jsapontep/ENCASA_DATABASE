@@ -1,8 +1,21 @@
 <?php
 // Configuración general de la aplicación
 define('APP_NAME', 'Iglesia En Casa');
-define('APP_URL', 'http://localhost/ENCASA_DATABASE');
-define('APP_ENV', 'development'); // 'development' o 'production'
+
+// Reemplazar la definición actual de APP_URL con una detección automática
+$protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https://' : 'http://';
+$host = $_SERVER['HTTP_HOST'];
+
+// Detectar si estamos en el túnel o en localhost
+if (strpos($host, 'localto.net') !== false) {
+    // Estamos en el túnel
+    define('APP_URL', $protocol . $host . '/encasa_database');
+    define('APP_ENV', 'tunnel');
+} else {
+    // Estamos en localhost normal
+    define('APP_URL', $protocol . $host . '/ENCASA_DATABASE');
+    define('APP_ENV', 'local');
+}
 
 // Configuración de zona horaria
 date_default_timezone_set('America/Bogota');

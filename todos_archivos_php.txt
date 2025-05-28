@@ -359,6 +359,45 @@ try {
 
 
 =============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\setup_directories.php
+=============================================================
+
+<?php
+// filepath: c:\xampp\htdocs\ENCASA_DATABASE\setup_directories.php
+
+// Definir directorio base
+define('BASE_PATH', __DIR__);
+
+// Directorios necesarios
+$directories = [
+    BASE_PATH . '/public',
+    BASE_PATH . '/public/uploads',
+    BASE_PATH . '/public/uploads/miembros',
+];
+
+// Crear directorios con permisos adecuados
+foreach ($directories as $directory) {
+    if (!file_exists($directory)) {
+        if (mkdir($directory, 0777, true)) {
+            echo "✅ Directorio creado: $directory\n";
+        } else {
+            echo "❌ Error al crear directorio: $directory\n";
+        }
+    } else {
+        echo "📁 Directorio ya existe: $directory\n";
+        
+        // Verificar permisos
+        if (!is_writable($directory)) {
+            chmod($directory, 0777);
+            echo "🔑 Permisos actualizados para: $directory\n";
+        }
+    }
+}
+
+echo "\n✅ Configuración de directorios completada.\n";
+
+
+=============================================================
 ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\test_logs.php
 =============================================================
 
@@ -466,6 +505,100 @@ if (preg_match('#^miembros/(\d+)$#', $route, $matches)) {
 
 
 =============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\test_upload.php
+=============================================================
+
+<?php
+// filepath: c:\xampp\htdocs\ENCASA_DATABASE\test_upload.php
+
+// Script para probar la carga de imágenes
+require_once __DIR__ . '/app/config/config.php';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['test_image'])) {
+    // Directorio de destino
+    $uploadDir = __DIR__ . '/public/uploads/miembros/';
+    
+    // Asegurarse de que el directorio existe
+    if (!file_exists($uploadDir)) {
+        mkdir($uploadDir, 0777, true);
+    }
+    
+    // Generar nombre aleatorio
+    $fileName = uniqid() . '_' . $_FILES['test_image']['name'];
+    $targetFile = $uploadDir . $fileName;
+    
+    // Intentar mover el archivo
+    if (move_uploaded_file($_FILES['test_image']['tmp_name'], $targetFile)) {
+        $message = "✅ Archivo subido exitosamente a: $targetFile";
+        $imageUrl = APP_URL . '/public/uploads/miembros/' . $fileName;
+    } else {
+        $message = "❌ Error al subir el archivo";
+        $imageUrl = null;
+    }
+}
+?>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Prueba de Carga de Imágenes</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>Prueba de Carga de Imágenes</h1>
+        
+        <?php if (isset($message)): ?>
+            <div class="alert <?= strpos($message, '✅') !== false ? 'alert-success' : 'alert-danger' ?>">
+                <?= $message ?>
+            </div>
+            
+            <?php if ($imageUrl): ?>
+                <div class="card mb-4">
+                    <div class="card-header">Imagen Cargada</div>
+                    <div class="card-body text-center">
+                        <img src="<?= $imageUrl ?>" class="img-fluid" style="max-height: 300px;">
+                    </div>
+                </div>
+                
+                <div class="card mb-4">
+                    <div class="card-header">URLs de prueba</div>
+                    <div class="card-body">
+                        <p>URL 1: <a href="<?= $imageUrl ?>" target="_blank"><?= $imageUrl ?></a></p>
+                        <p>URL 2: <a href="<?= str_replace('/public', '', $imageUrl) ?>" target="_blank"><?= str_replace('/public', '', $imageUrl) ?></a></p>
+                    </div>
+                </div>
+            <?php endif; ?>
+        <?php endif; ?>
+        
+        <div class="card">
+            <div class="card-header">Formulario de Prueba</div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="test_image" class="form-label">Seleccionar Imagen</label>
+                        <input type="file" class="form-control" id="test_image" name="test_image" accept="image/*" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Subir Imagen</button>
+                </form>
+            </div>
+        </div>
+        
+        <div class="mt-4">
+            <h3>Información del Sistema</h3>
+            <ul>
+                <li>BASE_PATH: <?= BASE_PATH ?></li>
+                <li>APP_URL: <?= APP_URL ?></li>
+                <li>Directorio de subida: <?= __DIR__ . '/public/uploads/miembros/' ?></li>
+                <li>Permisos: <?= substr(sprintf('%o', fileperms(__DIR__ . '/public')), -4) ?></li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>
+
+
+=============================================================
 ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\verify_router.php
 =============================================================
 
@@ -505,6 +638,20 @@ if (preg_match('#/miembros/(\d+)#', $_SERVER['REQUEST_URI'], $matches)) {
 }
 
 echo "<p><a href='miembros/2?nocache=" . time() . "' target='_blank'>Intentar acceso normal</a></p>";
+
+
+=============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\config\app.php
+=============================================================
+
+<?php
+// filepath: c:\xampp\htdocs\ENCASA_DATABASE\app\config\app.php
+
+// Añadir al final del archivo o donde sea apropiado
+// Asegúrate de que se genere un token CSRF en cada carga de página
+if (!isset($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
 
 
 =============================================================
@@ -559,7 +706,7 @@ ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\config\config.php
 <?php
 // Configuración general de la aplicación
 define('APP_NAME', 'Iglesia En Casa');
-define('APP_URL', 'http://localhost/Encasa_Database');
+define('APP_URL', 'http://localhost/ENCASA_DATABASE');
 define('APP_ENV', 'development'); // 'development' o 'production'
 
 // Configuración de zona horaria
@@ -812,6 +959,9 @@ $router->get('miembros', 'Miembros', 'index', ['Auth']);
 $router->get('miembros/crear', 'Miembros', 'crear', ['Auth']);
 $router->post('miembros/guardar', 'Miembros', 'guardar', ['Auth']);
 $router->get('miembros/{id}', 'Miembros', 'ver', ['Auth']);
+$router->get('miembros/editar/{id}', 'Miembros', 'editar', ['Auth']);
+$router->post('miembros/actualizar/{id}', 'Miembros', 'actualizar', ['Auth']);
+$router->post('miembros/eliminar/{id}', 'Miembros', 'eliminar', ['Auth']);
 
 // Rutas de ministerios
 $router->get('ministerios', 'Ministerios', 'index', ['Auth']);
@@ -1506,6 +1656,13 @@ class MiembrosController extends Controller {
             $this->miembroModel->guardarCarreraBiblica($carrera);
         }
         
+        // Guardar información de salud y emergencias
+        if (isset($_POST['salud']) && is_array($_POST['salud'])) {
+            $salud = $_POST['salud'];
+            $salud['miembro_id'] = $miembroId;
+            $this->miembroModel->guardarSaludEmergencias($salud);
+        }
+        
         $_SESSION['flash_message'] = 'Miembro registrado exitosamente';
         $_SESSION['flash_type'] = 'success';
         $this->redirect('miembros/' . $miembroId);
@@ -1515,17 +1672,21 @@ class MiembrosController extends Controller {
      * Procesa y guarda la foto subida
      */
     private function procesarFoto($archivo) {
-        // Directorio para guardar las fotos
-        $directorio = __DIR__ . '/../../public/uploads/miembros/';
+        // Directorio absoluto para guardar las fotos
+        $directorio = BASE_PATH . '/public/uploads/miembros/';
         
-        // Crear directorio si no existe
+        // Crear la estructura completa de directorios si no existe
         if (!file_exists($directorio)) {
-            mkdir($directorio, 0777, true);
+            if (!mkdir($directorio, 0777, true)) {
+                error_log("Error al crear directorio para fotos: $directorio");
+                return false;
+            }
         }
         
         // Validar el archivo
         $tiposPermitidos = ['image/jpeg', 'image/png', 'image/gif'];
         if (!in_array($archivo['type'], $tiposPermitidos)) {
+            error_log("Tipo de archivo no permitido: " . $archivo['type']);
             return false;
         }
         
@@ -1535,9 +1696,12 @@ class MiembrosController extends Controller {
         
         // Mover el archivo
         if (move_uploaded_file($archivo['tmp_name'], $rutaArchivo)) {
+            // Log de éxito para depuración
+            error_log("Foto guardada exitosamente en: $rutaArchivo");
             return $nombreArchivo;
         }
         
+        error_log("Error al mover archivo subido: " . $archivo['name']);
         return false;
     }
     
@@ -1582,10 +1746,335 @@ class MiembrosController extends Controller {
     }
 
     /**
+     * Muestra el formulario para editar un miembro existente
+     */
+    public function editar($id = null) {
+        // Depuración para ver el ID recibido
+        error_log("ID recibido en editar(): " . ($id ?? 'null'));
+        
+        // Capturar el ID directamente de la URL para asegurar que no hay errores
+        $uri = $_SERVER['REQUEST_URI'];
+        if (preg_match('#/miembros/editar/(\d+)#', $uri, $matches)) {
+            $id_from_url = (int)$matches[1];
+            error_log("ID extraído de URL: $id_from_url");
+            // Usar el ID de la URL directamente, ignorando el parámetro 
+            $id = $id_from_url;
+        }
+        
+        // Asegurar que ID es entero y mayor que cero
+        $id = (int)$id;
+        if ($id <= 0) {
+            $_SESSION['flash_message'] = 'ID de miembro inválido';
+            $_SESSION['flash_type'] = 'danger';
+            $this->redirect('miembros');
+            return;
+        }
+        
+        error_log("Buscando miembro con ID: $id");
+        
+        // Obtener datos del miembro directamente
+        try {
+            $miembro = $this->miembroModel->getFullProfile($id);
+            
+            // Verificar que el miembro obtenido coincide con el ID solicitado
+            if ($miembro && $miembro['id'] != $id) {
+                error_log("¡ERROR! ID solicitado ($id) no coincide con ID obtenido ({$miembro['id']})");
+                // Forzar consulta directa como solución
+                $db = \Database::getInstance()->getConnection();
+                $stmt = $db->prepare("SELECT * FROM InformacionGeneral WHERE id = ?");
+                $stmt->execute([$id]);
+                $miembro_correcto = $stmt->fetch(\PDO::FETCH_ASSOC);
+                
+                if ($miembro_correcto) {
+                    $miembro = $this->miembroModel->getFullProfile($miembro_correcto['id']);
+                }
+            }
+        } catch (\Exception $e) {
+            error_log("Error al obtener miembro: " . $e->getMessage());
+            $miembro = null;
+        }
+        
+        if (!$miembro) {
+            $_SESSION['flash_message'] = 'Miembro no encontrado';
+            $_SESSION['flash_type'] = 'danger';
+            $this->redirect('miembros');
+            return;
+        }
+        
+        // Verificación final
+        error_log("Mostrando formulario de edición para miembro ID: {$miembro['id']}");
+        
+        // Obtener lista de miembros para el selector de "invitado por"
+        $miembros = $this->miembroModel->getAll();
+        
+        // Renderizar la vista de edición (reutilizamos el formulario de crear)
+        return $this->renderWithLayout('miembros/crear', 'default', [
+            'miembro' => $miembro,
+            'miembros' => $miembros,
+            'title' => "Editar perfil de {$miembro['nombres']} {$miembro['apellidos']}"
+        ]);
+    }
+
+    /**
+     * Procesa la actualización de un miembro existente
+     */
+    public function actualizar($id = null) {
+        // Verificar que sea una petición POST
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $this->redirect('miembros');
+            return;
+        }
+        
+        // Validar y sanitizar ID
+        if (!$id) {
+            $uri = $_SERVER['REQUEST_URI'];
+            if (preg_match('#/miembros/actualizar/(\d+)#', $uri, $matches)) {
+                $id = (int)$matches[1];
+            } else {
+                $_SESSION['flash_message'] = 'ID de miembro no especificado';
+                $_SESSION['flash_type'] = 'danger';
+                $this->redirect('miembros');
+                return;
+            }
+        }
+        
+        // Asegurar que ID es entero
+        $id = (int)$id;
+        
+        // Verificar que el miembro existe
+        if (!$this->miembroModel->checkMemberExists($id)) {
+            $_SESSION['flash_message'] = 'Miembro no encontrado';
+            $_SESSION['flash_type'] = 'danger';
+            $this->redirect('miembros');
+            return;
+        }
+        
+        // Obtener y validar datos básicos
+        $datos = [
+            'nombres' => htmlspecialchars($_POST['nombres'] ?? ''),
+            'apellidos' => htmlspecialchars($_POST['apellidos'] ?? ''),
+            'celular' => htmlspecialchars($_POST['celular'] ?? ''),
+            'localidad' => htmlspecialchars($_POST['localidad'] ?? ''),
+            'barrio' => htmlspecialchars($_POST['barrio'] ?? ''),
+            'fecha_nacimiento' => $_POST['fecha_nacimiento'] ?? null,
+            'invitado_por' => !empty($_POST['invitado_por']) ? (int)$_POST['invitado_por'] : null,
+            'conector' => htmlspecialchars($_POST['conector'] ?? ''),
+            'recorrido_espiritual' => htmlspecialchars($_POST['recorrido_espiritual'] ?? ''),
+            'estado_espiritual' => htmlspecialchars($_POST['estado_espiritual'] ?? ''),
+            'habeas_data' => isset($_POST['habeas_data']) ? 1 : 0,
+        ];
+        
+        // Validar campos requeridos
+        if (empty($datos['nombres']) || empty($datos['apellidos']) || empty($datos['celular'])) {
+            $_SESSION['flash_message'] = 'Por favor complete los campos obligatorios';
+            $_SESSION['flash_type'] = 'danger';
+            $this->redirect("miembros/editar/{$id}");
+            return;
+        }
+        
+        // Procesar la foto si se subió
+        if (!empty($_FILES['foto']['name'])) {
+            $foto = $this->procesarFoto($_FILES['foto']);
+            if ($foto) {
+                $datos['foto'] = $foto;
+            }
+        }
+        
+        // Actualizar información general
+        $actualizado = $this->miembroModel->update($id, $datos);
+        
+        if (!$actualizado) {
+            $_SESSION['flash_message'] = 'Error al actualizar la información del miembro';
+            $_SESSION['flash_type'] = 'danger';
+            $this->redirect("miembros/editar/{$id}");
+            return;
+        }
+        
+        // Actualizar información de contacto
+        if (isset($_POST['contacto']) && is_array($_POST['contacto'])) {
+            $contacto = $_POST['contacto'];
+            $contacto['miembro_id'] = $id;
+            $this->miembroModel->guardarContacto($contacto);
+        }
+        
+        // Actualizar información de estudios y trabajo
+        if (isset($_POST['estudios']) && is_array($_POST['estudios'])) {
+            $estudios = $_POST['estudios'];
+            $estudios['miembro_id'] = $id;
+            $this->miembroModel->guardarEstudiosTrabajo($estudios);
+        }
+        
+        // Actualizar tallas
+        if (isset($_POST['tallas']) && is_array($_POST['tallas'])) {
+            $tallas = $_POST['tallas'];
+            $tallas['miembro_id'] = $id;
+            $this->miembroModel->guardarTallas($tallas);
+        }
+        
+        // Actualizar información de carrera bíblica
+        if (isset($_POST['carrera']) && is_array($_POST['carrera'])) {
+            $carrera = $_POST['carrera'];
+            $carrera['miembro_id'] = $id;
+            $this->miembroModel->guardarCarreraBiblica($carrera);
+        }
+        
+        // Actualizar información de salud y emergencias
+        if (isset($_POST['salud']) && is_array($_POST['salud'])) {
+            $salud = $_POST['salud'];
+            $salud['miembro_id'] = $id;
+            $this->miembroModel->guardarSaludEmergencias($salud);
+        }
+        
+        $_SESSION['flash_message'] = 'Información del miembro actualizada exitosamente';
+        $_SESSION['flash_type'] = 'success';
+        $this->redirect("miembros/{$id}");
+    }
+
+    /**
+     * Verifica que el token CSRF sea válido
+     */
+    private function validarCsrfToken() {
+        if (!isset($_POST['csrf_token'])) {
+            error_log("CSRF token no proporcionado");
+            return false;
+        }
+        
+        if (!isset($_SESSION['csrf_token'])) {
+            error_log("No hay token CSRF en la sesión");
+            return false;
+        }
+        
+        if ($_POST['csrf_token'] !== $_SESSION['csrf_token']) {
+            error_log("CSRF tokens no coinciden: POST=" . $_POST['csrf_token'] . ", SESSION=" . $_SESSION['csrf_token']);
+            return false;
+        }
+        
+        return true;
+    }
+
+    /**
+     * Elimina un miembro y todos sus registros relacionados
+     */
+    public function eliminar($id = null) {
+        // Verificar que sea una petición POST para evitar eliminaciones accidentales
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $_SESSION['flash_message'] = 'Método no permitido';
+            $_SESSION['flash_type'] = 'danger';
+            $this->redirect('miembros');
+            return;
+        }
+        
+        // Validar y sanitizar ID
+        if (!$id) {
+            $uri = $_SERVER['REQUEST_URI'];
+            if (preg_match('#/miembros/eliminar/(\d+)#', $uri, $matches)) {
+                $id = (int)$matches[1];
+            } else {
+                $_SESSION['flash_message'] = 'ID de miembro no especificado';
+                $_SESSION['flash_type'] = 'danger';
+                $this->redirect('miembros');
+                return;
+            }
+        }
+        
+        // Verificar token CSRF para mayor seguridad
+        if (!$this->validarCsrfToken()) {
+            // Regenerar token para evitar bloqueos
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+            
+            $_SESSION['flash_message'] = 'Error de seguridad: Token inválido. Por favor, inténtalo nuevamente.';
+            $_SESSION['flash_type'] = 'danger';
+            $this->redirect('miembros');
+            return;
+        }
+        
+        // Verificar que el miembro existe
+        $miembro = $this->miembroModel->getById($id);
+        if (!$miembro) {
+            $_SESSION['flash_message'] = 'Miembro no encontrado';
+            $_SESSION['flash_type'] = 'danger';
+            $this->redirect('miembros');
+            return;
+        }
+        
+        // Intentar eliminar el miembro y todos sus registros relacionados
+        $resultado = $this->miembroModel->eliminarCompleto($id);
+        
+        if ($resultado) {
+            $_SESSION['flash_message'] = 'Miembro eliminado exitosamente';
+            $_SESSION['flash_type'] = 'success';
+        } else {
+            $_SESSION['flash_message'] = 'Error al eliminar el miembro';
+            $_SESSION['flash_type'] = 'danger';
+        }
+        
+        // Redireccionar al listado de miembros
+        $this->redirect('miembros');
+    }
+
+    /**
      * Obtiene los parámetros de la URL
      */
     private function getParams() {
         return isset($GLOBALS['router']) ? $GLOBALS['router']->getParams() : [];
+    }
+}
+
+
+=============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\Core\Controller.php
+=============================================================
+
+<?php
+// filepath: c:\xampp\htdocs\ENCASA_DATABASE\app\Core\Controller.php
+
+class Controller {
+    // En el método redirectWithMessage o similar:
+    protected function redirect($url, $message = null, $type = 'info') {
+        if ($message) {
+            $_SESSION['flash_message'] = $message;
+            $_SESSION['flash_type'] = $type;
+        }
+        
+        // Regenerar token CSRF después de redirecciones importantes
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        
+        header('Location: ' . APP_URL . '/' . $url);
+        exit;
+    }
+}
+
+
+=============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\Core\Session.php
+=============================================================
+
+<?php
+// filepath: c:\xampp\htdocs\ENCASA_DATABASE\app\Core\Session.php
+
+class Session {
+    /**
+     * Inicializa la sesión y configura las medidas de seguridad
+     */
+    public static function start() {
+        // Configurar cookies seguras
+        ini_set('session.use_only_cookies', 1);
+        ini_set('session.use_strict_mode', 1);
+        
+        // Configurar otras opciones de seguridad según sea necesario
+        session_name('ENCASASESSID');
+        
+        // Iniciar la sesión
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        
+        // Generar token CSRF para protección
+        if (!isset($_SESSION['csrf_token'])) {
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        }
+        
+        // Resto del código...
     }
 }
 
@@ -1724,6 +2213,23 @@ if (!function_exists('log_debug')) {
     function log_debug($message, $context = []) {
         \App\Helpers\Logger::getInstance()->debug($message, $context);
     }
+}
+
+/**
+ * Obtiene o genera un token CSRF
+ */
+function csrf_token() {
+    if (!isset($_SESSION['csrf_token'])) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+    return $_SESSION['csrf_token'];
+}
+
+/**
+ * Genera un campo HTML con el token CSRF
+ */
+function csrf_field() {
+    return '<input type="hidden" name="csrf_token" value="' . csrf_token() . '">';
 }
 
 
@@ -2585,6 +3091,15 @@ class Miembro extends Model {
             $miembro['carrera'] = $carrera;
         }
         
+        // Obtener datos de salud y emergencias
+        $sql = "SELECT * FROM SaludEmergencias WHERE miembro_id = ?";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$id]);
+        $salud = $stmt->fetch(\PDO::FETCH_ASSOC);
+        if ($salud) {
+            $miembro['salud'] = $salud;
+        }
+        
         return $miembro;
     }
     
@@ -2671,10 +3186,251 @@ class Miembro extends Model {
         }
     }
     
-    // Implementar métodos similares para las otras tablas:
-    // - guardarEstudiosTrabajo()
-    // - guardarTallas()
-    // - guardarCarreraBiblica()
+    /**
+     * Guarda los datos de estudios y trabajo de un miembro
+     */
+    public function guardarEstudiosTrabajo($datos) {
+        try {
+            // Verificar si ya existe un registro para este miembro
+            $stmt = $this->db->prepare("SELECT id FROM EstudiosTrabajo WHERE miembro_id = ?");
+            $stmt->execute([$datos['miembro_id']]);
+            $existe = $stmt->fetch(\PDO::FETCH_ASSOC);
+            
+            if ($existe) {
+                // Actualizar registro existente
+                $id = $existe['id'];
+                
+                // Eliminar miembro_id del array para la actualización
+                $miembro_id = $datos['miembro_id'];
+                unset($datos['miembro_id']);
+                
+                $sets = [];
+                foreach ($datos as $campo => $valor) {
+                    $sets[] = "$campo = ?";
+                }
+                $sets_str = implode(', ', $sets);
+                
+                $sql = "UPDATE EstudiosTrabajo SET $sets_str WHERE id = ?";
+                
+                $stmt = $this->db->prepare($sql);
+                $stmt->execute([...array_values($datos), $id]);
+            } else {
+                // Insertar nuevo registro
+                $campos = array_keys($datos);
+                $valores = array_values($datos);
+                
+                $campos_str = implode(', ', $campos);
+                $placeholders = implode(', ', array_fill(0, count($campos), '?'));
+                
+                $sql = "INSERT INTO EstudiosTrabajo ($campos_str) VALUES ($placeholders)";
+                
+                $stmt = $this->db->prepare($sql);
+                $stmt->execute($valores);
+            }
+            
+            return true;
+        } catch (\PDOException $e) {
+            error_log("Error al guardar estudios y trabajo: " . $e->getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Guarda las tallas de un miembro
+     */
+    public function guardarTallas($datos) {
+        try {
+            // Verificar si ya existe un registro para este miembro
+            $stmt = $this->db->prepare("SELECT id FROM Tallas WHERE miembro_id = ?");
+            $stmt->execute([$datos['miembro_id']]);
+            $existe = $stmt->fetch(\PDO::FETCH_ASSOC);
+            
+            if ($existe) {
+                // Actualizar registro existente
+                $id = $existe['id'];
+                
+                // Eliminar miembro_id del array para la actualización
+                $miembro_id = $datos['miembro_id'];
+                unset($datos['miembro_id']);
+                
+                $sets = [];
+                foreach ($datos as $campo => $valor) {
+                    $sets[] = "$campo = ?";
+                }
+                $sets_str = implode(', ', $sets);
+                
+                $sql = "UPDATE Tallas SET $sets_str WHERE id = ?";
+                
+                $stmt = $this->db->prepare($sql);
+                $stmt->execute([...array_values($datos), $id]);
+            } else {
+                // Insertar nuevo registro
+                $campos = array_keys($datos);
+                $valores = array_values($datos);
+                
+                $campos_str = implode(', ', $campos);
+                $placeholders = implode(', ', array_fill(0, count($campos), '?'));
+                
+                $sql = "INSERT INTO Tallas ($campos_str) VALUES ($placeholders)";
+                
+                $stmt = $this->db->prepare($sql);
+                $stmt->execute($valores);
+            }
+            
+            return true;
+        } catch (\PDOException $e) {
+            error_log("Error al guardar tallas: " . $e->getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Guarda la información de carrera bíblica de un miembro
+     */
+    public function guardarCarreraBiblica($datos) {
+        try {
+            // Verificar si ya existe un registro para este miembro
+            $stmt = $this->db->prepare("SELECT id FROM CarreraBiblica WHERE miembro_id = ?");
+            $stmt->execute([$datos['miembro_id']]);
+            $existe = $stmt->fetch(\PDO::FETCH_ASSOC);
+            
+            if ($existe) {
+                // Actualizar registro existente
+                $id = $existe['id'];
+                
+                // Eliminar miembro_id del array para la actualización
+                $miembro_id = $datos['miembro_id'];
+                unset($datos['miembro_id']);
+                
+                $sets = [];
+                foreach ($datos as $campo => $valor) {
+                    $sets[] = "$campo = ?";
+                }
+                $sets_str = implode(', ', $sets);
+                
+                $sql = "UPDATE CarreraBiblica SET $sets_str WHERE id = ?";
+                
+                $stmt = $this->db->prepare($sql);
+                $stmt->execute([...array_values($datos), $id]);
+            } else {
+                // Insertar nuevo registro
+                $campos = array_keys($datos);
+                $valores = array_values($datos);
+                
+                $campos_str = implode(', ', $campos);
+                $placeholders = implode(', ', array_fill(0, count($campos), '?'));
+                
+                $sql = "INSERT INTO CarreraBiblica ($campos_str) VALUES ($placeholders)";
+                
+                $stmt = $this->db->prepare($sql);
+                $stmt->execute($valores);
+            }
+            
+            return true;
+        } catch (\PDOException $e) {
+            error_log("Error al guardar carrera bíblica: " . $e->getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Guarda la información de salud y emergencias de un miembro
+     */
+    public function guardarSaludEmergencias($datos) {
+        try {
+            // Verificar si ya existe un registro para este miembro
+            $stmt = $this->db->prepare("SELECT id FROM SaludEmergencias WHERE miembro_id = ?");
+            $stmt->execute([$datos['miembro_id']]);
+            $existe = $stmt->fetch(\PDO::FETCH_ASSOC);
+            
+            if ($existe) {
+                // Actualizar registro existente
+                $id = $existe['id'];
+                
+                // Eliminar miembro_id del array para la actualización
+                $miembro_id = $datos['miembro_id'];
+                unset($datos['miembro_id']);
+                
+                $sets = [];
+                foreach ($datos as $campo => $valor) {
+                    $sets[] = "$campo = ?";
+                }
+                $sets_str = implode(', ', $sets);
+                
+                $sql = "UPDATE SaludEmergencias SET $sets_str WHERE id = ?";
+                
+                $stmt = $this->db->prepare($sql);
+                $stmt->execute([...array_values($datos), $id]);
+            } else {
+                // Insertar nuevo registro
+                $campos = array_keys($datos);
+                $valores = array_values($datos);
+                
+                $campos_str = implode(', ', $campos);
+                $placeholders = implode(', ', array_fill(0, count($campos), '?'));
+                
+                $sql = "INSERT INTO SaludEmergencias ($campos_str) VALUES ($placeholders)";
+                
+                $stmt = $this->db->prepare($sql);
+                $stmt->execute($valores);
+            }
+            
+            return true;
+        } catch (\PDOException $e) {
+            error_log("Error al guardar salud y emergencias: " . $e->getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Elimina un miembro y todos sus registros relacionados
+     */
+    public function eliminarCompleto($id) {
+        try {
+            // Iniciar transacción para asegurar integridad
+            $this->db->beginTransaction();
+            
+            // Eliminar registros relacionados en todas las tablas
+            $tablasRelacionadas = [
+                'Contacto', 
+                'EstudiosTrabajo', 
+                'Tallas', 
+                'CarreraBiblica', 
+                'SaludEmergencias'
+            ];
+            
+            foreach ($tablasRelacionadas as $tabla) {
+                $stmt = $this->db->prepare("DELETE FROM $tabla WHERE miembro_id = ?");
+                $stmt->execute([$id]);
+            }
+            
+            // Verificar si el miembro tiene foto para eliminarla
+            $stmt = $this->db->prepare("SELECT foto FROM InformacionGeneral WHERE id = ?");
+            $stmt->execute([$id]);
+            $foto = $stmt->fetchColumn();
+            
+            if ($foto) {
+                $rutaFoto = BASE_PATH . '/public/uploads/miembros/' . $foto;
+                if (file_exists($rutaFoto)) {
+                    unlink($rutaFoto); // Eliminar archivo físico
+                }
+            }
+            
+            // Finalmente, eliminar el registro principal
+            $stmt = $this->db->prepare("DELETE FROM InformacionGeneral WHERE id = ?");
+            $resultado = $stmt->execute([$id]);
+            
+            // Confirmar transacción
+            $this->db->commit();
+            
+            return $resultado;
+        } catch (\Exception $e) {
+            // Revertir cambios en caso de error
+            $this->db->rollBack();
+            error_log("Error al eliminar miembro: " . $e->getMessage());
+            return false;
+        }
+    }
 }
 
 
@@ -4102,12 +4858,15 @@ $titulo = $esEdicion ? 'Editar Miembro' : 'Registrar Nuevo Miembro';
                 <a class="nav-link" id="tallas-tab" data-bs-toggle="tab" href="#tallas" role="tab">Tallas</a>
             </li>
             <li class="nav-item">
+                <a class="nav-link" id="salud-tab" data-bs-toggle="tab" href="#salud" role="tab">Salud y Emergencias</a>
+            </li>
+            <li class="nav-item">
                 <a class="nav-link" id="espiritual-tab" data-bs-toggle="tab" href="#espiritual" role="tab">Carrera Bíblica</a>
             </li>
         </ul>
 
         <div class="tab-content" id="miembroTabContent">
-            <!-- Pestaña de Información General -->
+            <!-- Pestaña de Información General - ya implementada -->
             <div class="tab-pane fade show active" id="datos" role="tabpanel">
                 <div class="row">
                     <div class="col-md-6 mb-3">
@@ -4165,7 +4924,7 @@ $titulo = $esEdicion ? 'Editar Miembro' : 'Registrar Nuevo Miembro';
                             <!-- Aquí cargar dinámicamente los miembros disponibles -->
                             <?php if(isset($miembros) && is_array($miembros)): ?>
                                 <?php foreach($miembros as $m): ?>
-                                    <option value="<?= $m['id'] ?>" <?= $esEdicion && $miembro['invitado_por'] == $m['id'] ? 'selected' : '' ?>>
+                                    <option value="<?= $m['id'] ?>" <?= $esEdicion && isset($miembro['invitado_por']) && $miembro['invitado_por'] == $m['id'] ? 'selected' : '' ?>>
                                         <?= htmlspecialchars($m['nombres'] . ' ' . $m['apellidos']) ?>
                                     </option>
                                 <?php endforeach; ?>
@@ -4208,7 +4967,7 @@ $titulo = $esEdicion ? 'Editar Miembro' : 'Registrar Nuevo Miembro';
                 </div>
             </div>
 
-            <!-- Pestaña de Contacto -->
+            <!-- Pestaña de Contacto - completar -->
             <div class="tab-pane fade" id="contacto" role="tabpanel">
                 <div class="row">
                     <div class="col-md-6 mb-3">
@@ -4228,22 +4987,310 @@ $titulo = $esEdicion ? 'Editar Miembro' : 'Registrar Nuevo Miembro';
                     </div>
                 </div>
 
-                <!-- Continuar con el resto de campos de contacto: teléfono, país, ciudad, dirección, etc. -->
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="telefono" class="form-label">Teléfono Fijo</label>
+                        <input type="tel" class="form-control" id="telefono" name="contacto[telefono]"
+                               value="<?= $esEdicion && isset($miembro['contacto']['telefono']) ? htmlspecialchars($miembro['contacto']['telefono']) : '' ?>">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="correo_electronico" class="form-label">Correo Electrónico</label>
+                        <input type="email" class="form-control" id="correo_electronico" name="contacto[correo_electronico]"
+                               value="<?= $esEdicion && isset($miembro['contacto']['correo_electronico']) ? htmlspecialchars($miembro['contacto']['correo_electronico']) : '' ?>">
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="pais" class="form-label">País</label>
+                        <input type="text" class="form-control" id="pais" name="contacto[pais]"
+                               value="<?= $esEdicion && isset($miembro['contacto']['pais']) ? htmlspecialchars($miembro['contacto']['pais']) : '' ?>"
+                               placeholder="Ejemplo: Colombia">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="ciudad" class="form-label">Ciudad</label>
+                        <input type="text" class="form-control" id="ciudad" name="contacto[ciudad]"
+                               value="<?= $esEdicion && isset($miembro['contacto']['ciudad']) ? htmlspecialchars($miembro['contacto']['ciudad']) : '' ?>"
+                               placeholder="Ejemplo: Bogotá">
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="direccion" class="form-label">Dirección</label>
+                    <input type="text" class="form-control" id="direccion" name="contacto[direccion]"
+                           value="<?= $esEdicion && isset($miembro['contacto']['direccion']) ? htmlspecialchars($miembro['contacto']['direccion']) : '' ?>">
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="estado_civil" class="form-label">Estado Civil</label>
+                        <select class="form-select" id="estado_civil" name="contacto[estado_civil]">
+                            <option value="">-- Seleccione --</option>
+                            <option value="Soltero/a" <?= $esEdicion && isset($miembro['contacto']['estado_civil']) && $miembro['contacto']['estado_civil'] == 'Soltero/a' ? 'selected' : '' ?>>Soltero/a</option>
+                            <option value="Casado/a" <?= $esEdicion && isset($miembro['contacto']['estado_civil']) && $miembro['contacto']['estado_civil'] == 'Casado/a' ? 'selected' : '' ?>>Casado/a</option>
+                            <option value="Viudo/a" <?= $esEdicion && isset($miembro['contacto']['estado_civil']) && $miembro['contacto']['estado_civil'] == 'Viudo/a' ? 'selected' : '' ?>>Viudo/a</option>
+                            <option value="Divorciado/a" <?= $esEdicion && isset($miembro['contacto']['estado_civil']) && $miembro['contacto']['estado_civil'] == 'Divorciado/a' ? 'selected' : '' ?>>Divorciado/a</option>
+                            <option value="Unión Libre" <?= $esEdicion && isset($miembro['contacto']['estado_civil']) && $miembro['contacto']['estado_civil'] == 'Unión Libre' ? 'selected' : '' ?>>Unión Libre</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="instagram" class="form-label">Instagram</label>
+                        <input type="text" class="form-control" id="instagram" name="contacto[instagram]"
+                               value="<?= $esEdicion && isset($miembro['contacto']['instagram']) ? htmlspecialchars($miembro['contacto']['instagram']) : '' ?>"
+                               placeholder="@usuario">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="facebook" class="form-label">Facebook</label>
+                        <input type="text" class="form-control" id="facebook" name="contacto[facebook]"
+                               value="<?= $esEdicion && isset($miembro['contacto']['facebook']) ? htmlspecialchars($miembro['contacto']['facebook']) : '' ?>"
+                               placeholder="URL o nombre de usuario">
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="familiares" class="form-label">Familiares en la iglesia</label>
+                    <textarea class="form-control" id="familiares" name="contacto[familiares]" rows="2"
+                             placeholder="Nombres de familiares que asisten a la iglesia"><?= $esEdicion && isset($miembro['contacto']['familiares']) ? htmlspecialchars($miembro['contacto']['familiares']) : '' ?></textarea>
+                </div>
+
+                <div class="mb-3">
+                    <label for="notas" class="form-label">Notas adicionales de contacto</label>
+                    <textarea class="form-control" id="notas" name="contacto[notas]" rows="2"><?= $esEdicion && isset($miembro['contacto']['notas']) ? htmlspecialchars($miembro['contacto']['notas']) : '' ?></textarea>
+                </div>
             </div>
 
             <!-- Pestaña de Estudios/Trabajo -->
             <div class="tab-pane fade" id="estudios" role="tabpanel">
-                <!-- Campos para Estudios y Trabajo -->
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="nivel_estudios" class="form-label">Nivel de Estudios</label>
+                        <select class="form-select" id="nivel_estudios" name="estudios[nivel_estudios]">
+                            <option value="">-- Seleccione --</option>
+                            <option value="Primaria" <?= $esEdicion && isset($miembro['estudios']['nivel_estudios']) && $miembro['estudios']['nivel_estudios'] == 'Primaria' ? 'selected' : '' ?>>Primaria</option>
+                            <option value="Secundaria" <?= $esEdicion && isset($miembro['estudios']['nivel_estudios']) && $miembro['estudios']['nivel_estudios'] == 'Secundaria' ? 'selected' : '' ?>>Secundaria</option>
+                            <option value="Técnico" <?= $esEdicion && isset($miembro['estudios']['nivel_estudios']) && $miembro['estudios']['nivel_estudios'] == 'Técnico' ? 'selected' : '' ?>>Técnico</option>
+                            <option value="Tecnólogo" <?= $esEdicion && isset($miembro['estudios']['nivel_estudios']) && $miembro['estudios']['nivel_estudios'] == 'Tecnólogo' ? 'selected' : '' ?>>Tecnólogo</option>
+                            <option value="Universitario" <?= $esEdicion && isset($miembro['estudios']['nivel_estudios']) && $miembro['estudios']['nivel_estudios'] == 'Universitario' ? 'selected' : '' ?>>Universitario</option>
+                            <option value="Posgrado" <?= $esEdicion && isset($miembro['estudios']['nivel_estudios']) && $miembro['estudios']['nivel_estudios'] == 'Posgrado' ? 'selected' : '' ?>>Posgrado</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="profesion" class="form-label">Profesión/Ocupación</label>
+                        <input type="text" class="form-control" id="profesion" name="estudios[profesion]"
+                               value="<?= $esEdicion && isset($miembro['estudios']['profesion']) ? htmlspecialchars($miembro['estudios']['profesion']) : '' ?>">
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="otros_estudios" class="form-label">Otros Estudios/Certificaciones</label>
+                    <textarea class="form-control" id="otros_estudios" name="estudios[otros_estudios]" rows="2"><?= $esEdicion && isset($miembro['estudios']['otros_estudios']) ? htmlspecialchars($miembro['estudios']['otros_estudios']) : '' ?></textarea>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="empresa" class="form-label">Empresa donde trabaja</label>
+                        <input type="text" class="form-control" id="empresa" name="estudios[empresa]"
+                               value="<?= $esEdicion && isset($miembro['estudios']['empresa']) ? htmlspecialchars($miembro['estudios']['empresa']) : '' ?>">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="direccion_empresa" class="form-label">Dirección de la empresa</label>
+                        <input type="text" class="form-control" id="direccion_empresa" name="estudios[direccion_empresa]"
+                               value="<?= $esEdicion && isset($miembro['estudios']['direccion_empresa']) ? htmlspecialchars($miembro['estudios']['direccion_empresa']) : '' ?>">
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="emprendimientos" class="form-label">Emprendimientos/Negocios propios</label>
+                    <textarea class="form-control" id="emprendimientos" name="estudios[emprendimientos]" rows="2"><?= $esEdicion && isset($miembro['estudios']['emprendimientos']) ? htmlspecialchars($miembro['estudios']['emprendimientos']) : '' ?></textarea>
+                </div>
             </div>
 
             <!-- Pestaña de Tallas -->
             <div class="tab-pane fade" id="tallas" role="tabpanel">
-                <!-- Campos para Tallas -->
+                <div class="alert alert-info mb-4">
+                    Esta información es útil para la entrega de uniformes y vestimenta en eventos especiales.
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="talla_camisa" class="form-label">Talla de Camisa</label>
+                        <select class="form-select" id="talla_camisa" name="tallas[talla_camisa]">
+                            <option value="">-- Seleccione --</option>
+                            <option value="XS" <?= $esEdicion && isset($miembro['tallas']['talla_camisa']) && $miembro['tallas']['talla_camisa'] == 'XS' ? 'selected' : '' ?>>XS</option>
+                            <option value="S" <?= $esEdicion && isset($miembro['tallas']['talla_camisa']) && $miembro['tallas']['talla_camisa'] == 'S' ? 'selected' : '' ?>>S</option>
+                            <option value="M" <?= $esEdicion && isset($miembro['tallas']['talla_camisa']) && $miembro['tallas']['talla_camisa'] == 'M' ? 'selected' : '' ?>>M</option>
+                            <option value="L" <?= $esEdicion && isset($miembro['tallas']['talla_camisa']) && $miembro['tallas']['talla_camisa'] == 'L' ? 'selected' : '' ?>>L</option>
+                            <option value="XL" <?= $esEdicion && isset($miembro['tallas']['talla_camisa']) && $miembro['tallas']['talla_camisa'] == 'XL' ? 'selected' : '' ?>>XL</option>
+                            <option value="XXL" <?= $esEdicion && isset($miembro['tallas']['talla_camisa']) && $miembro['tallas']['talla_camisa'] == 'XXL' ? 'selected' : '' ?>>XXL</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="talla_camiseta" class="form-label">Talla de Camiseta</label>
+                        <select class="form-select" id="talla_camiseta" name="tallas[talla_camiseta]">
+                            <option value="">-- Seleccione --</option>
+                            <option value="XS" <?= $esEdicion && isset($miembro['tallas']['talla_camiseta']) && $miembro['tallas']['talla_camiseta'] == 'XS' ? 'selected' : '' ?>>XS</option>
+                            <option value="S" <?= $esEdicion && isset($miembro['tallas']['talla_camiseta']) && $miembro['tallas']['talla_camiseta'] == 'S' ? 'selected' : '' ?>>S</option>
+                            <option value="M" <?= $esEdicion && isset($miembro['tallas']['talla_camiseta']) && $miembro['tallas']['talla_camiseta'] == 'M' ? 'selected' : '' ?>>M</option>
+                            <option value="L" <?= $esEdicion && isset($miembro['tallas']['talla_camiseta']) && $miembro['tallas']['talla_camiseta'] == 'L' ? 'selected' : '' ?>>L</option>
+                            <option value="XL" <?= $esEdicion && isset($miembro['tallas']['talla_camiseta']) && $miembro['tallas']['talla_camiseta'] == 'XL' ? 'selected' : '' ?>>XL</option>
+                            <option value="XXL" <?= $esEdicion && isset($miembro['tallas']['talla_camiseta']) && $miembro['tallas']['talla_camiseta'] == 'XXL' ? 'selected' : '' ?>>XXL</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="talla_pantalon" class="form-label">Talla de Pantalón</label>
+                        <input type="text" class="form-control" id="talla_pantalon" name="tallas[talla_pantalon]"
+                               placeholder="Ejemplo: 32, 34, S, M, etc."
+                               value="<?= $esEdicion && isset($miembro['tallas']['talla_pantalon']) ? htmlspecialchars($miembro['tallas']['talla_pantalon']) : '' ?>">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="talla_zapatos" class="form-label">Talla de Zapatos</label>
+                        <input type="text" class="form-control" id="talla_zapatos" name="tallas[talla_zapatos]"
+                               placeholder="Ejemplo: 39, 40, 41, etc."
+                               value="<?= $esEdicion && isset($miembro['tallas']['talla_zapatos']) ? htmlspecialchars($miembro['tallas']['talla_zapatos']) : '' ?>">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pestaña de Salud y Emergencias -->
+            <div class="tab-pane fade" id="salud" role="tabpanel">
+                <div class="alert alert-info mb-4">
+                    <i class="fas fa-info-circle"></i> Esta información es vital en caso de emergencia. Por favor completa todos los campos posibles.
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="rh" class="form-label">Tipo de Sangre (RH)</label>
+                        <select class="form-select" id="rh" name="salud[rh]">
+                            <option value="">-- Seleccione --</option>
+                            <option value="A+" <?= $esEdicion && isset($miembro['salud']['rh']) && $miembro['salud']['rh'] == 'A+' ? 'selected' : '' ?>>A+</option>
+                            <option value="A-" <?= $esEdicion && isset($miembro['salud']['rh']) && $miembro['salud']['rh'] == 'A-' ? 'selected' : '' ?>>A-</option>
+                            <option value="B+" <?= $esEdicion && isset($miembro['salud']['rh']) && $miembro['salud']['rh'] == 'B+' ? 'selected' : '' ?>>B+</option>
+                            <option value="B-" <?= $esEdicion && isset($miembro['salud']['rh']) && $miembro['salud']['rh'] == 'B-' ? 'selected' : '' ?>>B-</option>
+                            <option value="AB+" <?= $esEdicion && isset($miembro['salud']['rh']) && $miembro['salud']['rh'] == 'AB+' ? 'selected' : '' ?>>AB+</option>
+                            <option value="AB-" <?= $esEdicion && isset($miembro['salud']['rh']) && $miembro['salud']['rh'] == 'AB-' ? 'selected' : '' ?>>AB-</option>
+                            <option value="O+" <?= $esEdicion && isset($miembro['salud']['rh']) && $miembro['salud']['rh'] == 'O+' ? 'selected' : '' ?>>O+</option>
+                            <option value="O-" <?= $esEdicion && isset($miembro['salud']['rh']) && $miembro['salud']['rh'] == 'O-' ? 'selected' : '' ?>>O-</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="eps" class="form-label">EPS</label>
+                        <input type="text" class="form-control" id="eps" name="salud[eps]"
+                               value="<?= $esEdicion && isset($miembro['salud']['eps']) ? htmlspecialchars($miembro['salud']['eps']) : '' ?>"
+                               placeholder="Ejemplo: Sura, Sanitas, Nueva EPS, etc.">
+                    </div>
+                </div>
+
+                <h5 class="mt-4">Contacto de Emergencia Principal</h5>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="acudiente1" class="form-label">Nombre Completo</label>
+                        <input type="text" class="form-control" id="acudiente1" name="salud[acudiente1]"
+                               value="<?= $esEdicion && isset($miembro['salud']['acudiente1']) ? htmlspecialchars($miembro['salud']['acudiente1']) : '' ?>">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="telefono1" class="form-label">Teléfono de Contacto</label>
+                        <input type="tel" class="form-control" id="telefono1" name="salud[telefono1]"
+                               value="<?= $esEdicion && isset($miembro['salud']['telefono1']) ? htmlspecialchars($miembro['salud']['telefono1']) : '' ?>"
+                               placeholder="Formato: +57 3001234567">
+                    </div>
+                </div>
+
+                <h5 class="mt-4">Contacto de Emergencia Alternativo</h5>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="acudiente2" class="form-label">Nombre Completo</label>
+                        <input type="text" class="form-control" id="acudiente2" name="salud[acudiente2]"
+                               value="<?= $esEdicion && isset($miembro['salud']['acudiente2']) ? htmlspecialchars($miembro['salud']['acudiente2']) : '' ?>">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="telefono2" class="form-label">Teléfono de Contacto</label>
+                        <input type="tel" class="form-control" id="telefono2" name="salud[telefono2]"
+                               value="<?= $esEdicion && isset($miembro['salud']['telefono2']) ? htmlspecialchars($miembro['salud']['telefono2']) : '' ?>"
+                               placeholder="Formato: +57 3001234567">
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <div class="form-check mt-3">
+                        <input class="form-check-input" type="checkbox" id="alergias_check">
+                        <label class="form-check-label" for="alergias_check">
+                            ¿Tiene alergias o condiciones médicas importantes?
+                        </label>
+                    </div>
+                    <div id="alergias_container" class="mt-2" style="display: none;">
+                        <textarea class="form-control" id="alergias" name="salud[alergias]" rows="3" 
+                                  placeholder="Describa alergias o condiciones médicas relevantes"><?= $esEdicion && isset($miembro['salud']['alergias']) ? htmlspecialchars($miembro['salud']['alergias']) : '' ?></textarea>
+                    </div>
+                </div>
             </div>
 
             <!-- Pestaña de Carrera Bíblica -->
             <div class="tab-pane fade" id="espiritual" role="tabpanel">
-                <!-- Campos para Carrera Bíblica -->
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="carrera_biblica" class="form-label">Nivel en Carrera Bíblica</label>
+                        <select class="form-select" id="carrera_biblica" name="carrera[carrera_biblica]">
+                            <option value="">-- Seleccione --</option>
+                            <option value="No ha iniciado" <?= $esEdicion && isset($miembro['carrera']['carrera_biblica']) && $miembro['carrera']['carrera_biblica'] == 'No ha iniciado' ? 'selected' : '' ?>>No ha iniciado</option>
+                            <option value="Nivel 1" <?= $esEdicion && isset($miembro['carrera']['carrera_biblica']) && $miembro['carrera']['carrera_biblica'] == 'Nivel 1' ? 'selected' : '' ?>>Nivel 1</option>
+                            <option value="Nivel 2" <?= $esEdicion && isset($miembro['carrera']['carrera_biblica']) && $miembro['carrera']['carrera_biblica'] == 'Nivel 2' ? 'selected' : '' ?>>Nivel 2</option>
+                            <option value="Nivel 3" <?= $esEdicion && isset($miembro['carrera']['carrera_biblica']) && $miembro['carrera']['carrera_biblica'] == 'Nivel 3' ? 'selected' : '' ?>>Nivel 3</option>
+                            <option value="Nivel 4" <?= $esEdicion && isset($miembro['carrera']['carrera_biblica']) && $miembro['carrera']['carrera_biblica'] == 'Nivel 4' ? 'selected' : '' ?>>Nivel 4</option>
+                            <option value="Nivel 5" <?= $esEdicion && isset($miembro['carrera']['carrera_biblica']) && $miembro['carrera']['carrera_biblica'] == 'Nivel 5' ? 'selected' : '' ?>>Nivel 5</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="estado" class="form-label">Estado Espiritual</label>
+                        <select class="form-select" id="estado" name="carrera[estado]">
+                            <option value="">-- Seleccione --</option>
+                            <option value="Visitante" <?= $esEdicion && isset($miembro['carrera']['estado']) && $miembro['carrera']['estado'] == 'Visitante' ? 'selected' : '' ?>>Visitante</option>
+                            <option value="Nuevo Creyente" <?= $esEdicion && isset($miembro['carrera']['estado']) && $miembro['carrera']['estado'] == 'Nuevo Creyente' ? 'selected' : '' ?>>Nuevo Creyente</option>
+                            <option value="Discípulo" <?= $esEdicion && isset($miembro['carrera']['estado']) && $miembro['carrera']['estado'] == 'Discípulo' ? 'selected' : '' ?>>Discípulo</option>
+                            <option value="Líder" <?= $esEdicion && isset($miembro['carrera']['estado']) && $miembro['carrera']['estado'] == 'Líder' ? 'selected' : '' ?>>Líder</option>
+                            <option value="Pastor" <?= $esEdicion && isset($miembro['carrera']['estado']) && $miembro['carrera']['estado'] == 'Pastor' ? 'selected' : '' ?>>Pastor</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="miembro_de" class="form-label">Miembro de Grupo</label>
+                        <input type="text" class="form-control" id="miembro_de" name="carrera[miembro_de]"
+                               value="<?= $esEdicion && isset($miembro['carrera']['miembro_de']) ? htmlspecialchars($miembro['carrera']['miembro_de']) : '' ?>"
+                               placeholder="Ejemplo: Grupo de Jóvenes, Grupo de Matrimonios, etc.">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="casa_de_palabra_y_vida" class="form-label">Casa de Palabra y Vida</label>
+                        <input type="text" class="form-control" id="casa_de_palabra_y_vida" name="carrera[casa_de_palabra_y_vida]"
+                               value="<?= $esEdicion && isset($miembro['carrera']['casa_de_palabra_y_vida']) ? htmlspecialchars($miembro['carrera']['casa_de_palabra_y_vida']) : '' ?>"
+                               placeholder="Dirección o nombre de la Casa">
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label for="cobertura" class="form-label">Cobertura/Mentor</label>
+                    <input type="text" class="form-control" id="cobertura" name="carrera[cobertura]"
+                           value="<?= $esEdicion && isset($miembro['carrera']['cobertura']) ? htmlspecialchars($miembro['carrera']['cobertura']) : '' ?>"
+                           placeholder="Nombre del líder que le da cobertura">
+                </div>
+
+                <div class="mb-3">
+                    <label for="recorrido_espiritual" class="form-label">Recorrido Espiritual</label>
+                    <textarea class="form-control" id="recorrido_espiritual_carrera" name="carrera[recorrido_espiritual]" rows="3"><?= $esEdicion && isset($miembro['carrera']['recorrido_espiritual']) ? htmlspecialchars($miembro['carrera']['recorrido_espiritual']) : '' ?></textarea>
+                    <small class="form-text text-muted">Experiencias significativas en su camino de fe, testimonios, etc.</small>
+                </div>
+
+                <div class="mb-3">
+                    <label for="anotaciones" class="form-label">Anotaciones Pastorales</label>
+                    <textarea class="form-control" id="anotaciones" name="carrera[anotaciones]" rows="3"><?= $esEdicion && isset($miembro['carrera']['anotaciones']) ? htmlspecialchars($miembro['carrera']['anotaciones']) : '' ?></textarea>
+                    <small class="form-text text-muted">Observaciones pastorales, necesidades de consejería, etc.</small>
+                </div>
             </div>
         </div>
 
@@ -4255,6 +5302,66 @@ $titulo = $esEdicion ? 'Editar Miembro' : 'Registrar Nuevo Miembro';
         </div>
     </form>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Activar las pestañas de Bootstrap
+    var triggerTabList = [].slice.call(document.querySelectorAll('#miembroTabs a'))
+    triggerTabList.forEach(function (triggerEl) {
+        var tabTrigger = new bootstrap.Tab(triggerEl)
+        triggerEl.addEventListener('click', function (event) {
+            event.preventDefault()
+            tabTrigger.show()
+        })
+    });
+    
+    // Validación básica del formulario
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(event) {
+        const requiredFields = form.querySelectorAll('[required]');
+        let hasErrors = false;
+        
+        requiredFields.forEach(field => {
+            if (!field.value.trim()) {
+                field.classList.add('is-invalid');
+                hasErrors = true;
+            } else {
+                field.classList.remove('is-invalid');
+            }
+        });
+        
+        if (hasErrors) {
+            event.preventDefault();
+            alert('Por favor complete todos los campos obligatorios.');
+            
+            // Activar la primera pestaña con error
+            const firstInvalidField = form.querySelector('.is-invalid');
+            if (firstInvalidField) {
+                const tabPane = firstInvalidField.closest('.tab-pane');
+                const tabId = tabPane.id;
+                document.querySelector(`a[href="#${tabId}"]`).click();
+            }
+        }
+    });
+    
+    // Manejar visibilidad del campo de alergias
+    const alergiasCheck = document.getElementById('alergias_check');
+    const alergiasContainer = document.getElementById('alergias_container');
+    
+    if (alergiasCheck && alergiasContainer) {
+        // Si hay datos en el campo de alergias, marcar el checkbox
+        const alergiasText = document.getElementById('alergias');
+        if (alergiasText && alergiasText.value.trim() !== '') {
+            alergiasCheck.checked = true;
+            alergiasContainer.style.display = 'block';
+        }
+        
+        alergiasCheck.addEventListener('change', function() {
+            alergiasContainer.style.display = this.checked ? 'block' : 'none';
+        });
+    }
+});
+</script>
 
 
 =============================================================
@@ -4328,10 +5435,19 @@ ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\views\miembros\index.php
                                     <td><?= htmlspecialchars($miembro['celular'] ?? 'No registrado') ?></td>
                                     <td><?= htmlspecialchars($miembro['localidad'] ?? 'No registrada') ?></td>
                                     <td><?= htmlspecialchars($miembro['estado_espiritual'] ?? 'No registrado') ?></td>
-                                    <td>
-                                        <a href="<?= APP_URL ?>/miembros/<?= $miembro['id'] ?>" class="btn btn-sm btn-info" title="Ver detalles">
+                                    <td class="text-center">
+                                        <a href="<?= APP_URL ?>/miembros/<?= $miembro['id'] ?>" class="btn btn-sm btn-info" title="Ver">
                                             <i class="fas fa-eye"></i>
                                         </a>
+                                        <a href="<?= APP_URL ?>/miembros/editar/<?= $miembro['id'] ?>" class="btn btn-sm btn-primary" title="Editar">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <button type="button" class="btn btn-sm btn-danger eliminar-btn" 
+                                                data-id="<?= $miembro['id'] ?>"
+                                                data-nombre="<?= htmlspecialchars($miembro['nombres'] . ' ' . $miembro['apellidos']) ?>"
+                                                title="Eliminar">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -4373,6 +5489,60 @@ ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\views\miembros\index.php
         </div>
     </div>
 </div>
+
+<!-- Modal de Confirmación para eliminación desde listado -->
+<div class="modal fade" id="eliminarListadoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">Confirmar Eliminación</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i> 
+                    <strong>¡Advertencia!</strong> Esta acción eliminará permanentemente todos los datos de:
+                </div>
+                <p class="text-center fs-5" id="nombreMiembroEliminar"></p>
+                <p>Esta acción no se puede deshacer.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form id="formEliminarListado" action="" method="post">
+                    <?= csrf_field() ?>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash-alt"></i> Eliminar Definitivamente
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Configurar el modal de eliminación para el listado
+    const botonesEliminar = document.querySelectorAll('.eliminar-btn');
+    const modalEliminar = document.getElementById('eliminarListadoModal');
+    const formEliminar = document.getElementById('formEliminarListado');
+    const nombreMiembro = document.getElementById('nombreMiembroEliminar');
+    
+    botonesEliminar.forEach(boton => {
+        boton.addEventListener('click', function() {
+            const id = this.getAttribute('data-id');
+            const nombre = this.getAttribute('data-nombre');
+            
+            // Configurar el modal
+            formEliminar.action = `<?= APP_URL ?>/miembros/eliminar/${id}`;
+            nombreMiembro.textContent = nombre;
+            
+            // Mostrar el modal
+            const modal = new bootstrap.Modal(modalEliminar);
+            modal.show();
+        });
+    });
+});
+</script>
 
 
 =============================================================
@@ -4446,15 +5616,18 @@ echo "<!-- DEBUG: " . htmlspecialchars(json_encode($miembro)) . " -->";
             <div class="row">
                 <div class="col-md-4 mb-4">
                     <!-- Foto del miembro -->
-                    <div class="text-center">
+                    <div class="text-center mb-4">
                         <?php if(!empty($miembro['foto'])): ?>
-                            <img src="<?= APP_URL ?>/uploads/miembros/<?= $miembro['foto'] ?>" alt="Foto de <?= htmlspecialchars($miembro['nombres']) ?>" 
-                                 class="img-fluid rounded-circle" style="width: 200px; height: 200px; object-fit: cover;">
+                            <img src="<?= APP_URL ?>/public/uploads/miembros/<?= $miembro['foto'] ?>" 
+                                 alt="Foto de <?= htmlspecialchars($miembro['nombres']) ?>" 
+                                 class="img-fluid rounded-circle" 
+                                 style="width: 200px; height: 200px; object-fit: cover;"
+                                 onerror="this.onerror=null; this.src='<?= APP_URL ?>/public/assets/img/default-user.png';">
                         <?php else: ?>
-                            <div class="bg-light rounded-circle d-flex align-items-center justify-content-center" 
-                                 style="width: 200px; height: 200px; margin: 0 auto;">
-                                <i class="fas fa-user fa-5x text-secondary"></i>
-                            </div>
+                            <img src="<?= APP_URL ?>/public/assets/img/default-user.png" 
+                                 alt="Foto de perfil predeterminada" 
+                                 class="img-fluid rounded-circle" 
+                                 style="width: 200px; height: 200px; object-fit: cover;">
                         <?php endif; ?>
                     </div>
                 </div>
@@ -4554,8 +5727,240 @@ echo "<!-- DEBUG: " . htmlspecialchars(json_encode($miembro)) . " -->";
             </div>
         </div>
 
-        <!-- Incluir otras pestañas: estudios, tallas, carrera bíblica -->
+        <!-- Pestaña de Estudios y Trabajo -->
+        <div class="tab-pane fade" id="estudios" role="tabpanel">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Formación y Ocupación</h5>
+                    <?php if(isset($miembro['estudios'])): ?>
+                        <table class="table table-striped">
+                            <tbody>
+                                <tr>
+                                    <th scope="row" style="width: 30%">Nivel de Estudios:</th>
+                                    <td><?= htmlspecialchars($miembro['estudios']['nivel_estudios'] ?? 'No disponible') ?></td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Profesión/Ocupación:</th>
+                                    <td><?= htmlspecialchars($miembro['estudios']['profesion'] ?? 'No disponible') ?></td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Otros Estudios:</th>
+                                    <td><?= htmlspecialchars($miembro['estudios']['otros_estudios'] ?? 'No disponible') ?></td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Empresa:</th>
+                                    <td><?= htmlspecialchars($miembro['estudios']['empresa'] ?? 'No disponible') ?></td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Dirección de la Empresa:</th>
+                                    <td><?= htmlspecialchars($miembro['estudios']['direccion_empresa'] ?? 'No disponible') ?></td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Emprendimientos:</th>
+                                    <td><?= htmlspecialchars($miembro['estudios']['emprendimientos'] ?? 'No disponible') ?></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    <?php else: ?>
+                        <div class="alert alert-info">No hay información de estudios o trabajo disponible.</div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
 
+        <!-- Pestaña de Tallas -->
+        <div class="tab-pane fade" id="tallas" role="tabpanel">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Tallas para Vestuario</h5>
+                    <?php if(isset($miembro['tallas'])): ?>
+                        <table class="table table-striped">
+                            <tbody>
+                                <tr>
+                                    <th scope="row" style="width: 30%">Talla de Camisa:</th>
+                                    <td><?= htmlspecialchars($miembro['tallas']['talla_camisa'] ?? 'No disponible') ?></td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Talla de Camiseta:</th>
+                                    <td><?= htmlspecialchars($miembro['tallas']['talla_camiseta'] ?? 'No disponible') ?></td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Talla de Pantalón:</th>
+                                    <td><?= htmlspecialchars($miembro['tallas']['talla_pantalon'] ?? 'No disponible') ?></td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Talla de Zapatos:</th>
+                                    <td><?= htmlspecialchars($miembro['tallas']['talla_zapatos'] ?? 'No disponible') ?></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    <?php else: ?>
+                        <div class="alert alert-info">No hay información de tallas disponible.</div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pestaña de Carrera Bíblica -->
+        <div class="tab-pane fade" id="carrera" role="tabpanel">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Formación Espiritual</h5>
+                    <?php if(isset($miembro['carrera'])): ?>
+                        <table class="table table-striped">
+                            <tbody>
+                                <tr>
+                                    <th scope="row" style="width: 30%">Nivel en Carrera Bíblica:</th>
+                                    <td><?= htmlspecialchars($miembro['carrera']['carrera_biblica'] ?? 'No disponible') ?></td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Estado Espiritual:</th>
+                                    <td><?= htmlspecialchars($miembro['carrera']['estado'] ?? 'No disponible') ?></td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Miembro de Grupo:</th>
+                                    <td><?= htmlspecialchars($miembro['carrera']['miembro_de'] ?? 'No disponible') ?></td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Casa de Palabra y Vida:</th>
+                                    <td><?= htmlspecialchars($miembro['carrera']['casa_de_palabra_y_vida'] ?? 'No disponible') ?></td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Cobertura/Mentor:</th>
+                                    <td><?= htmlspecialchars($miembro['carrera']['cobertura'] ?? 'No disponible') ?></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        
+                        <?php if(isset($miembro['carrera']['recorrido_espiritual']) && !empty($miembro['carrera']['recorrido_espiritual'])): ?>
+                            <div class="mt-3">
+                                <h6 class="fw-bold">Recorrido Espiritual</h6>
+                                <p><?= nl2br(htmlspecialchars($miembro['carrera']['recorrido_espiritual'])) ?></p>
+                            </div>
+                        <?php endif; ?>
+                        
+                        <?php if(isset($miembro['carrera']['anotaciones']) && !empty($miembro['carrera']['anotaciones'])): ?>
+                            <div class="mt-3">
+                                <h6 class="fw-bold">Anotaciones Pastorales</h6>
+                                <p><?= nl2br(htmlspecialchars($miembro['carrera']['anotaciones'])) ?></p>
+                            </div>
+                        <?php endif; ?>
+                    <?php else: ?>
+                        <div class="alert alert-info">No hay información de carrera bíblica disponible.</div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pestaña de Salud y Emergencias -->
+        <div class="tab-pane fade" id="salud" role="tabpanel">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Información Médica y Contactos de Emergencia</h5>
+                    <?php if(isset($miembro['salud'])): ?>
+                        <table class="table table-striped">
+                            <tbody>
+                                <tr>
+                                    <th scope="row" style="width: 30%">Grupo Sanguíneo (RH):</th>
+                                    <td><?= htmlspecialchars($miembro['salud']['rh'] ?? 'No disponible') ?></td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">EPS:</th>
+                                    <td><?= htmlspecialchars($miembro['salud']['eps'] ?? 'No disponible') ?></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        
+                        <?php if(!empty($miembro['salud']['acudiente1'])): ?>
+                            <h6 class="mt-4 fw-bold">Contacto de Emergencia Principal</h6>
+                            <table class="table table-striped">
+                                <tbody>
+                                    <tr>
+                                        <th scope="row" style="width: 30%">Nombre:</th>
+                                        <td><?= htmlspecialchars($miembro['salud']['acudiente1']) ?></td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Teléfono:</th>
+                                        <td><?= htmlspecialchars($miembro['salud']['telefono1'] ?? 'No disponible') ?></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        <?php endif; ?>
+                        
+                        <?php if(!empty($miembro['salud']['acudiente2'])): ?>
+                            <h6 class="mt-4 fw-bold">Contacto de Emergencia Alternativo</h6>
+                            <table class="table table-striped">
+                                <tbody>
+                                    <tr>
+                                        <th scope="row" style="width: 30%">Nombre:</th>
+                                        <td><?= htmlspecialchars($miembro['salud']['acudiente2']) ?></td>
+                                    </tr>
+                                    <tr>
+                                        <th scope="row">Teléfono:</th>
+                                        <td><?= htmlspecialchars($miembro['salud']['telefono2'] ?? 'No disponible') ?></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        <?php endif; ?>
+                        
+                        <?php if(!empty($miembro['salud']['alergias'])): ?>
+                            <div class="alert alert-warning mt-3">
+                                <h6 class="fw-bold">Alergias o condiciones médicas:</h6>
+                                <p><?= nl2br(htmlspecialchars($miembro['salud']['alergias'])) ?></p>
+                            </div>
+                        <?php endif; ?>
+                    <?php else: ?>
+                        <div class="alert alert-info">No hay información de salud o contactos de emergencia disponible.</div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Botón de Eliminar -->
+    <div class="mt-4 text-center">
+        <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#eliminarModal">
+            <i class="fas fa-trash-alt"></i> Eliminar Miembro
+        </button>
+    </div>
+
+    <!-- Modal de Confirmación -->
+    <div class="modal fade" id="eliminarModal" tabindex="-1" aria-labelledby="eliminarModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="eliminarModalLabel">Confirmar Eliminación</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i> 
+                        <strong>¡Advertencia!</strong> Esta acción eliminará permanentemente todos los datos de:
+                    </div>
+                    <p class="text-center fs-5">
+                        <?= htmlspecialchars($miembro['nombres'] . ' ' . $miembro['apellidos']) ?>
+                    </p>
+                    <p>Esta acción no se puede deshacer. Se eliminarán permanentemente:</p>
+                    <ul>
+                        <li>Información personal y de contacto</li>
+                        <li>Datos de estudios y trabajo</li>
+                        <li>Información de tallas</li>
+                        <li>Datos de carrera bíblica</li>
+                        <li>Información de salud y emergencias</li>
+                        <li>Fotografía del miembro</li>
+                    </ul>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <form action="<?= APP_URL ?>/miembros/eliminar/<?= $miembro['id'] ?>" method="post">
+                        <?= csrf_field() ?>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-trash-alt"></i> Eliminar Definitivamente
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
