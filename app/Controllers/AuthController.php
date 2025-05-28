@@ -70,7 +70,29 @@ class AuthController extends Controller {
                 ]);
             }
             
-            // Si el usuario está activo, procede con el inicio de sesión normal
+            // Añadir verificación de 2FA
+            if (defined('REQUIRE_2FA_LOGIN') && REQUIRE_2FA_LOGIN) {
+                // Guardar información del usuario en sesión para el segundo paso
+                $_SESSION['pending_2fa'] = [
+                    'user_id' => $user['id'],
+                    'email' => $user['email'],
+                    'name' => $user['nombre_completo']
+                ];
+                
+                // Generar código de verificación
+                $verificationModel = new \App\Models\VerificationCode();
+                $code = $verificationModel->createForUser($user['id'], 'login_verification');
+                
+                // Enviar código por correo
+                $emailService = new \App\Helpers\EmailService();
+                $emailService->sendVerificationCode($user['email'], $user['nombre_completo'], $code);
+                
+                // Redirigir a la página de verificación 2FA
+                $this->redirect('auth/verify-login');
+                return;
+            }
+            
+            // Si no se requiere 2FA, continuar con el flujo normal de autenticación
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['user_name'] = $user['nombre_completo'];
             $_SESSION['user_role'] = $user['rol_id'];
@@ -304,5 +326,103 @@ class AuthController extends Controller {
         }
         
         $this->redirect('auth/verify');
+    }
+    
+    /**
+     * Muestra y procesa la verificación del código de 2FA
+     */
+    public function verifyLogin() {
+        // Si no hay verificación 2FA pendiente, redirigir a login
+        if (!isset($_SESSION['pending_2fa'])) {
+            $this->redirect('login');
+            return;
+        }
+        
+        // Si es POST, verificar el código
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $code = trim($_POST['code'] ?? '');
+            $userId = $_SESSION['pending_2fa']['user_id'];
+            
+            if (empty($code)) {
+                return $this->renderWithLayout('auth/verify-login', 'auth', [
+                    'error' => 'Ingrese el código de verificación',
+                    'email' => $_SESSION['pending_2fa']['email'],
+                    'title' => 'Verificación de Inicio de Sesión'
+                ]);
+            }
+            
+            // Verificar el código
+            $verificationModel = new \App\Models\VerificationCode();
+            $isValid = $verificationModel->verifyCode($userId, $code, 'login_verification');
+            
+            if ($isValid) {
+                // Recuperar datos del usuario y establecer sesión
+                $userModel = new \App\Models\Usuario();
+                $user = $userModel->findById($userId);
+                
+                $_SESSION['user_id'] = $user['id'];
+                $_SESSION['user_name'] = $user['nombre_completo'];
+                $_SESSION['user_role'] = $user['rol_id'];
+                
+                // Actualizar último acceso
+                $userModel->update($user['id'], [
+                    'ultimo_acceso' => date('Y-m-d H:i:s')
+                ]);
+                
+                // Limpiar datos de verificación pendiente
+                unset($_SESSION['pending_2fa']);
+                
+                // Mensaje de éxito
+                $_SESSION['flash_message'] = 'Inicio de sesión completado correctamente.';
+                $_SESSION['flash_type'] = 'success';
+                
+                $this->redirect('');
+                return;
+            } else {
+                return $this->renderWithLayout('auth/verify-login', 'auth', [
+                    'error' => 'Código de verificación inválido o expirado',
+                    'email' => $_SESSION['pending_2fa']['email'],
+                    'title' => 'Verificación de Inicio de Sesión'
+                ]);
+            }
+        }
+        
+        // Mostrar formulario de verificación
+        return $this->renderWithLayout('auth/verify-login', 'auth', [
+            'email' => $_SESSION['pending_2fa']['email'],
+            'title' => 'Verificación de Inicio de Sesión'
+        ]);
+    }
+    
+    /**
+     * Reenvía el código de verificación para 2FA
+     */
+    public function resendLoginCode() {
+        if (!isset($_SESSION['pending_2fa'])) {
+            $this->redirect('login');
+            return;
+        }
+        
+        $userId = $_SESSION['pending_2fa']['user_id'];
+        $email = $_SESSION['pending_2fa']['email'];
+        $name = $_SESSION['pending_2fa']['name'];
+        
+        // Generar nuevo código
+        $verificationModel = new \App\Models\VerificationCode();
+        $code = $verificationModel->createForUser($userId, 'login_verification');
+        
+        // Enviar código
+        $emailService = new \App\Helpers\EmailService();
+        $sent = $emailService->sendVerificationCode($email, $name, $code);
+        
+        if ($sent) {
+            $_SESSION['flash_message'] = 'Código de verificación reenviado correctamente.';
+            $_SESSION['flash_type'] = 'success';
+        } else {
+            $_SESSION['flash_message'] = 'Error al enviar el código. Inténtelo de nuevo.';
+            $_SESSION['flash_type'] = 'danger';
+        }
+        
+        $this->redirect('auth/verify-login');
     }
 }

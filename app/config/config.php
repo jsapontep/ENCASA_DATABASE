@@ -17,3 +17,10 @@ define('MAIL_FROM_NAME', 'Iglesia En Casa');
 
 // Controles para la verificación
 define('REQUIRE_EMAIL_VERIFICATION', true); // Cambiar a true cuando estés listo para activar
+define('REQUIRE_2FA_LOGIN', true);
+
+// Constantes de Base de Datos
+define('DB_HOST', 'localhost');
+define('DB_NAME', 'IglesiaEnCasa');
+define('DB_USER', 'root');
+define('DB_PASS', '');

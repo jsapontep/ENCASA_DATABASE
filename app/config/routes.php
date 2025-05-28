@@ -15,9 +15,6 @@ $router->get('miembros', 'Miembros', 'index', ['Auth']);
 $router->get('miembros/crear', 'Miembros', 'crear', ['Auth']);
 $router->post('miembros/guardar', 'Miembros', 'guardar', ['Auth']);
 $router->get('miembros/{id}', 'Miembros', 'ver', ['Auth']);
-$router->get('miembros/{id}/editar', 'Miembros', 'editar', ['Auth']);
-$router->post('miembros/{id}/actualizar', 'Miembros', 'actualizar', ['Auth']);
-$router->post('miembros/{id}/eliminar', 'Miembros', 'eliminar', ['Auth', 'AdminOnly']);
 
 // Rutas de ministerios
 $router->get('ministerios', 'Ministerios', 'index', ['Auth']);
@@ -39,6 +36,11 @@ $router->post('auth/registro', 'Auth', 'store');
 $router->get('auth/verify', 'Auth', 'verify');
 $router->post('auth/verify', 'Auth', 'verify');
 $router->get('auth/resendCode', 'Auth', 'resendCode');
+
+// Rutas de verificación 2FA para login
+$router->get('auth/verify-login', 'Auth', 'verifyLogin');
+$router->post('auth/verify-login', 'Auth', 'verifyLogin');
+$router->get('auth/resend-login-code', 'Auth', 'resendLoginCode');
 
 // Rutas de error
 $router->setNotFound(function() {
