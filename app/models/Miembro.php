@@ -6,21 +6,110 @@ class Miembro extends Model {
     protected $fillable = [
         'nombres', 'apellidos', 'celular', 'localidad', 'barrio', 
         'fecha_nacimiento', 'invitado_por', 'conector', 'estado_espiritual',
-        'recorrido_espiritual', 'foto', 'habeas_data'
+        'recorrido_espiritual', 'foto', 'habeas_data', 'fecha_ingreso'
     ];
     
     /**
      * Obtiene todos los miembros con información básica
      */
-    public function getAllWithBasicInfo() {
-        $sql = "SELECT m.id, m.nombres, m.apellidos, m.celular, m.localidad, 
-                m.barrio, m.fecha_ingreso, m.estado_espiritual
-                FROM {$this->table} m
-                ORDER BY m.apellidos, m.nombres";
-                
+    public function getAll($order = 'apellidos', $dir = 'ASC') {
+        $sql = "SELECT * FROM {$this->table} ORDER BY {$order} {$dir}";
         $stmt = $this->db->prepare($sql);
         $stmt->execute();
         return $stmt->fetchAll();
+    }
+    
+    /**
+     * Busca miembros por criterios
+     */
+    public function buscar($termino) {
+        $termino = "%{$termino}%";
+        $sql = "SELECT * FROM {$this->table} 
+                WHERE nombres LIKE ? 
+                OR apellidos LIKE ? 
+                OR celular LIKE ?
+                OR barrio LIKE ?
+                OR localidad LIKE ?
+                ORDER BY apellidos, nombres";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$termino, $termino, $termino, $termino, $termino]);
+        return $stmt->fetchAll();
+    }
+    
+    /**
+     * Obtiene un listado básico de miembros para selector
+     */
+    public function getParaSelector() {
+        $sql = "SELECT id, CONCAT(nombres, ' ', apellidos) as nombre_completo 
+                FROM {$this->table} 
+                ORDER BY apellidos, nombres";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute();
+        return $stmt->fetchAll();
+    }
+    
+    /**
+     * Crea un nuevo miembro con sus datos relacionados
+     */
+    public function crearCompleto($datos) {
+        try {
+            $this->db->beginTransaction();
+            
+            // 1. Crear registro principal en InformacionGeneral
+            $miembroId = $this->create($datos['informacion_general']);
+            
+            if (!$miembroId) {
+                $this->db->rollBack();
+                return false;
+            }
+            
+            // 2. Crear registro de contacto si hay datos
+            if (!empty($datos['contacto'])) {
+                $datos['contacto']['miembro_id'] = $miembroId;
+                $contactoModel = new Contacto();
+                if (!$contactoModel->create($datos['contacto'])) {
+                    $this->db->rollBack();
+                    return false;
+                }
+            }
+            
+            // 3. Crear registro de estudios/trabajo si hay datos
+            if (!empty($datos['estudios_trabajo'])) {
+                $datos['estudios_trabajo']['miembro_id'] = $miembroId;
+                $estudiosModel = new EstudiosTrabajo();
+                if (!$estudiosModel->create($datos['estudios_trabajo'])) {
+                    $this->db->rollBack();
+                    return false;
+                }
+            }
+            
+            // 4. Crear registro de tallas si hay datos
+            if (!empty($datos['tallas'])) {
+                $datos['tallas']['miembro_id'] = $miembroId;
+                $tallasModel = new Tallas();
+                if (!$tallasModel->create($datos['tallas'])) {
+                    $this->db->rollBack();
+                    return false;
+                }
+            }
+            
+            // 5. Crear registro de carrera bíblica si hay datos
+            if (!empty($datos['carrera_biblica'])) {
+                $datos['carrera_biblica']['miembro_id'] = $miembroId;
+                $carreraModel = new CarreraBiblica();
+                if (!$carreraModel->create($datos['carrera_biblica'])) {
+                    $this->db->rollBack();
+                    return false;
+                }
+            }
+            
+            $this->db->commit();
+            return $miembroId;
+        } catch (\Exception $e) {
+            $this->db->rollBack();
+            error_log("Error al crear miembro: " . $e->getMessage());
+            return false;
+        }
     }
     
     /**
@@ -34,58 +123,17 @@ class Miembro extends Model {
             return null;
         }
         
-        // Información de contacto
-        $sql = "SELECT * FROM Contacto WHERE miembro_id = :id LIMIT 1";
-        $stmt = $this->db->prepare($sql);
-        $stmt->bindValue(':id', $id);
-        $stmt->execute();
-        $miembro['contacto'] = $stmt->fetch();
+        // Obtener datos relacionados
+        $contactoModel = new Contacto();
+        $estudiosModel = new EstudiosTrabajo();
+        $tallasModel = new Tallas();
+        $carreraModel = new CarreraBiblica();
         
-        // Ministerios
-        $sql = "SELECT mm.*, m.nombre as ministerio_nombre, r.nombre as rol_nombre
-                FROM MiembrosMinisterios mm
-                JOIN Ministerios m ON mm.ministerio_id = m.id
-                JOIN Roles r ON mm.rol_id = r.id
-                WHERE mm.miembro_id = :id";
-        $stmt = $this->db->prepare($sql);
-        $stmt->bindValue(':id', $id);
-        $stmt->execute();
-        $miembro['ministerios'] = $stmt->fetchAll();
+        $miembro['contacto'] = $contactoModel->findByMiembro($id);
+        $miembro['estudios_trabajo'] = $estudiosModel->findByMiembro($id);
+        $miembro['tallas'] = $tallasModel->findByMiembro($id);
+        $miembro['carrera_biblica'] = $carreraModel->findByMiembro($id);
         
         return $miembro;
-    }
-    
-    /**
-     * Guarda un nuevo miembro con su información de contacto
-     */
-    public function saveWithContacto($miembroData, $contactoData) {
-        try {
-            $this->db->beginTransaction();
-            
-            // Crear miembro
-            $miembroId = $this->create($miembroData);
-            
-            if (!$miembroId) {
-                throw new \Exception("Error al crear el miembro");
-            }
-            
-            // Crear contacto
-            $contactoData['miembro_id'] = $miembroId;
-            $contactoModel = new \App\Models\Contacto();
-            $contactoId = $contactoModel->create($contactoData);
-            
-            if (!$contactoId) {
-                throw new \Exception("Error al crear la información de contacto");
-            }
-            
-            $this->db->commit();
-            return $miembroId;
-            
-        } catch (\Exception $e) {
-            $this->db->rollBack();
-            // Registrar el error
-            error_log($e->getMessage());
-            return false;
-        }
     }
 }
