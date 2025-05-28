@@ -15,6 +15,8 @@ $router->get('miembros', 'Miembros', 'index', ['Auth']);
 $router->get('miembros/crear', 'Miembros', 'crear', ['Auth']);
 $router->post('miembros/guardar', 'Miembros', 'guardar', ['Auth']);
 $router->get('miembros/{id}', 'Miembros', 'ver', ['Auth']);
+$router->get('miembros/editar/{id}', 'Miembros', 'editar', ['Auth']);
+$router->post('miembros/actualizar/{id}', 'Miembros', 'actualizar', ['Auth']);
 
 // Rutas de ministerios
 $router->get('ministerios', 'Ministerios', 'index', ['Auth']);
