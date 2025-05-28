@@ -32,14 +32,28 @@ abstract class Controller {
     }
     
     /**
-     * Método para redireccionar
+     * Redirecciona a otra página con un mensaje opcional
      */
-    protected function redirect($url) {
-        \App\Helpers\Router::redirect($url);
+    protected function redirect($url, $message = null, $type = 'info') {
+        if ($message) {
+            $_SESSION['flash_message'] = $message;
+            $_SESSION['flash_type'] = $type;
+        }
+        
+        // Regenerar token CSRF después de redirecciones importantes
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        
+        // Si la URL no comienza con http(s), construirla con la URL base
+        if (strpos($url, 'http') !== 0) {
+            $url = url(ltrim($url, '/'));
+        }
+        
+        header('Location: ' . $url);
+        exit;
     }
     
     /**
-     * Método para obtener el usuario actual
+     * Método para obtener el usuario current
      */
     protected function getCurrentUser() {
         if (isset($_SESSION['user_id'])) {

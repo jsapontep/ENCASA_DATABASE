@@ -1,0 +1,24 @@
+[2025-05-24 10:15:13] [ERROR] [App\Helpers\Logger::error] Mensaje de error de prueba
+[2025-05-24 10:15:13] [WARNING] [App\Helpers\Logger::warning] Mensaje de advertencia de prueba
+[2025-05-24 10:15:13] [INFO] [App\Helpers\Logger::info] Mensaje informativo de prueba
+[2025-05-24 10:15:13] [DEBUG] [App\Helpers\Logger::debug] Mensaje de depuración de prueba
+[2025-05-24 10:16:34] [ERROR] [App\Helpers\Logger::error] Mensaje de error de prueba
+[2025-05-24 10:16:34] [WARNING] [App\Helpers\Logger::warning] Mensaje de advertencia de prueba
+[2025-05-24 10:16:34] [INFO] [App\Helpers\Logger::info] Mensaje informativo de prueba
+[2025-05-24 10:16:34] [DEBUG] [App\Helpers\Logger::debug] Mensaje de depuración de prueba
+[2025-05-24 10:26:41] [ERROR] [App\Helpers\Logger::error] Mensaje de error de prueba
+[2025-05-24 10:26:41] [WARNING] [App\Helpers\Logger::warning] Mensaje de advertencia de prueba
+[2025-05-24 10:26:41] [INFO] [App\Helpers\Logger::info] Mensaje informativo de prueba
+[2025-05-24 10:26:41] [DEBUG] [App\Helpers\Logger::debug] Mensaje de depuración de prueba
+[2025-05-24 10:28:44] [ERROR] [App\Helpers\Logger::error] Mensaje de error de prueba
+[2025-05-24 10:28:44] [WARNING] [App\Helpers\Logger::warning] Mensaje de advertencia de prueba
+[2025-05-24 10:28:44] [INFO] [App\Helpers\Logger::info] Mensaje informativo de prueba
+[2025-05-24 10:28:44] [DEBUG] [App\Helpers\Logger::debug] Mensaje de depuración de prueba
+[2025-05-24 12:17:40] [ERROR] [App\Helpers\Logger::error] Mensaje de error de prueba
+[2025-05-24 12:17:40] [WARNING] [App\Helpers\Logger::warning] Mensaje de advertencia de prueba
+[2025-05-24 12:17:40] [INFO] [App\Helpers\Logger::info] Mensaje informativo de prueba
+[2025-05-24 12:17:40] [DEBUG] [App\Helpers\Logger::debug] Mensaje de depuración de prueba
+[2025-05-24 12:19:55] [ERROR] [App\Helpers\Logger::error] Mensaje de error de prueba
+[2025-05-24 12:19:55] [WARNING] [App\Helpers\Logger::warning] Mensaje de advertencia de prueba
+[2025-05-24 12:19:55] [INFO] [App\Helpers\Logger::info] Mensaje informativo de prueba
+[2025-05-24 12:19:55] [DEBUG] [App\Helpers\Logger::debug] Mensaje de depuración de prueba

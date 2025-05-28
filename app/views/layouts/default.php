@@ -35,7 +35,7 @@
                     <?php if (isset($_SESSION['user_id'])): ?>
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
-                            <?= htmlspecialchars($_SESSION['nombre_completo'] ?? $_SESSION['username']) ?>
+                            <?= isset($_SESSION['user_name']) ? htmlspecialchars($_SESSION['user_name']) : 'Usuario' ?>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
                             <li><a class="dropdown-item" href="<?= APP_URL ?>/perfil">Mi Perfil</a></li>

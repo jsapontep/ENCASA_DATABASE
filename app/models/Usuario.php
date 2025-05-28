@@ -33,6 +33,20 @@ class Usuario extends Model {
     }
     
     /**
+     * Encuentra un usuario por email o nombre de usuario
+     * @param string $emailOrUsername Email o nombre de usuario
+     * @return array|bool El usuario encontrado o false
+     */
+    public function findByEmailOrUsername($emailOrUsername) {
+        $query = "SELECT * FROM {$this->table} WHERE email = ? OR username = ? LIMIT 1";
+        $stmt = $this->db->prepare($query);
+        $stmt->execute([$emailOrUsername, $emailOrUsername]);
+        
+        $result = $stmt->fetch();
+        return $result ? $result : false;
+    }
+    
+    /**
      * Encuentra un registro por una condición específica
      */
     public function findOneWhere($field, $value) {
@@ -43,6 +57,17 @@ class Usuario extends Model {
         return $stmt->fetch();
     }
     
+    /**
+     * Encuentra un usuario por su ID
+     */
+    public function findById($id) {
+        $query = "SELECT * FROM {$this->table} WHERE id = ? LIMIT 1";
+        $stmt = $this->db->prepare($query);
+        $stmt->execute([$id]);
+        
+        return $stmt->fetch();
+    }
+
     /**
      * Autentica un usuario por su nombre de usuario/email y contraseña
      */
@@ -186,5 +211,27 @@ class Usuario extends Model {
         $stmt = $this->db->prepare($query);
         $stmt->execute();
         return $stmt->fetchAll();
+    }
+
+    /**
+     * Actualiza un usuario
+     */
+    public function update($id, $data) {
+        $fields = [];
+        $values = [];
+        
+        foreach ($data as $key => $value) {
+            $fields[] = "{$key} = ?";
+            $values[] = $value;
+        }
+        
+        // Añadir el ID al final del array de valores
+        $values[] = $id;
+        
+        $query = "UPDATE {$this->table} SET " . implode(', ', $fields) . " WHERE id = ?";
+        $stmt = $this->db->prepare($query);
+        $stmt->execute($values);
+        
+        return $stmt->rowCount() > 0;
     }
 }

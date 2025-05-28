@@ -4,19 +4,18 @@ namespace App\Models;
 abstract class Model {
     protected $db;
     protected $table;
-    protected $primaryKey = 'id';
-    protected $fillable = []; // Campos que se pueden asignar masivamente
-    protected $guarded = []; // Campos protegidos contra asignación masiva
+    protected $fillable = [];
     
     public function __construct() {
-        $this->db = \Database::getInstance()->getConnection();
+        $database = \Database::getInstance(); // Usamos el namespace global
+        $this->db = $database->getConnection();
     }
     
     /**
      * Encuentra un registro por su ID
      */
     public function findById($id) {
-        $query = "SELECT * FROM {$this->table} WHERE {$this->primaryKey} = :id LIMIT 1";
+        $query = "SELECT * FROM {$this->table} WHERE id = :id LIMIT 1";
         $stmt = $this->db->prepare($query);
         $stmt->bindValue(':id', $id);
         $stmt->execute();
@@ -86,7 +85,7 @@ abstract class Model {
      * Elimina un registro
      */
     public function delete($id) {
-        $query = "DELETE FROM {$this->table} WHERE {$this->primaryKey} = :id";
+        $query = "DELETE FROM {$this->table} WHERE id = :id";
         $stmt = $this->db->prepare($query);
         $stmt->bindValue(':id', $id);
         return $stmt->execute();
@@ -98,10 +97,6 @@ abstract class Model {
     protected function filterFields(array $data) {
         if (!empty($this->fillable)) {
             return array_intersect_key($data, array_flip($this->fillable));
-        }
-        
-        if (!empty($this->guarded)) {
-            return array_diff_key($data, array_flip($this->guarded));
         }
         
         return $data;
@@ -147,5 +142,18 @@ abstract class Model {
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         return $stmt;
+    }
+    
+    /**
+     * Obtiene una fila de la base de datos
+     * 
+     * @param string $sql Consulta SQL
+     * @param array $params Parámetros para la consulta
+     * @return array|null Fila encontrada o null
+     */
+    protected function getRow($sql, $params = []) {
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetch(\PDO::FETCH_ASSOC);
     }
 }

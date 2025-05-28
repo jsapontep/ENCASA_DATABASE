@@ -1,0 +1,50 @@
+/* SISTEMA CSS DINÁMICO - IGLESIA EN CASA */
+/* Archivo principal que importa todos los módulos */
+
+/* Importar variables y reset */
+@import 'variables.css';
+@import 'reset.css';
+
+/* Importar utilidades y layout */
+@import 'utilities.css';
+@import 'layout.css';
+
+/* Importar componentes */
+@import 'components/buttons.css';
+@import 'components/forms.css';
+@import 'components/tables.css';
+@import 'components/cards.css';
+@import 'components/navigation.css';
+@import 'components/alerts.css';
+
+/* Estilos básicos de página */
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-primary);
+  color: var(--text-color);
+  background-color: var(--bg-color);
+  line-height: 1.6;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+/* Soporte para temas */
+body.theme-dark {
+  --bg-color: var(--dark-bg);
+  --text-color: var(--light-text);
+  --border-color: var(--dark-border);
+  --card-bg: var(--dark-card-bg);
+}
+
+/* Clases para secciones específicas */
+body.section-dashboard .main-content {
+  background-color: var(--dashboard-bg);
+}
+
+body.section-auth .main-content {
+  max-width: 480px;
+  margin: 0 auto;
+}

@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definición de componentes básicos */
+@layer components {
+  /* Botones simplificados */
+  .btn {
+    @apply px-4 py-2 rounded;
+  }
+  .btn-primary {
+    @apply bg-blue-600 text-white hover:bg-blue-700;
+  }
+  .btn-secondary {
+    @apply bg-green-600 text-white hover:bg-green-700;
+  }
+  .btn-danger {
+    @apply bg-red-600 text-white hover:bg-red-700;
+  }
+  
+  /* Formularios */
+  .form-group {
+    @apply mb-4;
+  }
+  .form-label {
+    @apply block text-sm font-medium text-gray-700 mb-1;
+  }
+  .form-control {
+    @apply mt-1 block w-full rounded-md border border-gray-300;
+  }
+}
