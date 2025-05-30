@@ -55,6 +55,9 @@ echo "<!-- DEBUG: " . htmlspecialchars(json_encode($miembro)) . " -->";
             <a class="nav-link" id="tallas-tab" data-bs-toggle="tab" href="#tallas" role="tab">Tallas</a>
         </li>
         <li class="nav-item">
+            <a class="nav-link" id="salud-tab" data-bs-toggle="tab" href="#salud" role="tab">Salud y Emergencias</a>
+        </li>
+        <li class="nav-item">
             <a class="nav-link" id="carrera-tab" data-bs-toggle="tab" href="#carrera" role="tab">Carrera Bíblica</a>
         </li>
     </ul>
@@ -173,7 +176,194 @@ echo "<!-- DEBUG: " . htmlspecialchars(json_encode($miembro)) . " -->";
             </div>
         </div>
 
-        <!-- Incluir otras pestañas: estudios, tallas, carrera bíblica -->
+        <!-- Pestaña de Estudios/Trabajo -->
+        <div class="tab-pane fade" id="estudios" role="tabpanel">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Información Académica y Laboral</h5>
+                    <?php if(isset($miembro['estudios'])): ?>
+                        <table class="table table-striped">
+                            <tbody>
+                                <tr>
+                                    <th scope="row" style="width: 30%">Nivel de Estudios:</th>
+                                    <td><?= htmlspecialchars($miembro['estudios']['nivel_estudios'] ?? 'No disponible') ?></td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Profesión:</th>
+                                    <td><?= htmlspecialchars($miembro['estudios']['profesion'] ?? 'No disponible') ?></td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Otros Estudios:</th>
+                                    <td><?= nl2br(htmlspecialchars($miembro['estudios']['otros_estudios'] ?? 'No disponible')) ?></td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Empresa:</th>
+                                    <td><?= htmlspecialchars($miembro['estudios']['empresa'] ?? 'No disponible') ?></td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Dirección de Empresa:</th>
+                                    <td><?= htmlspecialchars($miembro['estudios']['direccion_empresa'] ?? 'No disponible') ?></td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Emprendimientos:</th>
+                                    <td><?= nl2br(htmlspecialchars($miembro['estudios']['emprendimientos'] ?? 'No disponible')) ?></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    <?php else: ?>
+                        <div class="alert alert-info">No hay información académica o laboral disponible.</div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
 
+        <!-- Pestaña de Tallas -->
+        <div class="tab-pane fade" id="tallas" role="tabpanel">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Información de Tallas</h5>
+                    <?php if(isset($miembro['tallas'])): ?>
+                        <table class="table table-striped">
+                            <tbody>
+                                <tr>
+                                    <th scope="row" style="width: 30%">Talla de Camisa:</th>
+                                    <td><?= htmlspecialchars($miembro['tallas']['talla_camisa'] ?? 'No disponible') ?></td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Talla de Camiseta:</th>
+                                    <td><?= htmlspecialchars($miembro['tallas']['talla_camiseta'] ?? 'No disponible') ?></td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Talla de Pantalón:</th>
+                                    <td><?= htmlspecialchars($miembro['tallas']['talla_pantalon'] ?? 'No disponible') ?></td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Talla de Zapatos:</th>
+                                    <td><?= htmlspecialchars($miembro['tallas']['talla_zapatos'] ?? 'No disponible') ?></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    <?php else: ?>
+                        <div class="alert alert-info">No hay información de tallas disponible.</div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pestaña de Salud y Emergencias -->
+        <div class="tab-pane fade" id="salud" role="tabpanel">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Información de Salud y Contactos de Emergencia</h5>
+                    <?php if(isset($miembro['salud'])): ?>
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-header bg-info text-white">
+                                        <h5 class="card-title mb-0">Información Médica</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <table class="table">
+                                            <tbody>
+                                                <tr>
+                                                    <th scope="row">Tipo de Sangre (RH):</th>
+                                                    <td><span class="badge bg-danger"><?= htmlspecialchars($miembro['salud']['rh'] ?? 'No registrado') ?></span></td>
+                                                </tr>
+                                                <tr>
+                                                    <th scope="row">EPS:</th>
+                                                    <td><?= htmlspecialchars($miembro['salud']['eps'] ?? 'No registrado') ?></td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h5 class="mt-4 mb-3">Contactos de Emergencia</h5>
+                        <?php if(!empty($miembro['salud']['acudiente1']) || !empty($miembro['salud']['acudiente2'])): ?>
+                            <div class="row">
+                                <?php if(!empty($miembro['salud']['acudiente1'])): ?>
+                                <div class="col-md-6 mb-3">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <h6 class="card-title"><?= htmlspecialchars($miembro['salud']['acudiente1']) ?></h6>
+                                            <p class="card-text">
+                                                <i class="fas fa-phone me-1"></i> 
+                                                <?= htmlspecialchars($miembro['salud']['telefono1'] ?? 'Sin teléfono') ?>
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <?php endif; ?>
+                                
+                                <?php if(!empty($miembro['salud']['acudiente2'])): ?>
+                                <div class="col-md-6 mb-3">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <h6 class="card-title"><?= htmlspecialchars($miembro['salud']['acudiente2']) ?></h6>
+                                            <p class="card-text">
+                                                <i class="fas fa-phone me-1"></i>
+                                                <?= htmlspecialchars($miembro['salud']['telefono2'] ?? 'Sin teléfono') ?>
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <?php endif; ?>
+                            </div>
+                        <?php else: ?>
+                            <div class="alert alert-warning">No hay contactos de emergencia registrados.</div>
+                        <?php endif; ?>
+                        
+                    <?php else: ?>
+                        <div class="alert alert-info">No hay información de salud ni contactos de emergencia disponibles.</div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pestaña de Carrera Bíblica -->
+        <div class="tab-pane fade" id="carrera" role="tabpanel">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Información de Carrera Bíblica</h5>
+                    <?php if(isset($miembro['carrera'])): ?>
+                        <table class="table table-striped">
+                            <tbody>
+                                <tr>
+                                    <th scope="row" style="width: 30%">Estado:</th>
+                                    <td><?= htmlspecialchars($miembro['carrera']['estado'] ?? 'No disponible') ?></td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Carrera Bíblica:</th>
+                                    <td><?= htmlspecialchars($miembro['carrera']['carrera_biblica'] ?? 'No disponible') ?></td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Miembro de:</th>
+                                    <td><?= htmlspecialchars($miembro['carrera']['miembro_de'] ?? 'No disponible') ?></td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Casa de Palabra y Vida:</th>
+                                    <td><?= htmlspecialchars($miembro['carrera']['casa_de_palabra_y_vida'] ?? 'No disponible') ?></td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">Cobertura:</th>
+                                    <td><?= htmlspecialchars($miembro['carrera']['cobertura'] ?? 'No disponible') ?></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        
+                        <?php if(isset($miembro['carrera']['anotaciones']) && !empty($miembro['carrera']['anotaciones'])): ?>
+                        <div class="mt-3">
+                            <h6 class="fw-bold">Anotaciones:</h6>
+                            <p><?= nl2br(htmlspecialchars($miembro['carrera']['anotaciones'])) ?></p>
+                        </div>
+                        <?php endif; ?>
+                    <?php else: ?>
+                        <div class="alert alert-info">No hay información de carrera bíblica disponible.</div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
