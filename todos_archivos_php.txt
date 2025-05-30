@@ -644,8 +644,6 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-// Configurar visualización de errores para desarrollo
-
 // Definir constantes del sistema
 define('BASE_PATH', __DIR__);
 define('APP_PATH', BASE_PATH . '/app');
@@ -660,24 +658,37 @@ $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
 
 // Detectar si estamos usando ngrok u otro túnel
 $is_tunnel = strpos($host, 'ngrok-free.app') !== false || 
-            strpos($host, 'ngrok.io') !== false ||
-            strpos($host, 'localto.net') !== false || 
-            strpos($host, 'loca.lt') !== false;
+             strpos($host, 'ngrok.io') !== false ||
+             strpos($host, 'localto.net') !== false || 
+             strpos($host, 'loca.lt') !== false;
 
 // Configurar APP_URL según el entorno
 if ($is_tunnel) {
     define('APP_URL', $protocol . $host . '/ENCASA_DATABASE');
     define('APP_ENV', 'tunnel');
-    
-    // Debug - Opcional
-    error_log("Detectado túnel: " . $host);
-    error_log("APP_URL configurado como: " . APP_URL);
 } else {
     define('APP_URL', 'http://localhost/ENCASA_DATABASE');
     define('APP_ENV', 'development');
 }
 
-// Cargar helpers antes de la configuración
+// IMPORTANTE: Configurar sesiones ANTES de iniciarla
+// Configuración de sesiones
+ini_set('session.cookie_httponly', 1);
+ini_set('session.use_only_cookies', 1);
+ini_set('session.use_strict_mode', 1);
+ini_set('session.cookie_samesite', 'Lax');
+
+// NO forzar cookies seguras para ngrok - esto causa redirecciones infinitas
+if (APP_ENV === 'production') {
+    ini_set('session.cookie_secure', 1);
+} else {
+    ini_set('session.cookie_secure', 0);
+}
+
+// Ahora iniciar sesión DESPUÉS de configurarla
+session_start();
+
+// Cargar helpers antes de configuración
 if (file_exists(APP_PATH . '/helpers/functions.php')) {
     require_once APP_PATH . '/helpers/functions.php';
 }
@@ -687,17 +698,6 @@ require_once CONFIG_PATH . '/config.php';
 require_once CONFIG_PATH . '/database.php';
 require_once CONFIG_PATH . '/autoload.php';
 require_once CONFIG_PATH . '/mail_autoload.php';
-
-// Configuración de sesiones
-ini_set('session.cookie_httponly', 1);
-ini_set('session.use_only_cookies', 1);
-ini_set('session.use_strict_mode', 1);
-if (APP_ENV === 'production' || $is_tunnel) {
-    ini_set('session.cookie_secure', 1);
-}
-
-// Iniciar sesión
-session_start();
 
 // Cargar y ejecutar el router
 $router = require_once CONFIG_PATH . '/routes.php';
@@ -712,6 +712,61 @@ try {
     echo '</pre>';
     die();
 }
+
+
+=============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\login_test.php
+=============================================================
+
+<?php
+
+// Archivo para probar la seguridad del formulario de login
+echo "<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <meta http-equiv='Content-Security-Policy' content='upgrade-insecure-requests'>
+    <meta name='referrer' content='origin'>
+    <title>Prueba de Login Seguro</title>
+    <link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css' rel='stylesheet'>
+</head>
+<body>
+    <div class='container mt-5'>
+        <div class='row justify-content-center'>
+            <div class='col-md-6'>
+                <div class='card'>
+                    <div class='card-header bg-primary text-white'>
+                        <h3>Prueba de Login Seguro</h3>
+                    </div>
+                    <div class='card-body'>
+                        <form action='auth/login' method='post' autocomplete='on'>
+                            <input type='hidden' name='secure_form' value='1'>
+                            
+                            <div class='mb-3'>
+                                <label for='email_or_username' class='form-label'>Email o nombre de usuario</label>
+                                <input type='text' class='form-control' id='email_or_username' 
+                                       name='email_or_username' autocomplete='username' required>
+                            </div>
+                            
+                            <div class='mb-3'>
+                                <label for='password' class='form-label'>Contraseña</label>
+                                <input type='password' class='form-control' id='password' 
+                                       name='password' autocomplete='current-password' required>
+                            </div>
+                            
+                            <div class='d-grid'>
+                                <button type='submit' class='btn btn-primary'>Iniciar Sesión</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>";
+?>
 
 
 =============================================================
@@ -902,6 +957,117 @@ try {
         'target_url' => $target_url
     ]);
 }
+
+
+=============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\redirect_debug.php
+=============================================================
+
+<?php
+
+session_start();
+echo "<h1>Diagnóstico de redirecciones</h1>";
+
+echo "<h2>Headers de respuesta:</h2>";
+echo "<pre>";
+var_dump(headers_list());
+echo "</pre>";
+
+echo "<h2>Variables de sesión:</h2>";
+echo "<pre>";
+var_dump($_SESSION);
+echo "</pre>";
+
+echo "<h2>Cookies:</h2>";
+echo "<pre>";
+var_dump($_COOKIE);
+echo "</pre>";
+
+echo "<h2>Variables de servidor:</h2>";
+echo "<pre>";
+$serverVars = [
+    'HTTP_HOST', 'HTTPS', 'REQUEST_URI', 'SCRIPT_NAME'
+];
+foreach ($serverVars as $var) {
+    echo "$var: " . ($_SERVER[$var] ?? 'No definido') . "\n";
+}
+echo "</pre>";
+?>
+
+
+=============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\rewrite_test.php
+=============================================================
+
+<?php
+
+echo "<h1>Prueba de mod_rewrite</h1>";
+
+if (function_exists('apache_get_modules')) {
+    $modules = apache_get_modules();
+    echo "<p>mod_rewrite está " . (in_array('mod_rewrite', $modules) ? "habilitado" : "deshabilitado") . "</p>";
+} else {
+    echo "<p>No se puede determinar si mod_rewrite está habilitado en este servidor.</p>";
+}
+
+echo "<p>Verificación de .htaccess: ";
+$htaccess_path = __DIR__ . '/.htaccess';
+if (file_exists($htaccess_path)) {
+    echo "El archivo .htaccess existe ✓</p>";
+    echo "<pre>" . htmlspecialchars(file_get_contents($htaccess_path)) . "</pre>";
+} else {
+    echo "El archivo .htaccess NO existe ✗</p>";
+}
+
+
+=============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\route.debug.php
+=============================================================
+
+<?php
+
+
+echo "<h1>Diagnóstico de rutas</h1>";
+
+// Analizar URL actual
+$requestUri = $_SERVER['REQUEST_URI'] ?? 'No disponible';
+$scriptName = $_SERVER['SCRIPT_NAME'] ?? 'No disponible';
+$base = str_replace('/index.php', '', $scriptName);
+$url = str_replace($base, '', $requestUri);
+$url = ltrim($url, '/');
+$url = explode('?', $url)[0];
+
+echo "<h2>Información de la URL actual:</h2>";
+echo "<ul>";
+echo "<li><strong>REQUEST_URI:</strong> " . htmlspecialchars($requestUri) . "</li>";
+echo "<li><strong>SCRIPT_NAME:</strong> " . htmlspecialchars($scriptName) . "</li>";
+echo "<li><strong>Base detectada:</strong> " . htmlspecialchars($base) . "</li>";
+echo "<li><strong>URL procesada:</strong> " . htmlspecialchars($url) . "</li>";
+echo "</ul>";
+
+// Verificar carga de archivos críticos
+echo "<h2>Verificación de archivos críticos:</h2>";
+echo "<ul>";
+$filesRequired = [
+    'index.php' => __DIR__ . '/index.php',
+    'config.php' => __DIR__ . '/app/config/config.php',
+    'routes.php' => __DIR__ . '/app/config/routes.php',
+    'functions.php' => __DIR__ . '/app/helpers/functions.php',
+    'Router.php' => __DIR__ . '/app/helpers/Router.php',
+    '.htaccess' => __DIR__ . '/.htaccess',
+];
+
+foreach ($filesRequired as $name => $path) {
+    echo "<li>";
+    if (file_exists($path)) {
+        echo "✅ <strong>$name:</strong> Existe";
+    } else {
+        echo "❌ <strong>$name:</strong> NO existe";
+    }
+    echo "</li>";
+}
+echo "</ul>";
+?>
 
 
 =============================================================
@@ -2868,11 +3034,16 @@ if (!function_exists('log_debug')) {
  * @return string URL completa
  */
 if (!function_exists('url')) {
-    function url($path = '')
+    function url($path = '', $force_https = true)
     {
         // Usar APP_URL si está definida
         if (defined('APP_URL')) {
             $baseUrl = APP_URL;
+            
+            // Si es un túnel y queremos forzar HTTPS, asegurarnos que use https://
+            if ($force_https && defined('APP_ENV') && APP_ENV === 'tunnel') {
+                $baseUrl = str_replace('http://', 'https://', $baseUrl);
+            }
         } else {
             // Si no está definida, detectar el entorno
             $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https://' : 'http://';
@@ -2885,12 +3056,8 @@ if (!function_exists('url')) {
                        strpos($host, 'loca.lt') !== false;
             
             if ($is_tunnel) {
-                $baseUrl = $protocol . $host . '/ENCASA_DATABASE';
-                
-                // Log para depuración
-                if (function_exists('log_debug')) {
-                    log_debug("URL generada para túnel: $baseUrl");
-                }
+                // Forzar HTTPS para túneles
+                $baseUrl = ($force_https ? 'https://' : $protocol) . $host . '/ENCASA_DATABASE';
             } else {
                 $baseUrl = 'http://localhost/ENCASA_DATABASE';
             }
@@ -3150,7 +3317,20 @@ class Router {
      * Despacha la ruta actual
      */
     public function dispatch() {
-        $url = $this->getUrl();
+        // Obtener la ruta solicitada
+        $url = $_SERVER['REQUEST_URI'] ?? '';
+        
+        // Eliminar la base del proyecto de la URL
+        $base = str_replace('/index.php', '', $_SERVER['SCRIPT_NAME']);
+        $url = str_replace($base, '', $url);
+        
+        // Eliminar la barra inicial y parámetros GET
+        $url = ltrim($url, '/');
+        $url = explode('?', $url)[0];
+        
+        // Debug para ver qué URL se está procesando
+        error_log("URL a procesar: '$url'");
+        
         $method = $_SERVER['REQUEST_METHOD'];
         
         // Si se envía _method en un formulario, usar ese método
@@ -4736,7 +4916,10 @@ ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\views\auth\login.php
             </div>
           <?php endif; ?>
           
-          <form action="<?= url('auth/login') ?>" method="post" autocomplete="on">
+          <form action="<?= url('auth/login', true) ?>" method="post" autocomplete="on">
+            <!-- Asegurarnos de usar HTTPS -->
+            <input type="hidden" name="secure_form" value="1">
+            
             <div class="mb-3">
               <label for="email_or_username" class="form-label">Email o nombre de usuario</label>
               <input type="text" class="form-control" id="email_or_username" name="email_or_username" 
@@ -5150,6 +5333,8 @@ ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\views\layouts\auth.php
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= isset($title) ? $title . ' - ' . APP_NAME : APP_NAME ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+    <meta name="referrer" content="origin">
 </head>
 <body class="bg-light">
     <div class="container py-5">
