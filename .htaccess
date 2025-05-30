@@ -1,6 +1,7 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
     
+<<<<<<< HEAD
     # Detectar entorno automáticamente para RewriteBase
     RewriteCond %{HTTP_HOST} localto\.net [NC]
     RewriteRule .* - [E=BASE:/encasa_database]
@@ -13,11 +14,17 @@
     RewriteBase %{ENV:BASE}
     
     # Si el archivo/directorio existe, úsalo directamente
+=======
+    # Configuración simple de RewriteBase
+    RewriteBase /ENCASA_DATABASE/
+    
+    # Si el archivo/directorio no existe físicamente
+>>>>>>> main
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     
     # Redirige todo lo demás a index.php
-    RewriteRule ^(.*)$ index.php?url=$1 [QSA,L]
+    RewriteRule ^(.*)$ index.php [QSA,L]
 </IfModule>
 
 # Prevenir acceso a directorios

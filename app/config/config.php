@@ -1,5 +1,6 @@
 <?php
 // Configuración general de la aplicación
+<<<<<<< HEAD
 define('APP_NAME', 'Iglesia En Casa');
 
 // Reemplazar la definición actual de APP_URL con una detección automática
@@ -16,6 +17,11 @@ if (strpos($host, 'localto.net') !== false) {
     define('APP_URL', $protocol . $host . '/ENCASA_DATABASE');
     define('APP_ENV', 'local');
 }
+=======
+if (!defined('APP_NAME')) define('APP_NAME', 'Iglesia En Casa');
+if (!defined('APP_URL')) define('APP_URL', 'http://localhost/Encasa_Database');
+if (!defined('APP_ENV')) define('APP_ENV', 'development'); // 'development' o 'production'
+>>>>>>> main
 
 // Configuración de zona horaria
 date_default_timezone_set('America/Bogota');

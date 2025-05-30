@@ -1,5 +1,6 @@
 <?php
-// filepath: /Applications/XAMPP/xamppfiles/htdocs/Encasa_Database/app/views/layouts/default.php
+// Comentario actualizado para reflejar la ruta correcta en Windows
+// filepath: c:\xampp\htdocs\ENCASA_DATABASE\app\views\layouts\default.php
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -12,21 +13,21 @@
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
-            <a class="navbar-brand" href="<?= APP_URL ?>">Iglesia En Casa</a>
+            <a class="navbar-brand" href="<?= url() ?>">Iglesia En Casa</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav">
                     <li class="nav-item">
-                        <a class="nav-link" href="<?= APP_URL ?>">Inicio</a>
+                        <a class="nav-link" href="<?= url() ?>">Inicio</a>
                     </li>
                     <?php if (isset($_SESSION['user_id'])): ?>
                     <li class="nav-item">
-                        <a class="nav-link" href="<?= APP_URL ?>/miembros">Miembros</a>
+                        <a class="nav-link" href="<?= url('miembros') ?>">Miembros</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="<?= APP_URL ?>/ministerios">Ministerios</a>
+                        <a class="nav-link" href="<?= url('ministerios') ?>">Ministerios</a>
                     </li>
                     <?php endif; ?>
                 </ul>
@@ -38,17 +39,17 @@
                             <?= isset($_SESSION['user_name']) ? htmlspecialchars($_SESSION['user_name']) : 'Usuario' ?>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="<?= APP_URL ?>/perfil">Mi Perfil</a></li>
+                            <li><a class="dropdown-item" href="<?= url('perfil') ?>">Mi Perfil</a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="<?= APP_URL ?>/logout">Cerrar Sesión</a></li>
+                            <li><a class="dropdown-item" href="<?= url('logout') ?>">Cerrar Sesión</a></li>
                         </ul>
                     </li>
                     <?php else: ?>
                     <li class="nav-item">
-                        <a class="nav-link" href="<?= APP_URL ?>/login">Iniciar Sesión</a>
+                        <a class="nav-link" href="<?= url('login') ?>">Iniciar Sesión</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="<?= APP_URL ?>/registro">Registrarse</a>
+                        <a class="nav-link" href="<?= url('registro') ?>">Registrarse</a>
                     </li>
                     <?php endif; ?>
                 </ul>

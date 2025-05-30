@@ -12,23 +12,53 @@ define('MODEL_PATH', APP_PATH . '/models');
 define('VIEW_PATH', APP_PATH . '/views');
 define('CONFIG_PATH', APP_PATH . '/config');
 
+// IMPORTANTE: Detectar ngrok ANTES de cargar config.php
+$protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https://' : 'http://';
+$host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+
+// Detectar si estamos usando ngrok u otro túnel
+$is_tunnel = strpos($host, 'ngrok-free.app') !== false || 
+             strpos($host, 'ngrok.io') !== false ||
+             strpos($host, 'localto.net') !== false || 
+             strpos($host, 'loca.lt') !== false;
+
+// Configurar APP_URL según el entorno
+if ($is_tunnel) {
+    define('APP_URL', $protocol . $host . '/ENCASA_DATABASE');
+    define('APP_ENV', 'tunnel');
+} else {
+    define('APP_URL', 'http://localhost/ENCASA_DATABASE');
+    define('APP_ENV', 'development');
+}
+
+// IMPORTANTE: Configurar sesiones ANTES de iniciarla
+// Configuración de sesiones
+ini_set('session.cookie_httponly', 1);
+ini_set('session.use_only_cookies', 1);
+ini_set('session.use_strict_mode', 1);
+ini_set('session.cookie_samesite', 'Lax');
+
+// NO forzar cookies seguras para ngrok - esto causa redirecciones infinitas
+if (APP_ENV === 'production') {
+    ini_set('session.cookie_secure', 1);
+} else {
+    ini_set('session.cookie_secure', 0);
+}
+
+// Ahora iniciar sesión DESPUÉS de configurarla
+session_start();
+
+// Cargar helpers antes de configuración
+if (file_exists(APP_PATH . '/helpers/functions.php')) {
+    require_once APP_PATH . '/helpers/functions.php';
+}
+
 // Cargar configuración
 require_once CONFIG_PATH . '/config.php';
 require_once CONFIG_PATH . '/database.php';
 require_once CONFIG_PATH . '/autoload.php';
 require_once CONFIG_PATH . '/mail_autoload.php';
 require_once APP_PATH . '/helpers/functions.php'; // Nueva línea añadida
-
-// Configuración de sesiones
-ini_set('session.cookie_httponly', 1);
-ini_set('session.use_only_cookies', 1);
-ini_set('session.use_strict_mode', 1);
-if (APP_ENV === 'production') {
-    ini_set('session.cookie_secure', 1);
-}
-
-// Iniciar sesión
-session_start();
 
 // Cargar y ejecutar el router
 $router = require_once CONFIG_PATH . '/routes.php';

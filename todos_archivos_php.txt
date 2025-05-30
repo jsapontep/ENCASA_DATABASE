@@ -1,5 +1,82 @@
 ﻿
 =============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\api_proxy.php
+=============================================================
+
+<?php
+// filepath: c:\xampp\htdocs\ENCASA_DATABASE\api_proxy.php
+
+// Configuración básica y manejo de errores
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
+// Habilitar CORS en todas las respuestas
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
+header("Access-Control-Allow-Credentials: true");
+
+// Si es una solicitud OPTIONS (preflight), responder inmediatamente
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
+
+// Obtener la ruta solicitada desde el parámetro 'path'
+$path = isset($_GET['path']) ? $_GET['path'] : '';
+
+// URL base de tu API local
+$target_base = 'http://localhost/ENCASA_DATABASE/';
+
+// Construir la URL completa
+$target_url = $target_base . $path;
+
+// Inicializar cURL
+$ch = curl_init($target_url);
+
+// Configurar opciones de cURL
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+
+// Transferir el método HTTP
+curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $_SERVER['REQUEST_METHOD']);
+
+// Transferir las cabeceras
+$headers = [];
+foreach (getallheaders() as $name => $value) {
+    if (!in_array(strtolower($name), ['host', 'origin', 'referer'])) {
+        $headers[] = "$name: $value";
+    }
+}
+if (!empty($headers)) {
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+}
+
+// Para solicitudes POST/PUT, transferir el cuerpo
+if ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'PUT') {
+    $input = file_get_contents('php://input');
+    if (!empty($input)) {
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $input);
+    } else if (!empty($_POST)) {
+        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($_POST));
+    }
+}
+
+// Ejecutar la solicitud
+$response = curl_exec($ch);
+$http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+// Establecer el código de estado HTTP
+http_response_code($http_code);
+
+// Cerrar la conexión cURL
+curl_close($ch);
+
+// Devolver la respuesta
+echo $response;
+
+
+=============================================================
 ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\check-progress.php
 =============================================================
 
@@ -248,6 +325,188 @@ echo "<p><a href='miembros/{$id}'>Ver página de perfil</a></p>";
 
 
 =============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\direct_access.php
+=============================================================
+
+<?php
+// filepath: c:\xampp\htdocs\ENCASA_DATABASE\direct_access.php
+
+// Este archivo permite acceder directamente a la aplicación sin redirecciones
+// Configuración básica sin redirecciones
+
+// Definir constantes del sistema
+define('BASE_PATH', __DIR__);
+define('APP_PATH', BASE_PATH . '/app');
+define('CONTROLLER_PATH', APP_PATH . '/controllers');
+define('MODEL_PATH', APP_PATH . '/models');
+define('VIEW_PATH', APP_PATH . '/views');
+define('CONFIG_PATH', APP_PATH . '/config');
+
+// Detectar entorno pero SIN redirecciones
+$current_host = $_SERVER['HTTP_HOST'] ?? '';
+$is_tunnel = strpos($current_host, 'localto.net') !== false;
+
+// Forzar configuración sin importar el protocolo actual
+$protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https://' : 'http://';
+define('APP_URL', $protocol . $current_host . '/encasa_database');
+
+// Cargar configuración
+require_once CONFIG_PATH . '/config.php';
+require_once CONFIG_PATH . '/database.php';
+require_once CONFIG_PATH . '/autoload.php';
+
+// Iniciar sesión con configuración básica
+ini_set('session.cookie_httponly', 1);
+session_start();
+
+// Mostrar formulario de login directamente sin usar el sistema de rutas
+?>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso Directo - Iglesia En Casa</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card shadow">
+                    <div class="card-header bg-primary text-white">
+                        <h2 class="my-2">Acceso Directo - Iniciar Sesión</h2>
+                    </div>
+                    <div class="card-body">
+                        <form action="<?= APP_URL ?>/direct_login.php" method="post" autocomplete="on">
+                            <div class="mb-3">
+                                <label for="email_or_username" class="form-label">Email o nombre de usuario</label>
+                                <input type="text" class="form-control" id="email_or_username" name="email_or_username" required>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="password" class="form-label">Contraseña</label>
+                                <input type="password" class="form-control" id="password" name="password" required>
+                            </div>
+                            
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary">Iniciar Sesión</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+
+
+=============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\direct_login.php
+=============================================================
+
+<?php
+// filepath: c:\xampp\htdocs\ENCASA_DATABASE\direct_login.php
+
+// Este archivo procesa el login directamente sin usar el sistema de rutas
+// Configuración básica
+define('BASE_PATH', __DIR__);
+define('APP_PATH', BASE_PATH . '/app');
+define('CONFIG_PATH', APP_PATH . '/config');
+define('MODEL_PATH', APP_PATH . '/models');
+define('VIEW_PATH', APP_PATH . '/views');
+
+// Cargar solo lo necesario
+require_once CONFIG_PATH . '/database.php';
+require_once APP_PATH . '/models/User.php';
+
+// Iniciar sesión 
+session_start();
+
+// Procesar el formulario
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $email_or_username = $_POST['email_or_username'] ?? '';
+    $password = $_POST['password'] ?? '';
+    
+    // Validación básica
+    if (empty($email_or_username) || empty($password)) {
+        die("Por favor completa todos los campos");
+    }
+    
+    try {
+        // Conectar a la BD
+        $db = new PDO(
+            'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=utf8',
+            DB_USER,
+            DB_PASS
+        );
+        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        
+        // Consulta para verificar credenciales
+        $stmt = $db->prepare(
+            "SELECT * FROM users WHERE (email = :credential OR username = :credential) LIMIT 1"
+        );
+        $stmt->execute(['credential' => $email_or_username]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($user && password_verify($password, $user['password'])) {
+            // Login exitoso
+            $_SESSION['user_id'] = $user['id'];
+            $_SESSION['user_name'] = $user['username'];
+            $_SESSION['user_role'] = $user['role'];
+            
+            // Redirigir a la página de inicio (sin sistema de rutas)
+            header("Location: home_direct.php");
+            exit;
+        } else {
+            die("Credenciales incorrectas. <a href='direct_access.php'>Volver a intentar</a>");
+        }
+        
+    } catch (PDOException $e) {
+        die("Error de base de datos: " . $e->getMessage());
+    }
+}
+
+// Mostrar la vista de login directamente
+echo "<!DOCTYPE html>
+<html lang='es'>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>Iniciar Sesión - Acceso Directo</title>
+    <link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css' rel='stylesheet'>
+</head>
+<body class='bg-light'>
+    <div class='container py-5'>
+        <div class='row justify-content-center'>
+            <div class='col-md-6'>
+                <div class='card shadow'>
+                    <div class='card-header bg-primary text-white'>
+                        <h2 class='my-2'>Iniciar Sesión (Acceso Directo)</h2>
+                    </div>
+                    <div class='card-body'>";
+
+// Incluir el formulario de login
+if (file_exists(VIEW_PATH . '/auth/login.php')) {
+    include_once VIEW_PATH . '/auth/login.php';
+} else {
+    echo "<div class='alert alert-danger'>No se encontró el archivo de vista login.php</div>";
+    echo "<p>Ruta buscada: " . VIEW_PATH . "/auth/login.php</p>";
+}
+
+echo "        </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src='https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js'></script>
+</body>
+</html>";
+?>
+
+
+=============================================================
 ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\direct_test.php
 =============================================================
 
@@ -307,6 +566,75 @@ try {
 
 
 =============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\home_direct.php
+=============================================================
+
+<?php
+// filepath: c:\xampp\htdocs\ENCASA_DATABASE\home_direct.php
+
+// Configuración básica
+define('BASE_PATH', __DIR__);
+define('APP_PATH', BASE_PATH . '/app');
+
+// Iniciar sesión
+session_start();
+
+// Verificar autenticación
+if (!isset($_SESSION['user_id'])) {
+    header("Location: direct_access.php");
+    exit;
+}
+
+// Datos básicos del usuario actual
+$username = htmlspecialchars($_SESSION['user_name']);
+$role = htmlspecialchars($_SESSION['user_role']);
+?>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Página Principal - Iglesia En Casa</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">Iglesia En Casa</a>
+            <div class="collapse navbar-collapse">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <?= $username ?>
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="logout_direct.php">Cerrar Sesión</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="jumbotron">
+            <h1>Bienvenido, <?= $username ?></h1>
+            <p>Has iniciado sesión correctamente en el modo de acceso directo.</p>
+            <p>Tu rol es: <?= $role ?></p>
+            
+            <div class="alert alert-info mt-4">
+                <p><strong>Nota:</strong> Estás usando una versión simplificada de la aplicación para evitar el problema de redirecciones infinitas.</p>
+                <p>Cuando el problema se resuelva, podrás volver a usar la aplicación completa.</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+
+
+=============================================================
 ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\index.php
 =============================================================
 
@@ -326,6 +654,34 @@ define('MODEL_PATH', APP_PATH . '/models');
 define('VIEW_PATH', APP_PATH . '/views');
 define('CONFIG_PATH', APP_PATH . '/config');
 
+// IMPORTANTE: Detectar ngrok ANTES de cargar config.php
+$protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https://' : 'http://';
+$host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+
+// Detectar si estamos usando ngrok u otro túnel
+$is_tunnel = strpos($host, 'ngrok-free.app') !== false || 
+            strpos($host, 'ngrok.io') !== false ||
+            strpos($host, 'localto.net') !== false || 
+            strpos($host, 'loca.lt') !== false;
+
+// Configurar APP_URL según el entorno
+if ($is_tunnel) {
+    define('APP_URL', $protocol . $host . '/ENCASA_DATABASE');
+    define('APP_ENV', 'tunnel');
+    
+    // Debug - Opcional
+    error_log("Detectado túnel: " . $host);
+    error_log("APP_URL configurado como: " . APP_URL);
+} else {
+    define('APP_URL', 'http://localhost/ENCASA_DATABASE');
+    define('APP_ENV', 'development');
+}
+
+// Cargar helpers antes de la configuración
+if (file_exists(APP_PATH . '/helpers/functions.php')) {
+    require_once APP_PATH . '/helpers/functions.php';
+}
+
 // Cargar configuración
 require_once CONFIG_PATH . '/config.php';
 require_once CONFIG_PATH . '/database.php';
@@ -336,7 +692,7 @@ require_once CONFIG_PATH . '/mail_autoload.php';
 ini_set('session.cookie_httponly', 1);
 ini_set('session.use_only_cookies', 1);
 ini_set('session.use_strict_mode', 1);
-if (APP_ENV === 'production') {
+if (APP_ENV === 'production' || $is_tunnel) {
     ini_set('session.cookie_secure', 1);
 }
 
@@ -359,6 +715,7 @@ try {
 
 
 =============================================================
+<<<<<<< HEAD
 ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\setup_directories.php
 =============================================================
 
@@ -395,6 +752,207 @@ foreach ($directories as $directory) {
 }
 
 echo "\n✅ Configuración de directorios completada.\n";
+=======
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\logout_direct.php
+=============================================================
+
+<?php
+// filepath: c:\xampp\htdocs\ENCASA_DATABASE\logout_direct.php
+
+// Iniciar sesión
+session_start();
+
+// Destruir la sesión
+$_SESSION = array();
+session_destroy();
+
+// Redirigir a la página de login directo
+header("Location: direct_access.php");
+exit;
+
+
+=============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\ngrok_test.php
+=============================================================
+
+<?php
+// NO incluir index.php completo
+
+// Definir constantes básicas
+define('BASE_PATH', __DIR__);
+define('APP_PATH', BASE_PATH . '/app');
+
+// Detectar entorno
+$protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https://' : 'http://';
+$host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+$is_ngrok = strpos($host, 'ngrok-free.app') !== false || strpos($host, 'ngrok.io') !== false;
+
+// Crear una versión simplificada de url() para pruebas
+function test_url($path = '') {
+    global $protocol, $host, $is_ngrok;
+    
+    if ($is_ngrok) {
+        $baseUrl = $protocol . $host . '/ENCASA_DATABASE';
+    } else {
+        $baseUrl = 'http://localhost/ENCASA_DATABASE';
+    }
+    
+    $baseUrl = rtrim($baseUrl, '/');
+    $path = ltrim($path, '/');
+    
+    return $baseUrl . ($path ? '/' . $path : '');
+}
+
+echo "<!DOCTYPE html>
+<html>
+<head>
+    <title>Prueba de ngrok</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
+        .card { border: 1px solid #ddd; padding: 15px; margin-bottom: 20px; border-radius: 4px; }
+        pre { background: #f5f5f5; padding: 10px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h1>Prueba de configuración de ngrok</h1>
+    
+    <div class='card'>
+        <h2>Información básica</h2>
+        <p><strong>Host:</strong> {$host}</p>
+        <p><strong>Protocolo:</strong> {$protocol}</p>
+        <p><strong>¿Es ngrok?:</strong> " . ($is_ngrok ? 'SÍ' : 'NO') . "</p>
+        <p><strong>URL base generada:</strong> " . test_url() . "</p>
+    </div>
+    
+    <div class='card'>
+        <h2>Enlaces de prueba:</h2>
+        <ul>
+            <li><a href='" . test_url('login') . "'>Ir a login</a></li>
+            <li><a href='" . test_url('miembros') . "'>Ir a miembros</a></li>
+        </ul>
+    </div>
+</body>
+</html>";
+?>
+
+
+=============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\proxy.php
+=============================================================
+
+<?php
+// filepath: c:\xampp\htdocs\ENCASA_DATABASE\proxy.php
+
+// Configuración básica y manejo de errores
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
+// Orígenes permitidos
+$allowed_origins = [
+    'http://localhost',
+    'https://localhost',
+    'https://uvca8jwlr.localto.net',
+    'http://uvca8jwlr.localto.net',
+    'http://127.0.0.1'
+];
+
+// Capturar el origen de la solicitud
+$origin = isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : '';
+
+// Configurar cabeceras CORS
+if (in_array($origin, $allowed_origins)) {
+    header("Access-Control-Allow-Origin: $origin");
+} else {
+    header("Access-Control-Allow-Origin: *");
+}
+
+header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
+header("Access-Control-Allow-Credentials: true");
+
+// Si es una solicitud OPTIONS (preflight), responder inmediatamente
+if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
+    header("HTTP/1.1 200 OK");
+    exit;
+}
+
+// Construir la URL de destino
+// Esta será la URL interna donde se encuentra realmente tu aplicación
+$target_base = 'http://localhost/ENCASA_DATABASE';
+$request_uri = $_SERVER['REQUEST_URI'];
+
+// Eliminar la parte del proxy de la URI si existe
+$request_path = str_replace('/proxy.php', '', $request_uri);
+
+// URL final a la que se enviará la solicitud
+$target_url = $target_base . $request_path;
+
+// Crear contexto para la solicitud con todos los parámetros y headers originales
+$context_options = [
+    'http' => [
+        'method' => $_SERVER['REQUEST_METHOD']
+    ]
+];
+
+// Transferir headers de la solicitud original
+$headers = [];
+foreach (getallheaders() as $name => $value) {
+    // No transferir headers relacionados con CORS o host
+    if (!in_array(strtolower($name), ['host', 'origin', 'referer'])) {
+        $headers[] = "$name: $value";
+    }
+}
+
+// Si hay headers, añadirlos al contexto
+if (!empty($headers)) {
+    $context_options['http']['header'] = implode("\r\n", $headers);
+}
+
+// Para solicitudes POST/PUT, transferir el cuerpo de la solicitud
+$input = file_get_contents('php://input');
+if (!empty($input)) {
+    $context_options['http']['content'] = $input;
+}
+
+// Crear el contexto de flujo
+$context = stream_context_create($context_options);
+
+// Enviar la solicitud al servidor interno y capturar la respuesta
+try {
+    $response = file_get_contents($target_url, false, $context);
+    
+    // Transferir todos los headers de respuesta
+    foreach ($http_response_header as $header) {
+        // No transferir headers relacionados con CORS
+        if (!strpos(strtolower($header), 'access-control')) {
+            header($header);
+        }
+    }
+    
+    // Devolver el contenido de la respuesta
+    echo $response;
+} catch (Exception $e) {
+    // En caso de error
+    header("HTTP/1.1 500 Internal Server Error");
+    echo json_encode([
+        'error' => true,
+        'message' => 'Proxy error: ' . $e->getMessage(),
+        'target_url' => $target_url
+    ]);
+}
+
+
+=============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\test.php
+=============================================================
+
+<?php
+
+echo "<h1>Prueba de ngrok</h1>";
+echo "<p>Si puedes ver esta página, ngrok está funcionando correctamente con tu proyecto.</p>";
+echo "<p>Fecha y hora actual: " . date('Y-m-d H:i:s') . "</p>";
+?>
+>>>>>>> main
 
 
 =============================================================
@@ -440,6 +998,90 @@ if (file_exists($logDir)) {
     echo "El directorio de logs no existe.";
 }
 echo "</pre>";
+
+
+=============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\test_minimal.php
+=============================================================
+
+<?php
+// filepath: c:\xampp\htdocs\ENCASA_DATABASE\test_minimal.php
+
+// NO incluir nada más, sin autoload, sin configuraciones
+// Mostrar información básica del servidor
+?>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Mínimo</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .info { background: #f0f0f0; padding: 20px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Prueba mínima - Sin redirecciones</h1>
+    <div class="info">
+        <p><strong>Servidor:</strong> <?php echo $_SERVER['SERVER_NAME']; ?></p>
+        <p><strong>URL actual:</strong> <?php echo $_SERVER['REQUEST_URI']; ?></p>
+        <p><strong>Protocolo:</strong> <?php echo isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'HTTPS' : 'HTTP'; ?></p>
+        <p><strong>Hora del servidor:</strong> <?php echo date('H:i:s'); ?></p>
+    </div>
+    
+    <h2>Formulario de prueba</h2>
+    <form action="test_process.php" method="post">
+        <div>
+            <label>Nombre:</label>
+            <input type="text" name="nombre" value="Test">
+        </div>
+        <div style="margin-top: 10px;">
+            <button type="submit">Enviar prueba</button>
+        </div>
+    </form>
+</body>
+</html>
+
+
+=============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\test_process.php
+=============================================================
+
+<?php
+// filepath: c:\xampp\htdocs\ENCASA_DATABASE\test_process.php
+
+// NO incluir nada más, sin autoload, sin configuraciones
+// Solo mostrar los datos recibidos
+?>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Procesador de prueba</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .info { background: #f0f0f0; padding: 20px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Datos recibidos</h1>
+    <div class="info">
+        <?php if ($_SERVER['REQUEST_METHOD'] === 'POST'): ?>
+            <p><strong>Nombre enviado:</strong> <?php echo htmlspecialchars($_POST['nombre'] ?? 'No enviado'); ?></p>
+        <?php else: ?>
+            <p>No se recibieron datos POST.</p>
+        <?php endif; ?>
+        
+        <p><strong>Servidor:</strong> <?php echo $_SERVER['SERVER_NAME']; ?></p>
+        <p><strong>URL actual:</strong> <?php echo $_SERVER['REQUEST_URI']; ?></p>
+        <p><strong>Protocolo:</strong> <?php echo isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'HTTPS' : 'HTTP'; ?></p>
+    </div>
+    
+    <p><a href="test_minimal.php">Volver a la prueba</a></p>
+</body>
+</html>
 
 
 =============================================================
@@ -505,6 +1147,7 @@ if (preg_match('#^miembros/(\d+)$#', $route, $matches)) {
 
 
 =============================================================
+<<<<<<< HEAD
 ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\test_upload.php
 =============================================================
 
@@ -596,6 +1239,279 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['test_image'])) {
     </div>
 </body>
 </html>
+=======
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\tunnel_fix.php
+=============================================================
+
+<?php
+// filepath: c:\xampp\htdocs\ENCASA_DATABASE\tunnel_fix.php
+
+// 1. Eliminar todas las cookies para limpiar sesión
+if (isset($_GET['clear_cookies'])) {
+    $past = time() - 3600;
+    foreach ($_COOKIE as $key => $value) {
+        setcookie($key, '', $past, '/');
+    }
+    echo "<p>Cookies eliminadas. <a href='?'>Continuar</a></p>";
+    exit;
+}
+
+// 2. Mostrar información de diagnóstico
+echo "<h1>Diagnóstico de Tunnel</h1>";
+
+// Información del servidor
+echo "<h2>Información del servidor</h2>";
+echo "<pre>";
+echo "HTTP_HOST: " . ($_SERVER['HTTP_HOST'] ?? 'No definido') . "\n";
+echo "REQUEST_URI: " . ($_SERVER['REQUEST_URI'] ?? 'No definido') . "\n"; 
+echo "HTTPS: " . (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'on' : 'off') . "\n";
+echo "</pre>";
+
+// 3. Enlace para acceder directamente al login
+$host = $_SERVER['HTTP_HOST'];
+$protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https://' : 'http://';
+$login_url = $protocol . $host . "/ENCASA_DATABASE/login";
+$ignored_url = $protocol . $host . "/encasa_database/login?bypass_redirect=1";
+
+echo "<h2>Enlaces de prueba:</h2>";
+echo "<p><a href='$login_url'>Acceso normal al login</a></p>";
+echo "<p><a href='$ignored_url'>Acceso al login sin redirecciones</a></p>";
+echo "<p><a href='?clear_cookies'>Limpiar cookies y sesión</a></p>";
+
+// 4. Proporcionar instrucciones
+echo "<h2>Instrucciones:</h2>";
+echo "<ol>";
+echo "<li>Primero, haz clic en 'Limpiar cookies y sesión'</li>";
+echo "<li>Luego intenta el 'Acceso al login sin redirecciones'</li>";
+echo "<li>Si funciona, necesitas modificar tu index.php según las instrucciones abajo</li>";
+echo "</ol>";
+
+echo "<h2>Modificación recomendada para index.php:</h2>";
+echo "<pre style='background:#f8f9fa;padding:10px;'>";
+echo '// Añadir esta condición antes de cualquier redirección
+if (isset($_GET["bypass_redirect"])) {
+    // No hacer ninguna redirección
+    define("BYPASS_REDIRECTS", true);
+}
+
+// Modificar la redirección existente:
+if (!defined("BYPASS_REDIRECTS") && $is_tunnel && empty($_SERVER["HTTPS"])) {
+    $redirect_url = "https://" . $_SERVER["HTTP_HOST"] . $_SERVER["REQUEST_URI"];
+    header("Location: $redirect_url");
+    exit;
+}';
+echo "</pre>";
+
+// 5. Diagnóstico de Router y URL
+echo "<h2>Diagnóstico del Router:</h2>";
+echo "<p>Tu Router.php está usando esta línea para redirecciones:</p>";
+echo "<code>header('Location: ' . APP_URL . '/' . \$url);</code>";
+echo "<p>Si APP_URL está establecido incorrectamente, causará bucles de redirección.</p>";
+
+echo "<p>APP_URL actual (o esperado): ";
+if (defined('APP_URL')) {
+    echo APP_URL;
+} else {
+    echo "No definido aquí";
+}
+echo "</p>";
+
+
+=============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\tunnel_fix_global.php
+=============================================================
+
+<?php
+
+// Script para diagnosticar y solucionar problemas de URL en túneles
+
+// 1. Mostrar información del entorno
+$protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https://' : 'http://';
+$host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+$requestUri = $_SERVER['REQUEST_URI'] ?? '/';
+$is_tunnel = strpos($host, 'localto.net') !== false || 
+             strpos($host, 'loca.lt') !== false ||
+             strpos($host, 'ngrok-free.app') !== false;
+
+echo "<h1>Diagnóstico Global de URLs</h1>";
+
+echo "<h2>Información del Entorno</h2>";
+echo "<pre>";
+echo "Host: $host\n";
+echo "Protocol: $protocol\n";
+echo "Request URI: $requestUri\n";
+echo "¿Es túnel?: " . ($is_tunnel ? "SÍ" : "NO") . "\n";
+echo "</pre>";
+
+// 2. Verificar configuraciones existentes
+if (defined('APP_URL')) {
+    echo "<h2>Constantes Actuales</h2>";
+    echo "<pre>";
+    echo "APP_URL: " . APP_URL . "\n";
+    if (defined('APP_ENV')) echo "APP_ENV: " . APP_ENV . "\n";
+    echo "</pre>";
+}
+
+// 3. Generar una URL de prueba con la función url() si existe
+echo "<h2>Prueba de Generación de URL</h2>";
+if (function_exists('url')) {
+    echo "<p>Función url() existe.</p>";
+    echo "<p>url('login') genera: " . url('login') . "</p>";
+} else {
+    echo "<p style='color:red'>⚠️ Función url() no encontrada. Esto puede causar problemas.</p>";
+}
+
+// 4. Verificar archivos críticos
+$files_to_check = [
+    'index.php',
+    'app/helpers/functions.php',
+    'app/helpers/Router.php',
+    'app/views/layouts/default.php',
+    'app/views/auth/login.php'
+];
+
+echo "<h2>Verificación de Archivos Críticos</h2>";
+echo "<ul>";
+foreach ($files_to_check as $file) {
+    $path = __DIR__ . '/' . $file;
+    if (file_exists($path)) {
+        echo "<li>✅ $file <span style='color:green'>existe</span></li>";
+    } else {
+        echo "<li>❌ $file <span style='color:red'>no existe</span></li>";
+    }
+}
+echo "</ul>";
+
+// 5. Proporcionar solución integral
+echo "<h2>Solución Recomendada</h2>";
+echo "<p>Para resolver los problemas de URL en túneles, sigue estos pasos:</p>";
+echo "<ol>";
+echo "<li>En index.php, asegúrate de que APP_URL se configure adecuadamente para túneles.</li>";
+echo "<li>En todas las vistas y controladores, usa la función url() en lugar de URLs absolutas.</li>";
+echo "<li>Verifica que el Router esté usando APP_URL para las redirecciones.</li>";
+echo "<li>Actualiza los enlaces de la barra de navegación para usar url().</li>";
+echo "</ol>";
+
+// 6. Proporcionar código para solucionarlo inmediatamente
+echo "<h2>Código para Solucionar el Problema</h2>";
+
+echo "<h3>1. Función url() en app/helpers/functions.php</h3>";
+echo '<pre style="background-color: #f5f5f5; padding: 10px; border: 1px solid #ddd; overflow: auto;">';
+echo htmlspecialchars('<?php
+// En app/helpers/functions.php
+/**
+ * Genera una URL completa para la aplicación
+ * @param string $path Ruta relativa (sin / inicial)
+ * @return string URL completa
+ */
+function url($path = \'\')
+{
+    // Asegurar que APP_URL existe
+    if (!defined(\'APP_URL\')) {
+        // Determinar URL base si no está definida
+        $protocol = isset($_SERVER[\'HTTPS\']) && $_SERVER[\'HTTPS\'] === \'on\' ? \'https://\' : \'http://\';
+        $host = $_SERVER[\'HTTP_HOST\'] ?? \'localhost\';
+        $is_tunnel = strpos($host, \'localto.net\') !== false || 
+                     strpos($host, \'loca.lt\') !== false ||
+                     strpos($host, \'ngrok-free.app\') !== false;
+                     
+        // Configurar base URL
+        $base_url = $protocol . $host;
+        if ($is_tunnel) {
+            $base_url .= \'/encasa_database\'; 
+        } else {
+            $base_url .= \'/ENCASA_DATABASE\';
+        }
+    } else {
+        $base_url = APP_URL;
+    }
+    
+    // Formatear URL
+    $base_url = rtrim($base_url, \'/\');
+    $path = ltrim($path, \'/\');
+    
+    return $base_url . ($path ? \'/\' . $path : \'\');
+}');
+echo '</pre>';
+
+echo "<h3>2. Método redirect en Router.php</h3>";
+echo '<pre style="background-color: #f5f5f5; padding: 10px; border: 1px solid #ddd; overflow: auto;">';
+echo htmlspecialchars('// En app/helpers/Router.php - Método redirect
+/**
+ * Redirige a una URL
+ */
+public static function redirect($url) {
+    // Usar la función url() para generar URLs consistentes
+    if (function_exists(\'url\')) {
+        header(\'Location: \' . url($url));
+    } else {
+        // Fallback si la función url() no existe
+        $baseUrl = defined(\'APP_URL\') ? APP_URL : \'/ENCASA_DATABASE\';
+        header(\'Location: \' . rtrim($baseUrl, \'/\') . \'/\' . ltrim($url, \'/\'));
+    }
+    exit;
+}');
+echo '</pre>';
+
+// 7. Proporcionar enlaces de prueba
+echo "<h2>Enlaces de Prueba</h2>";
+$base = $protocol . $host . ($is_tunnel ? '/encasa_database' : '/ENCASA_DATABASE');
+echo "<p><a href='$base/login' target='_blank'>Probar login</a></p>";
+echo "<p><a href='$base/direct_access.php' target='_blank'>Usar direct_access.php</a> (bypass del sistema de rutas)</p>";
+echo "<p><a href='$base/direct_test.php' target='_blank'>Probar base de datos directamente</a></p>";
+?>
+
+
+=============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\url_test.php
+=============================================================
+
+<?php
+
+// Este archivo permite probar la función url() directamente
+
+// Definir constantes del sistema básicas
+define('BASE_PATH', __DIR__);
+define('APP_PATH', BASE_PATH . '/app');
+
+// Cargar la función url()
+require_once APP_PATH . '/helpers/functions.php';
+
+// Detectar entorno para información
+$protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https://' : 'http://';
+$host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+$is_tunnel = strpos($host, 'localto.net') !== false || 
+             strpos($host, 'loca.lt') !== false ||
+             strpos($host, 'ngrok-free.app') !== false;
+
+echo "<h1>Prueba de función url()</h1>";
+echo "<p><strong>Host:</strong> $host</p>";
+echo "<p><strong>Protocolo:</strong> $protocol</p>";
+echo "<p><strong>¿Es túnel?:</strong> " . ($is_tunnel ? "SÍ" : "NO") . "</p>";
+
+// Probar la generación de URLs
+$urls = [
+    '' => 'URL base',
+    'login' => 'URL de login',
+    'miembros' => 'URL de miembros',
+    'miembros/crear' => 'URL para crear miembro'
+];
+
+echo "<h2>URLs generadas:</h2>";
+echo "<ul>";
+foreach ($urls as $path => $description) {
+    echo "<li><strong>$description:</strong> " . url($path) . "</li>";
+}
+echo "</ul>";
+
+echo "<h2>Enlaces de prueba:</h2>";
+echo "<ul>";
+foreach ($urls as $path => $description) {
+    echo "<li><a href='" . url($path) . "' target='_blank'>$description</a></li>";
+}
+echo "</ul>";
+?>
+>>>>>>> main
 
 
 =============================================================
@@ -705,9 +1621,15 @@ ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\config\config.php
 
 <?php
 // Configuración general de la aplicación
+<<<<<<< HEAD
 define('APP_NAME', 'Iglesia En Casa');
 define('APP_URL', 'http://localhost/ENCASA_DATABASE');
 define('APP_ENV', 'development'); // 'development' o 'production'
+=======
+if (!defined('APP_NAME')) define('APP_NAME', 'Iglesia En Casa');
+if (!defined('APP_URL')) define('APP_URL', 'http://localhost/Encasa_Database');
+if (!defined('APP_ENV')) define('APP_ENV', 'development'); // 'development' o 'production'
+>>>>>>> main
 
 // Configuración de zona horaria
 date_default_timezone_set('America/Bogota');
@@ -731,6 +1653,86 @@ define('DB_HOST', 'localhost');
 define('DB_NAME', 'IglesiaEnCasa');
 define('DB_USER', 'root');
 define('DB_PASS', '');
+
+
+=============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\config\cors.php
+=============================================================
+
+<?php
+// filepath: c:\xampp\htdocs\ENCASA_DATABASE\app\config\cors.php
+/**
+ * Configuración global de CORS para la aplicación
+ * Detecta automáticamente entornos y configura las cabeceras adecuadamente
+ */
+
+// Obtener el origen de la solicitud
+$origin = isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : '';
+$referer = isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '';
+
+// Función para extraer el dominio base
+function getDomainFromUrl($url) {
+    $parsedUrl = parse_url($url);
+    return isset($parsedUrl['host']) ? $parsedUrl['host'] : '';
+}
+
+// Detectar si estamos usando ngrok o localtunnel
+$isTunnel = false;
+$tunnelDomain = '';
+
+// Detectar ngrok
+if (strpos($origin, 'ngrok-free.app') !== false) {
+    $isTunnel = true;
+    $tunnelDomain = $origin;
+} elseif (strpos($referer, 'ngrok-free.app') !== false) {
+    $isTunnel = true;
+    $tunnelDomain = preg_replace('/^(https?:\/\/[^\/]+).*$/', '$1', $referer);
+}
+
+// Detectar localtunnel
+if (!$isTunnel) {
+    if (strpos($origin, 'loca.lt') !== false || strpos($origin, 'localto.net') !== false) {
+        $isTunnel = true;
+        $tunnelDomain = $origin;
+    } elseif (strpos($referer, 'loca.lt') !== false || strpos($referer, 'localto.net') !== false) {
+        $isTunnel = true;
+        $tunnelDomain = preg_replace('/^(https?:\/\/[^\/]+).*$/', '$1', $referer);
+    }
+}
+
+// Configurar los encabezados CORS según el entorno
+if ($isTunnel) {
+    // Si es un túnel, permitir ese origen específico
+    header("Access-Control-Allow-Origin: $tunnelDomain");
+    error_log("CORS: Permitido origen de túnel: $tunnelDomain");
+} elseif (in_array($_SERVER['SERVER_NAME'] ?? '', ['localhost', '127.0.0.1'])) {
+    // Entorno de desarrollo local
+    header('Access-Control-Allow-Origin: *');
+    error_log("CORS: Permitido cualquier origen (desarrollo local)");
+} else {
+    // Entorno de producción - aquí puedes definir dominios específicos
+    $allowedDomains = [
+        'iglesiaencasa.org',
+        'www.iglesiaencasa.org'
+    ];
+    
+    $domain = getDomainFromUrl($origin);
+    if (in_array($domain, $allowedDomains)) {
+        header("Access-Control-Allow-Origin: $origin");
+        error_log("CORS: Permitido origen de producción: $origin");
+    }
+}
+
+// Configurar otros encabezados CORS
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, X-XSRF-TOKEN');
+header('Access-Control-Allow-Credentials: true');
+header('Access-Control-Max-Age: 86400'); // 24 horas
+
+// Si es una solicitud OPTIONS (preflight), terminar aquí
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    exit(0);
+}
 
 
 =============================================================
@@ -923,6 +1925,35 @@ class DBVerifier {
         return $this->errors;
     }
 }
+
+
+=============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\config\https_handler.php
+=============================================================
+
+<?php
+// filepath: c:\xampp\htdocs\ENCASA_DATABASE\app\config\https_handler.php
+
+/**
+ * Mejorar manejo de HTTPS para evitar problemas de formularios
+ */
+function configure_https() {
+    // Forzar HSTS para conexiones seguras
+    if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') {
+        header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
+    }
+    
+    // Configuración CORS básica
+    header('Access-Control-Allow-Origin: *');
+    header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+    header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
+    
+    // Forzar recursos seguros
+    header('Content-Security-Policy: upgrade-insecure-requests');
+}
+
+// Aplicar configuración
+configure_https();
 
 
 =============================================================
@@ -2022,6 +3053,7 @@ class MiembrosController extends Controller {
 
 
 =============================================================
+<<<<<<< HEAD
 ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\Core\Controller.php
 =============================================================
 
@@ -2046,6 +3078,8 @@ class Controller {
 
 
 =============================================================
+=======
+>>>>>>> main
 ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\Core\Session.php
 =============================================================
 
@@ -2053,6 +3087,7 @@ ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\Core\Session.php
 // filepath: c:\xampp\htdocs\ENCASA_DATABASE\app\Core\Session.php
 
 class Session {
+<<<<<<< HEAD
     /**
      * Inicializa la sesión y configura las medidas de seguridad
      */
@@ -2076,10 +3111,115 @@ class Session {
         
         // Resto del código...
     }
+=======
+    public static function start() {
+        // No volver a configurar la sesión si ya está activa
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            return;
+        }
+        
+        // Configuración básica de seguridad
+        ini_set('session.use_only_cookies', 1);
+        ini_set('session.use_strict_mode', 1);
+        ini_set('session.cookie_httponly', 1);
+        
+        // Solo habilitar cookies seguras cuando estamos en HTTPS
+        if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') {
+            ini_set('session.cookie_secure', 1);
+        }
+        
+        // Nombre de sesión consistente
+        session_name('ENCASASESSID');
+        
+        // Iniciar la sesión
+        session_start();
+        
+        // Generar token CSRF si no existe
+        if (!isset($_SESSION['csrf_token'])) {
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        }
+    }
+    
+    // El resto de métodos...
+>>>>>>> main
 }
 
 
 =============================================================
+<<<<<<< HEAD
+=======
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\helpers\cors_helper.php
+=============================================================
+
+<?php
+// filepath: c:\xampp\htdocs\ENCASA_DATABASE\app\helpers\cors_helper.php
+
+/**
+ * Configuración dinámica de CORS para formularios
+ * Detecta automáticamente si estamos en túnel o localhost
+ */
+function setup_cors() {
+    // Detectar el entorno
+    $is_https = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on';
+    $current_host = $_SERVER['HTTP_HOST'];
+    $is_tunnel = (strpos($current_host, 'localto.net') !== false || 
+                 strpos($current_host, 'loca.lt') !== false || 
+                 strpos($current_host, 'serveo.net') !== false);
+    
+    // Establecer cabeceras CORS apropiadas
+    if ($is_tunnel) {
+        // Permitir el origen actual en túneles
+        $protocol = $is_https ? 'https://' : 'http://';
+        $origin = isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : $protocol . $current_host;
+        header("Access-Control-Allow-Origin: $origin");
+    } else {
+        // En localhost ser menos restrictivo
+        header("Access-Control-Allow-Origin: *");
+    }
+    
+    // Cabeceras CORS comunes
+    header("Access-Control-Allow-Methods: POST, GET, OPTIONS");
+    header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
+    header("Access-Control-Allow-Credentials: true");
+    
+    // Manejar solicitudes preflight OPTIONS
+    if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+        header("HTTP/1.1 200 OK");
+        exit;
+    }
+}
+
+/**
+ * Genera URLs correctas según el entorno
+ */
+function form_url($path = '') {
+    $current_host = $_SERVER['HTTP_HOST'];
+    $is_tunnel = (strpos($current_host, 'localto.net') !== false || 
+                 strpos($current_host, 'loca.lt') !== false || 
+                 strpos($current_host, 'serveo.net') !== false);
+    
+    // Construir la base de la URL
+    if ($is_tunnel) {
+        // En túneles siempre usar HTTPS
+        $base_url = "https://$current_host/encasa_database";
+    } else {
+        // En localhost usar HTTP
+        $base_url = "http://$current_host/ENCASA_DATABASE";
+    }
+    
+    // Formatear la URL
+    $base_url = rtrim($base_url, '/');
+    $path = $path ? '/' . ltrim($path, '/') : '';
+    
+    return $base_url . $path;
+}
+
+// Aplicar CORS automáticamente
+setup_cors();
+
+
+=============================================================
+>>>>>>> main
 ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\helpers\EmailService.php
 =============================================================
 
@@ -2188,7 +3328,7 @@ ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\helpers\functions.php
 
 <?php
 /**
- * Funciones auxiliares globales para logging
+ * Funciones auxiliares globales para logging y generación de URLs
  */
 
 if (!function_exists('log_error')) {
@@ -2216,6 +3356,7 @@ if (!function_exists('log_debug')) {
 }
 
 /**
+<<<<<<< HEAD
  * Obtiene o genera un token CSRF
  */
 function csrf_token() {
@@ -2230,6 +3371,59 @@ function csrf_token() {
  */
 function csrf_field() {
     return '<input type="hidden" name="csrf_token" value="' . csrf_token() . '">';
+=======
+ * Genera una URL completa para la aplicación
+ * @param string $path Ruta relativa
+ * @return string URL completa
+ */
+if (!function_exists('url')) {
+    function url($path = '')
+    {
+        // Usar APP_URL si está definida
+        if (defined('APP_URL')) {
+            $baseUrl = APP_URL;
+        } else {
+            // Si no está definida, detectar el entorno
+            $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https://' : 'http://';
+            $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+            
+            // Detectar si estamos usando un túnel
+            $is_tunnel = strpos($host, 'ngrok-free.app') !== false || 
+                       strpos($host, 'ngrok.io') !== false ||
+                       strpos($host, 'localto.net') !== false || 
+                       strpos($host, 'loca.lt') !== false;
+            
+            if ($is_tunnel) {
+                $baseUrl = $protocol . $host . '/ENCASA_DATABASE';
+                
+                // Log para depuración
+                if (function_exists('log_debug')) {
+                    log_debug("URL generada para túnel: $baseUrl");
+                }
+            } else {
+                $baseUrl = 'http://localhost/ENCASA_DATABASE';
+            }
+        }
+        
+        // Formatear URL correctamente
+        $baseUrl = rtrim($baseUrl, '/');
+        $path = ltrim($path, '/');
+        
+        return $baseUrl . ($path ? '/' . $path : '');
+    }
+}
+
+/**
+ * Genera una URL para recursos estáticos (CSS, JS, imágenes)
+ * @param string $path Ruta relativa al archivo dentro de la carpeta /public
+ * @return string URL completa al recurso
+ */
+if (!function_exists('asset')) {
+    function asset($path = '')
+    {
+        return url('public/' . ltrim($path, '/'));
+    }
+>>>>>>> main
 }
 
 
@@ -2556,9 +3750,17 @@ class Router {
     
     /**
      * Redirige a una URL
+     * @param string $url Ruta relativa a la que redirigir
      */
     public static function redirect($url) {
-        header('Location: ' . APP_URL . '/' . $url);
+        // Usar la función url() para generar URLs consistentes
+        if (function_exists('url')) {
+            header('Location: ' . url($url));
+        } else {
+            // Fallback si la función url() no existe
+            $baseUrl = defined('APP_URL') ? APP_URL : '/ENCASA_DATABASE';
+            header('Location: ' . rtrim($baseUrl, '/') . '/' . ltrim($url, '/'));
+        }
         exit;
     }
 }
@@ -4288,21 +5490,23 @@ ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\views\auth\login.php
               <?= $error ?>
               <?php if (isset($_SESSION['pending_verification'])): ?>
                 <div class="mt-2">
-                  <a href="<?= APP_URL ?>/auth/resendCode" class="btn btn-sm btn-primary">Reenviar código</a>
+                  <a href="<?= url('auth/resendCode') ?>" class="btn btn-sm btn-primary">Reenviar código</a>
                 </div>
               <?php endif; ?>
             </div>
           <?php endif; ?>
           
-          <form action="<?= APP_URL ?>/auth/login" method="post">
+          <form action="<?= url('auth/login') ?>" method="post" autocomplete="on">
             <div class="mb-3">
               <label for="email_or_username" class="form-label">Email o nombre de usuario</label>
-              <input type="text" class="form-control" id="email_or_username" name="email_or_username" required autofocus>
+              <input type="text" class="form-control" id="email_or_username" name="email_or_username" 
+                     autocomplete="username" required autofocus>
             </div>
             
             <div class="mb-3">
               <label for="password" class="form-label">Contraseña</label>
-              <input type="password" class="form-control" id="password" name="password" required>
+              <input type="password" class="form-control" id="password" name="password" 
+                     autocomplete="current-password" required>
             </div>
             
             <div class="d-grid gap-2">
@@ -4311,7 +5515,7 @@ ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\views\auth\login.php
           </form>
           
           <div class="text-center mt-3">
-            <a href="<?= APP_URL ?>/registro">¿No tienes cuenta? Regístrate</a>
+            <a href="<?= url('registro') ?>">¿No tienes cuenta? Regístrate</a>
           </div>
         </div>
       </div>
@@ -4740,7 +5944,8 @@ ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\views\layouts\default.php
 =============================================================
 
 <?php
-// filepath: /Applications/XAMPP/xamppfiles/htdocs/Encasa_Database/app/views/layouts/default.php
+// Comentario actualizado para reflejar la ruta correcta en Windows
+// filepath: c:\xampp\htdocs\ENCASA_DATABASE\app\views\layouts\default.php
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -4753,21 +5958,21 @@ ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\views\layouts\default.php
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
-            <a class="navbar-brand" href="<?= APP_URL ?>">Iglesia En Casa</a>
+            <a class="navbar-brand" href="<?= url() ?>">Iglesia En Casa</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav">
                     <li class="nav-item">
-                        <a class="nav-link" href="<?= APP_URL ?>">Inicio</a>
+                        <a class="nav-link" href="<?= url() ?>">Inicio</a>
                     </li>
                     <?php if (isset($_SESSION['user_id'])): ?>
                     <li class="nav-item">
-                        <a class="nav-link" href="<?= APP_URL ?>/miembros">Miembros</a>
+                        <a class="nav-link" href="<?= url('miembros') ?>">Miembros</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="<?= APP_URL ?>/ministerios">Ministerios</a>
+                        <a class="nav-link" href="<?= url('ministerios') ?>">Ministerios</a>
                     </li>
                     <?php endif; ?>
                 </ul>
@@ -4779,17 +5984,17 @@ ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\views\layouts\default.php
                             <?= isset($_SESSION['user_name']) ? htmlspecialchars($_SESSION['user_name']) : 'Usuario' ?>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="<?= APP_URL ?>/perfil">Mi Perfil</a></li>
+                            <li><a class="dropdown-item" href="<?= url('perfil') ?>">Mi Perfil</a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="<?= APP_URL ?>/logout">Cerrar Sesión</a></li>
+                            <li><a class="dropdown-item" href="<?= url('logout') ?>">Cerrar Sesión</a></li>
                         </ul>
                     </li>
                     <?php else: ?>
                     <li class="nav-item">
-                        <a class="nav-link" href="<?= APP_URL ?>/login">Iniciar Sesión</a>
+                        <a class="nav-link" href="<?= url('login') ?>">Iniciar Sesión</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="<?= APP_URL ?>/registro">Registrarse</a>
+                        <a class="nav-link" href="<?= url('registro') ?>">Registrarse</a>
                     </li>
                     <?php endif; ?>
                 </ul>
@@ -6987,5 +8192,148 @@ try {
 ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\tests\test_router.php
 =============================================================
 
+
+
+=============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\tools\replace_urls.php
+=============================================================
+
+<?php
+// filepath: c:\xampp\htdocs\ENCASA_DATABASE\tools\replace_urls.php
+
+// Activar manejo de errores
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
+// Función para registrar mensajes
+function log_message($message, $type = 'INFO') {
+    echo "[$type] $message\n";
+}
+
+// Verificar si la función url() existe
+if (!function_exists('url')) {
+    log_message("Creando función url() para pruebas", "SETUP");
+    function url($path) {
+        return "URL_BASE/$path";
+    }
+}
+
+// Define directorios a escanear
+$directories = [
+    __DIR__ . '/../app/views',
+    __DIR__ . '/../app/Controllers'
+];
+
+$count = 0;
+$files = 0;
+$errors = 0;
+
+// Verificar que los directorios existen
+foreach ($directories as $index => $directory) {
+    if (!is_dir($directory)) {
+        log_message("El directorio no existe: $directory", "ERROR");
+        unset($directories[$index]);
+        $errors++;
+    } else {
+        log_message("Escaneando directorio: $directory", "INFO");
+    }
+}
+
+// Proceder solo si hay directorios válidos
+if (empty($directories)) {
+    log_message("No hay directorios válidos para escanear", "ERROR");
+    exit(1);
+}
+
+// Modo de prueba (sin modificar archivos) - cambia a false para aplicar cambios
+$test_mode = false;
+
+foreach ($directories as $directory) {
+    try {
+        $it = new RecursiveDirectoryIterator($directory);
+        $it = new RecursiveIteratorIterator($it);
+        $it = new RegexIterator($it, '/\.php$/');
+        
+        foreach ($it as $file) {
+            try {
+                log_message("Procesando: " . $file, "INFO");
+                
+                // Verificar permisos de lectura
+                if (!is_readable($file)) {
+                    log_message("No se puede leer el archivo: $file", "ERROR");
+                    $errors++;
+                    continue;
+                }
+                
+                $content = file_get_contents($file);
+                if ($content === false) {
+                    log_message("Error al leer el archivo: $file", "ERROR");
+                    $errors++;
+                    continue;
+                }
+                
+                $original = $content;
+                
+                // Reemplazar patrones simples primero
+                $simple_patterns = [
+                    '<?= APP_URL ?>/miembros' => '<?= url("miembros") ?>',
+                    '<?= APP_URL ?>/public' => '<?= url("public") ?>',
+                    '<?= APP_URL ?>/assets' => '<?= url("assets") ?>',
+                    '<?= APP_URL ?>/usuarios' => '<?= url("usuarios") ?>'
+                ];
+                
+                foreach ($simple_patterns as $pattern => $replacement) {
+                    $content = str_replace($pattern, $replacement, $content);
+                }
+                
+                // Verificar si hubo cambios
+                if ($content !== $original) {
+                    $changes = substr_count($original, 'APP_URL') - substr_count($content, 'APP_URL');
+                    log_message("Se encontraron $changes cambios en: $file", "SUCCESS");
+                    
+                    // Aplicar cambios si no estamos en modo de prueba
+                    if (!$test_mode) {
+                        if (!is_writable($file)) {
+                            log_message("No se puede escribir en el archivo: $file", "ERROR");
+                            $errors++;
+                            continue;
+                        }
+                        
+                        if (file_put_contents($file, $content) !== false) {
+                            $count += $changes;
+                            $files++;
+                            log_message("Archivo actualizado: $file", "SUCCESS");
+                        } else {
+                            log_message("Error al escribir en el archivo: $file", "ERROR");
+                            $errors++;
+                        }
+                    } else {
+                        log_message("Cambios simulados (modo prueba): no se modificó el archivo", "TEST");
+                        $count += $changes;
+                        $files++;
+                    }
+                } else {
+                    log_message("Sin cambios en: $file", "INFO");
+                }
+            } catch (Exception $e) {
+                log_message("Error procesando archivo {$file->getPathname()}: " . $e->getMessage(), "ERROR");
+                $errors++;
+            }
+        }
+    } catch (Exception $e) {
+        log_message("Error al procesar directorio $directory: " . $e->getMessage(), "ERROR");
+        $errors++;
+    }
+}
+
+// Resumen final
+echo "\n=== RESUMEN ===\n";
+echo "Modo: " . ($test_mode ? "PRUEBA (no se modificaron archivos)" : "REAL (archivos modificados)") . "\n";
+echo "Reemplazadas $count ocurrencias de APP_URL en $files archivos\n";
+echo "Ocurrieron $errors errores durante el proceso\n";
+
+if ($test_mode) {
+    echo "\nEste fue un test. Para aplicar los cambios, cambia \$test_mode = true a \$test_mode = false\n";
+}
 
 
