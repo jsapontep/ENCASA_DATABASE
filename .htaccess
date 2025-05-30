@@ -1,13 +1,15 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    RewriteBase /Encasa_Database/
-
-    # Si el archivo/directorio existe, úsalo directamente
+    
+    # Configuración simple de RewriteBase
+    RewriteBase /ENCASA_DATABASE/
+    
+    # Si el archivo/directorio no existe físicamente
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
-
+    
     # Redirige todo lo demás a index.php
-    RewriteRule ^(.*)$ index.php?url=$1 [QSA,L]
+    RewriteRule ^(.*)$ index.php [QSA,L]
 </IfModule>
 
 # Prevenir acceso a los directorios

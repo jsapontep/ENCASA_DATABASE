@@ -63,7 +63,20 @@ class Router {
      * Despacha la ruta actual
      */
     public function dispatch() {
-        $url = $this->getUrl();
+        // Obtener la ruta solicitada
+        $url = $_SERVER['REQUEST_URI'] ?? '';
+        
+        // Eliminar la base del proyecto de la URL
+        $base = str_replace('/index.php', '', $_SERVER['SCRIPT_NAME']);
+        $url = str_replace($base, '', $url);
+        
+        // Eliminar la barra inicial y parámetros GET
+        $url = ltrim($url, '/');
+        $url = explode('?', $url)[0];
+        
+        // Debug para ver qué URL se está procesando
+        error_log("URL a procesar: '$url'");
+        
         $method = $_SERVER['REQUEST_METHOD'];
         
         // Si se envía _method en un formulario, usar ese método
@@ -153,9 +166,17 @@ class Router {
     
     /**
      * Redirige a una URL
+     * @param string $url Ruta relativa a la que redirigir
      */
     public static function redirect($url) {
-        header('Location: ' . APP_URL . '/' . $url);
+        // Usar la función url() para generar URLs consistentes
+        if (function_exists('url')) {
+            header('Location: ' . url($url));
+        } else {
+            // Fallback si la función url() no existe
+            $baseUrl = defined('APP_URL') ? APP_URL : '/ENCASA_DATABASE';
+            header('Location: ' . rtrim($baseUrl, '/') . '/' . ltrim($url, '/'));
+        }
         exit;
     }
 }

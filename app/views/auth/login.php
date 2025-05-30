@@ -31,21 +31,26 @@
               <?= $error ?>
               <?php if (isset($_SESSION['pending_verification'])): ?>
                 <div class="mt-2">
-                  <a href="<?= APP_URL ?>/auth/resendCode" class="btn btn-sm btn-primary">Reenviar código</a>
+                  <a href="<?= url('auth/resendCode') ?>" class="btn btn-sm btn-primary">Reenviar código</a>
                 </div>
               <?php endif; ?>
             </div>
           <?php endif; ?>
           
-          <form action="<?= APP_URL ?>/auth/login" method="post">
+          <form action="<?= url('auth/login', true) ?>" method="post" autocomplete="on">
+            <!-- Asegurarnos de usar HTTPS -->
+            <input type="hidden" name="secure_form" value="1">
+            
             <div class="mb-3">
               <label for="email_or_username" class="form-label">Email o nombre de usuario</label>
-              <input type="text" class="form-control" id="email_or_username" name="email_or_username" required autofocus>
+              <input type="text" class="form-control" id="email_or_username" name="email_or_username" 
+                     autocomplete="username" required autofocus>
             </div>
             
             <div class="mb-3">
               <label for="password" class="form-label">Contraseña</label>
-              <input type="password" class="form-control" id="password" name="password" required>
+              <input type="password" class="form-control" id="password" name="password" 
+                     autocomplete="current-password" required>
             </div>
             
             <div class="d-grid gap-2">
@@ -54,7 +59,7 @@
           </form>
           
           <div class="text-center mt-3">
-            <a href="<?= APP_URL ?>/registro">¿No tienes cuenta? Regístrate</a>
+            <a href="<?= url('registro') ?>">¿No tienes cuenta? Regístrate</a>
           </div>
         </div>
       </div>
