@@ -4,6 +4,12 @@ if (!defined('APP_NAME')) define('APP_NAME', 'Iglesia En Casa');
 if (!defined('APP_URL')) define('APP_URL', 'http://localhost/Encasa_Database');
 if (!defined('APP_ENV')) define('APP_ENV', 'development'); // 'development' o 'production'
 
+// URL base
+define('BASE_URL', '/ENCASA_DATABASE');
+
+// Directorio de carga de archivos
+define('UPLOAD_DIR', __DIR__ . '/../../uploads');
+
 // Configuración de zona horaria
 date_default_timezone_set('America/Bogota');
 
@@ -26,9 +32,6 @@ define('DB_HOST', 'localhost');
 define('DB_NAME', 'IglesiaEnCasa');
 define('DB_USER', 'root');
 define('DB_PASS', '');
-
-// Agregar esta línea al final del archivo
-define('ALLOW_INSECURE_FORMS', true);
 
 // Agregar esto al final del archivo para mejorar el registro de errores
 ini_set('display_errors', 1);

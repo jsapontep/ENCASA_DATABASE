@@ -12,10 +12,12 @@ use Exception;
 
 class MiembrosController extends Controller {
     private $miembroModel;
+    private $db;
     
     public function __construct() {
         parent::__construct();
         $this->miembroModel = new Miembro();
+        $this->db = \Database::getInstance()->getConnection();
     }
     
     /**
@@ -178,46 +180,34 @@ class MiembrosController extends Controller {
      */
     public function ver($id)
     {
-        try {
-            // Corregir la forma en que se maneja el parámetro ID
-            if (is_array($id)) {
-                // Si recibe un array asociativo con clave 'id'
-                if (isset($id['id'])) {
-                    $id = (int)$id['id'];
-                } 
-                // Si recibe un array indexado
-                elseif (isset($id[0])) {
-                    $id = (int)$id[0];
-                } 
-                else {
-                    $id = 0;
-                }
-            }
-            
-            $id = (int)$id;
-            
-            if ($id <= 0) {
-                $this->renderError(404, 'ID de miembro inválido');
-                return;
-            }
-            
-            // Obtener perfil completo
-            $miembro = $this->miembroModel->getFullProfile($id);
-            
-            if (!$miembro) {
-                $this->renderError(404, 'Miembro no encontrado');
-                return;
-            }
-            
-            // IMPORTANTE: Usar renderWithLayout en lugar de render
-            $this->renderWithLayout('miembros/ver', 'default', [
-                'miembro' => $miembro,
-                'title' => "{$miembro['nombres']} {$miembro['apellidos']}"
-            ]);
-        } catch (\Exception $e) {
-            error_log("Error en ver(): " . $e->getMessage());
-            $this->renderError(500, 'Error al cargar los datos del miembro');
+        // Asegurarse de que el ID sea un entero
+        if (is_array($id)) {
+            $id = $id[0]; // En caso de que el router pase un array
         }
+        $id = (int)$id;
+        
+        error_log("Controlador: Buscando miembro con ID: $id");
+        
+        // Obtener datos del miembro desde el modelo
+        $miembro = $this->miembroModel->getFullProfile($id);
+        
+        if (!$miembro) {
+            error_log("Controlador: No se encontró miembro con ID: $id");
+            $_SESSION['flash_message'] = 'Miembro no encontrado';
+            $_SESSION['flash_type'] = 'danger';
+            
+            // Redirigir a la lista de miembros
+            header("Location: " . url('miembros'));
+            exit;
+        }
+        
+        error_log("Controlador: Miembro encontrado, renderizando vista");
+        
+        // Renderizar la vista con los datos del miembro
+        return $this->renderWithLayout('miembros/ver', 'default', [
+            'title' => $miembro['nombres'] . ' ' . $miembro['apellidos'],
+            'miembro' => $miembro
+        ]);
     }
 
     private function obtenerDatosRelacionados($db, $miembroId, $tabla)
@@ -242,14 +232,26 @@ class MiembrosController extends Controller {
      */
     public function editar($id) 
     {
+        // Asegurar que el ID sea un entero (igual que en el método ver)
+        if (is_array($id)) {
+            $id = $id[0]; // En caso de que el router pase un array
+        }
+        $id = (int)$id;
+        
+        // Registrar para diagnóstico
+        error_log("Controlador: Buscando miembro para editar con ID: $id");
+        
         $miembro = $this->miembroModel->getFullProfile($id);
         
         if (!$miembro) {
+            error_log("Controlador: No se encontró miembro con ID: $id para editar");
             $_SESSION['flash_message'] = 'Miembro no encontrado';
             $_SESSION['flash_type'] = 'danger';
             $this->redirect('miembros');
             return;
         }
+        
+        error_log("Controlador: Miembro encontrado, mostrando formulario de edición");
         
         return $this->renderWithLayout('miembros/editar', 'default', [
             'miembro' => $miembro,
@@ -262,408 +264,390 @@ class MiembrosController extends Controller {
      */
     public function actualizar($id)
     {
-        // Limpiar el id
         if (is_array($id)) {
-            $id = (int) $id[0];
+            $id = $id[0];
         }
         $id = (int)$id;
         
-        // Para depuración
-        error_log("Iniciando actualización para miembro ID: $id");
-        error_log("Datos POST: " . json_encode($_POST));
+        // Verificar que el miembro existe
+        $miembro = $this->miembroModel->getFullProfile($id);
+        if (!$miembro) {
+            $this->respondJson([
+                'success' => false,
+                'message' => 'Miembro no encontrado'
+            ]);
+            return;
+        }
         
+        // Iniciar procesamiento
         try {
-            // Verificar método HTTP
-            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-                $this->responderJSON(['success' => false, 'message' => 'Método no permitido']);
-                return;
-            }
+            // Activar log para debugging
+            $resultados = ['general' => false, 'contacto' => false, 'estudios' => false, 
+                          'tallas' => false, 'salud' => false, 'carrera' => false];
             
-            // Obtener conexión a la BD
-            $db = \Database::getInstance()->getConnection();
+            // 1. Procesar datos básicos
+            $datosGenerales = $this->obtenerDatosPost([
+                'nombres', 'apellidos', 'celular', 'localidad', 'barrio',
+                'fecha_nacimiento', 'invitado_por', 'conector',
+                'recorrido_espiritual', 'estado_espiritual'
+            ]);
             
-            // Verificar que el miembro existe
-            $verificarStmt = $db->prepare("SELECT id FROM InformacionGeneral WHERE id = ?");
-            $verificarStmt->execute([$id]);
+            // Procesar checkbox habeas_data
+            $datosGenerales['habeas_data'] = isset($_POST['habeas_data']) ? '1' : null;
             
-            if ($verificarStmt->rowCount() === 0) {
-                $this->responderJSON(['success' => false, 'message' => 'El miembro no existe']);
-                return;
-            }
-            
-            // Datos básicos para actualizar
-            $datosGenerales = [];
-            $camposPermitidos = [
-                'nombres', 'apellidos', 'celular', 'localidad', 'barrio', 
-                'fecha_nacimiento', 'estado_espiritual', 'recorrido_espiritual'
-            ];
-            
-            foreach ($camposPermitidos as $campo) {
-                if (isset($_POST[$campo])) {
-                    $datosGenerales[$campo] = $_POST[$campo];
+            // 2. Procesar la foto si se ha subido una nueva
+            if (!empty($_FILES['foto']['name'])) {
+                // Usar directamente el path absoluto para garantizar que funcione
+                $uploadDir = __DIR__ . '/../../uploads/miembros/';
+                
+                // Asegurar que el directorio existe
+                if (!is_dir($uploadDir)) {
+                    mkdir($uploadDir, 0755, true);
+                }
+                
+                // Generar nombre único para el archivo
+                $extension = pathinfo($_FILES['foto']['name'], PATHINFO_EXTENSION);
+                $nombreArchivo = uniqid() . '.' . $extension;
+                $uploadFile = $uploadDir . $nombreArchivo;
+                
+                // Mover el archivo cargado al directorio de destino
+                if (move_uploaded_file($_FILES['foto']['tmp_name'], $uploadFile)) {
+                    $datosGenerales['foto'] = $nombreArchivo;
                 }
             }
             
-            // Actualizar tabla principal si hay datos
-            if (!empty($datosGenerales)) {
-                $sets = [];
-                $params = [];
-                
-                foreach ($datosGenerales as $campo => $valor) {
-                    $sets[] = "$campo = ?";
-                    $params[] = $valor;
-                }
-                
-                // Añadir ID al final
-                $params[] = $id;
-                
-                $sql = "UPDATE InformacionGeneral SET " . implode(', ', $sets) . " WHERE id = ?";
-                $stmt = $db->prepare($sql);
-                $resultado = $stmt->execute($params);
-                
-                if (!$resultado) {
-                    throw new \Exception("Error al actualizar datos generales: " . implode(", ", $stmt->errorInfo()));
-                }
-            }
+            // 3. Actualizar datos generales
+            $resultados['general'] = $this->miembroModel->actualizar($id, $datosGenerales);
             
-            // Actualizar tablas relacionadas (sólo si tenemos datos para ellas)
-            $this->actualizarContactoSimplificado($id, $_POST);
-            $this->actualizarEstudioSimplificado($id, $_POST);
-            $this->actualizarTallasSimplificado($id, $_POST);
-            $this->actualizarSaludSimplificado($id, $_POST);
-            $this->actualizarCarreraSimplificado($id, $_POST);
+            // 4. Actualizar tablas relacionadas
+            $resultados['contacto'] = $this->actualizarContacto($id);
+            $resultados['estudios'] = $this->actualizarEstudiosTrabajo($id);
+            $resultados['tallas'] = $this->actualizarTallas($id);
+            $resultados['salud'] = $this->actualizarSaludEmergencias($id);
+            $resultados['carrera'] = $this->actualizarCarreraBiblica($id);
+            
+            // Registrar resultados para debugging
+            error_log("Resultados de actualización para miembro ID $id: " . json_encode($resultados));
             
             // Responder con éxito
-            $this->responderJSON([
-                'success' => true, 
+            $this->respondJson([
+                'success' => true,
                 'message' => 'Miembro actualizado correctamente',
+                'redirect' => url("miembros/$id"),
                 'id' => $id,
-                'redirect' => APP_URL . '/miembros/' . $id
+                'debug' => APP_ENV === 'development' ? $resultados : null
             ]);
             
         } catch (\Exception $e) {
-            error_log("Error en actualizar(): " . $e->getMessage());
-            $this->responderJSON(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+            // Registrar error
+            error_log("Error al actualizar miembro ID $id: " . $e->getMessage());
+            
+            // Responder con error
+            $this->respondJson([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ]);
         }
     }
 
-    private function responderJSON($data) {
+    /**
+     * Actualiza los datos de contacto del miembro
+     */
+    private function actualizarContacto($id)
+    {
+        try {
+            if (!isset($_POST['contacto']) || !is_array($_POST['contacto'])) {
+                error_log("No hay datos de contacto para actualizar, miembro ID: $id");
+                return false;
+            }
+
+            $contacto = $_POST['contacto'];
+            error_log("Datos de contacto recibidos: " . json_encode($contacto));
+            
+            // Verificar existencia del registro
+            $stmt = $this->db->prepare("SELECT id FROM Contacto WHERE miembro_id = ?");
+            $stmt->execute([$id]);
+            $existente = $stmt->fetch();
+            
+            if ($existente) {
+                // Actualizar registro existente
+                $campos = [];
+                $valores = [];
+                
+                foreach ($contacto as $campo => $valor) {
+                    if ($campo !== 'miembro_id') {
+                        $campos[] = "$campo = ?";
+                        $valores[] = $valor;
+                    }
+                }
+                
+                if (empty($campos)) {
+                    return false; // No hay campos para actualizar
+                }
+                
+                $valores[] = $id; // Para la condición WHERE
+                
+                $sql = "UPDATE Contacto SET " . implode(', ', $campos) . " WHERE miembro_id = ?";
+                error_log("SQL actualizar contacto: $sql");
+                $stmt = $this->db->prepare($sql);
+                $resultado = $stmt->execute($valores);
+                error_log("Resultado actualización contacto: " . ($resultado ? "éxito" : "fallido"));
+                return $resultado;
+            } else {
+                // Insertar nuevo registro
+                $contacto['miembro_id'] = $id;
+                $campos = array_keys($contacto);
+                $placeholders = array_fill(0, count($campos), '?');
+                
+                $sql = "INSERT INTO Contacto (" . implode(', ', $campos) . ") VALUES (" . implode(', ', $placeholders) . ")";
+                error_log("SQL insertar contacto: $sql");
+                $stmt = $this->db->prepare($sql);
+                $resultado = $stmt->execute(array_values($contacto));
+                error_log("Resultado inserción contacto: " . ($resultado ? "éxito" : "fallido"));
+                return $resultado;
+            }
+        } catch (\Exception $e) {
+            error_log("Error en actualizarContacto() para miembro ID $id: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Actualiza los datos de estudios y trabajo del miembro
+     */
+    private function actualizarEstudiosTrabajo($id)
+    {
+        try {
+            if (!isset($_POST['estudios']) || !is_array($_POST['estudios'])) {
+                return false;
+            }
+
+            $estudios = $_POST['estudios'];
+            error_log("Datos de estudios recibidos: " . json_encode($estudios));
+            
+            // Verificar existencia del registro
+            $stmt = $this->db->prepare("SELECT id FROM EstudiosTrabajo WHERE miembro_id = ?");
+            $stmt->execute([$id]);
+            $existente = $stmt->fetch();
+            
+            if ($existente) {
+                // Actualizar registro existente
+                $campos = [];
+                $valores = [];
+                
+                foreach ($estudios as $campo => $valor) {
+                    if ($campo !== 'miembro_id') {
+                        $campos[] = "$campo = ?";
+                        $valores[] = $valor;
+                    }
+                }
+                
+                if (empty($campos)) {
+                    return false; // No hay campos para actualizar
+                }
+                
+                $valores[] = $id; // Para la condición WHERE
+                
+                $sql = "UPDATE EstudiosTrabajo SET " . implode(', ', $campos) . " WHERE miembro_id = ?";
+                $stmt = $this->db->prepare($sql);
+                return $stmt->execute($valores);
+            } else {
+                // Insertar nuevo registro
+                $estudios['miembro_id'] = $id;
+                $campos = array_keys($estudios);
+                $placeholders = array_fill(0, count($campos), '?');
+                
+                $sql = "INSERT INTO EstudiosTrabajo (" . implode(', ', $campos) . ") VALUES (" . implode(', ', $placeholders) . ")";
+                $stmt = $this->db->prepare($sql);
+                return $stmt->execute(array_values($estudios));
+            }
+        } catch (\Exception $e) {
+            error_log("Error en actualizarEstudiosTrabajo() para miembro ID $id: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Actualiza las tallas del miembro
+     */
+    private function actualizarTallas($id)
+    {
+        try {
+            if (!isset($_POST['tallas']) || !is_array($_POST['tallas'])) {
+                return false;
+            }
+
+            $tallas = $_POST['tallas'];
+            error_log("Datos de tallas recibidos: " . json_encode($tallas));
+            
+            // Verificar existencia del registro
+            $stmt = $this->db->prepare("SELECT id FROM Tallas WHERE miembro_id = ?");
+            $stmt->execute([$id]);
+            $existente = $stmt->fetch();
+            
+            if ($existente) {
+                // Actualizar registro existente
+                $campos = [];
+                $valores = [];
+                
+                foreach ($tallas as $campo => $valor) {
+                    if ($campo !== 'miembro_id') {
+                        $campos[] = "$campo = ?";
+                        $valores[] = $valor;
+                    }
+                }
+                
+                if (empty($campos)) {
+                    return false; // No hay campos para actualizar
+                }
+                
+                $valores[] = $id; // Para la condición WHERE
+                
+                $sql = "UPDATE Tallas SET " . implode(', ', $campos) . " WHERE miembro_id = ?";
+                $stmt = $this->db->prepare($sql);
+                return $stmt->execute($valores);
+            } else {
+                // Insertar nuevo registro
+                $tallas['miembro_id'] = $id;
+                $campos = array_keys($tallas);
+                $placeholders = array_fill(0, count($campos), '?');
+                
+                $sql = "INSERT INTO Tallas (" . implode(', ', $campos) . ") VALUES (" . implode(', ', $placeholders) . ")";
+                $stmt = $this->db->prepare($sql);
+                return $stmt->execute(array_values($tallas));
+            }
+        } catch (\Exception $e) {
+            error_log("Error en actualizarTallas() para miembro ID $id: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Actualiza los datos de salud y emergencias del miembro
+     */
+    private function actualizarSaludEmergencias($id)
+    {
+        try {
+            if (!isset($_POST['salud']) || !is_array($_POST['salud'])) {
+                return false;
+            }
+
+            $salud = $_POST['salud'];
+            error_log("Datos de salud recibidos: " . json_encode($salud));
+            
+            // Verificar existencia del registro
+            $stmt = $this->db->prepare("SELECT id FROM SaludEmergencias WHERE miembro_id = ?");
+            $stmt->execute([$id]);
+            $existente = $stmt->fetch();
+            
+            if ($existente) {
+                // Actualizar registro existente
+                $campos = [];
+                $valores = [];
+                
+                foreach ($salud as $campo => $valor) {
+                    if ($campo !== 'miembro_id') {
+                        $campos[] = "$campo = ?";
+                        $valores[] = $valor;
+                    }
+                }
+                
+                if (empty($campos)) {
+                    return false; // No hay campos para actualizar
+                }
+                
+                $valores[] = $id; // Para la condición WHERE
+                
+                $sql = "UPDATE SaludEmergencias SET " . implode(', ', $campos) . " WHERE miembro_id = ?";
+                $stmt = $this->db->prepare($sql);
+                return $stmt->execute($valores);
+            } else {
+                // Insertar nuevo registro
+                $salud['miembro_id'] = $id;
+                $campos = array_keys($salud);
+                $placeholders = array_fill(0, count($campos), '?');
+                
+                $sql = "INSERT INTO SaludEmergencias (" . implode(', ', $campos) . ") VALUES (" . implode(', ', $placeholders) . ")";
+                $stmt = $this->db->prepare($sql);
+                return $stmt->execute(array_values($salud));
+            }
+        } catch (\Exception $e) {
+            error_log("Error en actualizarSaludEmergencias() para miembro ID $id: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Actualiza los datos de carrera bíblica del miembro
+     */
+    private function actualizarCarreraBiblica($id)
+    {
+        try {
+            if (!isset($_POST['carrera']) || !is_array($_POST['carrera'])) {
+                return false;
+            }
+
+            $carrera = $_POST['carrera'];
+            error_log("Datos de carrera recibidos: " . json_encode($carrera));
+            
+            // Verificar existencia del registro
+            $stmt = $this->db->prepare("SELECT id FROM CarreraBiblica WHERE miembro_id = ?");
+            $stmt->execute([$id]);
+            $existente = $stmt->fetch();
+            
+            if ($existente) {
+                // Actualizar registro existente
+                $campos = [];
+                $valores = [];
+                
+                foreach ($carrera as $campo => $valor) {
+                    if ($campo !== 'miembro_id') {
+                        $campos[] = "$campo = ?";
+                        $valores[] = $valor;
+                    }
+                }
+                
+                if (empty($campos)) {
+                    return false; // No hay campos para actualizar
+                }
+                
+                $valores[] = $id; // Para la condición WHERE
+                
+                $sql = "UPDATE CarreraBiblica SET " . implode(', ', $campos) . " WHERE miembro_id = ?";
+                $stmt = $this->db->prepare($sql);
+                return $stmt->execute($valores);
+            } else {
+                // Insertar nuevo registro
+                $carrera['miembro_id'] = $id;
+                $campos = array_keys($carrera);
+                $placeholders = array_fill(0, count($campos), '?');
+                
+                $sql = "INSERT INTO CarreraBiblica (" . implode(', ', $campos) . ") VALUES (" . implode(', ', $placeholders) . ")";
+                $stmt = $this->db->prepare($sql);
+                return $stmt->execute(array_values($carrera));
+            }
+        } catch (\Exception $e) {
+            error_log("Error en actualizarCarreraBiblica() para miembro ID $id: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    // Método auxiliar para responder en formato JSON
+    private function respondJson($data)
+    {
         header('Content-Type: application/json');
         echo json_encode($data);
-        exit;
     }
 
-    // Métodos simplificados para actualizar tablas relacionadas
-    private function actualizarContactoSimplificado($id, $datos) {
-        try {
-            $db = \Database::getInstance()->getConnection();
-            
-            // Campos a actualizar (solo si están presentes en POST)
-            $campos = [
-                'tipo_documento', 'numero_documento', 'telefono', 
-                'correo_electronico', 'pais', 'ciudad', 'direccion', 'estado_civil'
-            ];
-            
-            // Verificar si hay datos para actualizar
-            $datosActualizar = [];
-            foreach ($campos as $campo) {
-                if (isset($datos[$campo])) {
-                    $datosActualizar[$campo] = $datos[$campo];
-                }
+    // Método auxiliar para obtener campos del POST
+    private function obtenerDatosPost($campos)
+    {
+        $datos = [];
+        foreach ($campos as $campo) {
+            if (isset($_POST[$campo])) {
+                $datos[$campo] = $_POST[$campo];
             }
-            
-            if (empty($datosActualizar)) {
-                return true; // No hay datos para actualizar
-            }
-            
-            // Verificar si existe registro
-            $verificar = $db->prepare("SELECT id FROM Contacto WHERE miembro_id = ?");
-            $verificar->execute([$id]);
-            $existe = $verificar->fetch();
-            
-            if ($existe) {
-                // Actualizar
-                $sets = [];
-                $params = [];
-                
-                foreach ($datosActualizar as $campo => $valor) {
-                    $sets[] = "$campo = ?";
-                    $params[] = $valor;
-                }
-                
-                $params[] = $id;
-                $sql = "UPDATE Contacto SET " . implode(', ', $sets) . " WHERE miembro_id = ?";
-                
-                $stmt = $db->prepare($sql);
-                $stmt->execute($params);
-            } else {
-                // Insertar
-                $datosActualizar['miembro_id'] = $id;
-                
-                $campos = array_keys($datosActualizar);
-                $placeholders = array_fill(0, count($campos), '?');
-                
-                $sql = "INSERT INTO Contacto (" . implode(', ', $campos) . ") 
-                        VALUES (" . implode(', ', $placeholders) . ")";
-                
-                $stmt = $db->prepare($sql);
-                $stmt->execute(array_values($datosActualizar));
-            }
-            
-            return true;
-        } catch (\Exception $e) {
-            error_log("Error al actualizar contacto: " . $e->getMessage());
-            return false; // No lanzamos la excepción para que no interrumpa el flujo
         }
-    }
-
-    private function actualizarEstudioSimplificado($id, $datos) {
-        try {
-            $db = \Database::getInstance()->getConnection();
-            
-            // Campos a actualizar
-            $campos = [
-                'nivel_estudios', 'profesion', 'otros_estudios', 
-                'empresa', 'direccion_empresa', 'emprendimientos'
-            ];
-            
-            // Verificar si hay datos para actualizar
-            $datosActualizar = [];
-            foreach ($campos as $campo) {
-                if (isset($datos[$campo])) {
-                    $datosActualizar[$campo] = $datos[$campo];
-                }
-            }
-            
-            if (empty($datosActualizar)) {
-                return true; // No hay datos para actualizar
-            }
-            
-            // Verificar si existe registro
-            $verificar = $db->prepare("SELECT id FROM EstudiosTrabajo WHERE miembro_id = ?");
-            $verificar->execute([$id]);
-            $existe = $verificar->fetch();
-            
-            if ($existe) {
-                // Actualizar
-                $sets = [];
-                $params = [];
-                
-                foreach ($datosActualizar as $campo => $valor) {
-                    $sets[] = "$campo = ?";
-                    $params[] = $valor;
-                }
-                
-                $params[] = $id;
-                $sql = "UPDATE EstudiosTrabajo SET " . implode(', ', $sets) . " WHERE miembro_id = ?";
-                
-                $stmt = $db->prepare($sql);
-                $stmt->execute($params);
-            } else {
-                // Insertar
-                $datosActualizar['miembro_id'] = $id;
-                
-                $campos = array_keys($datosActualizar);
-                $placeholders = array_fill(0, count($campos), '?');
-                
-                $sql = "INSERT INTO EstudiosTrabajo (" . implode(', ', $campos) . ") 
-                        VALUES (" . implode(', ', $placeholders) . ")";
-                
-                $stmt = $db->prepare($sql);
-                $stmt->execute(array_values($datosActualizar));
-            }
-            
-            return true;
-        } catch (\Exception $e) {
-            error_log("Error al actualizar estudios: " . $e->getMessage());
-            return false;
-        }
-    }
-
-    private function actualizarTallasSimplificado($id, $datos) {
-        try {
-            $db = \Database::getInstance()->getConnection();
-            
-            // Campos a actualizar
-            $campos = [
-                'talla_camisa', 'talla_camiseta', 'talla_pantalon', 'talla_zapatos'
-            ];
-            
-            // Verificar si hay datos para actualizar
-            $datosActualizar = [];
-            foreach ($campos as $campo) {
-                if (isset($datos[$campo])) {
-                    $datosActualizar[$campo] = $datos[$campo];
-                }
-            }
-            
-            if (empty($datosActualizar)) {
-                return true; // No hay datos para actualizar
-            }
-            
-            // Verificar si existe registro
-            $verificar = $db->prepare("SELECT id FROM Tallas WHERE miembro_id = ?");
-            $verificar->execute([$id]);
-            $existe = $verificar->fetch();
-            
-            if ($existe) {
-                // Actualizar
-                $sets = [];
-                $params = [];
-                
-                foreach ($datosActualizar as $campo => $valor) {
-                    $sets[] = "$campo = ?";
-                    $params[] = $valor;
-                }
-                
-                $params[] = $id;
-                $sql = "UPDATE Tallas SET " . implode(', ', $sets) . " WHERE miembro_id = ?";
-                
-                $stmt = $db->prepare($sql);
-                $stmt->execute($params);
-            } else {
-                // Insertar
-                $datosActualizar['miembro_id'] = $id;
-                
-                $campos = array_keys($datosActualizar);
-                $placeholders = array_fill(0, count($campos), '?');
-                
-                $sql = "INSERT INTO Tallas (" . implode(', ', $campos) . ") 
-                        VALUES (" . implode(', ', $placeholders) . ")";
-                
-                $stmt = $db->prepare($sql);
-                $stmt->execute(array_values($datosActualizar));
-            }
-            
-            return true;
-        } catch (\Exception $e) {
-            error_log("Error al actualizar tallas: " . $e->getMessage());
-            return false;
-        }
-    }
-
-    private function actualizarSaludSimplificado($id, $datos) {
-        try {
-            $db = \Database::getInstance()->getConnection();
-            
-            // Campos a actualizar
-            $campos = [
-                'rh', 'eps', 'acudiente1', 'telefono1', 'acudiente2', 'telefono2'
-            ];
-            
-            // Verificar si hay datos para actualizar
-            $datosActualizar = [];
-            foreach ($campos as $campo) {
-                if (isset($datos[$campo])) {
-                    $datosActualizar[$campo] = $datos[$campo];
-                }
-            }
-            
-            if (empty($datosActualizar)) {
-                return true; // No hay datos para actualizar
-            }
-            
-            // Verificar si existe registro
-            $verificar = $db->prepare("SELECT id FROM SaludEmergencias WHERE miembro_id = ?");
-            $verificar->execute([$id]);
-            $existe = $verificar->fetch();
-            
-            if ($existe) {
-                // Actualizar
-                $sets = [];
-                $params = [];
-                
-                foreach ($datosActualizar as $campo => $valor) {
-                    $sets[] = "$campo = ?";
-                    $params[] = $valor;
-                }
-                
-                $params[] = $id;
-                $sql = "UPDATE SaludEmergencias SET " . implode(', ', $sets) . " WHERE miembro_id = ?";
-                
-                $stmt = $db->prepare($sql);
-                $stmt->execute($params);
-            } else {
-                // Insertar
-                $datosActualizar['miembro_id'] = $id;
-                
-                $campos = array_keys($datosActualizar);
-                $placeholders = array_fill(0, count($campos), '?');
-                
-                $sql = "INSERT INTO SaludEmergencias (" . implode(', ', $campos) . ") 
-                        VALUES (" . implode(', ', $placeholders) . ")";
-                
-                $stmt = $db->prepare($sql);
-                $stmt->execute(array_values($datosActualizar));
-            }
-            
-            return true;
-        } catch (\Exception $e) {
-            error_log("Error al actualizar salud: " . $e->getMessage());
-            return false;
-        }
-    }
-
-    private function actualizarCarreraSimplificado($id, $datos) {
-        try {
-            $db = \Database::getInstance()->getConnection();
-            
-            // Campos a actualizar
-            $campos = [
-                'estado', 'carrera_biblica', 'miembro_de', 
-                'casa_de_palabra_y_vida', 'cobertura', 'anotaciones'
-            ];
-            
-            // Verificar si hay datos para actualizar
-            $datosActualizar = [];
-            foreach ($campos as $campo) {
-                if (isset($datos[$campo])) {
-                    $datosActualizar[$campo] = $datos[$campo];
-                }
-            }
-            
-            if (empty($datosActualizar)) {
-                return true; // No hay datos para actualizar
-            }
-            
-            // Verificar si existe registro
-            $verificar = $db->prepare("SELECT id FROM CarreraBiblica WHERE miembro_id = ?");
-            $verificar->execute([$id]);
-            $existe = $verificar->fetch();
-            
-            if ($existe) {
-                // Actualizar
-                $sets = [];
-                $params = [];
-                
-                foreach ($datosActualizar as $campo => $valor) {
-                    $sets[] = "$campo = ?";
-                    $params[] = $valor;
-                }
-                
-                $params[] = $id;
-                $sql = "UPDATE CarreraBiblica SET " . implode(', ', $sets) . " WHERE miembro_id = ?";
-                
-                $stmt = $db->prepare($sql);
-                $stmt->execute($params);
-            } else {
-                // Insertar
-                $datosActualizar['miembro_id'] = $id;
-                
-                $campos = array_keys($datosActualizar);
-                $placeholders = array_fill(0, count($campos), '?');
-                
-                $sql = "INSERT INTO CarreraBiblica (" . implode(', ', $campos) . ") 
-                        VALUES (" . implode(', ', $placeholders) . ")";
-                
-                $stmt = $db->prepare($sql);
-                $stmt->execute(array_values($datosActualizar));
-            }
-            
-            return true;
-        } catch (\Exception $e) {
-            error_log("Error al actualizar carrera: " . $e->getMessage());
-            return false;
-        }
+        return $datos;
     }
 }

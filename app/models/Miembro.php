@@ -115,42 +115,54 @@ class Miembro extends Model {
     /**
      * Obtiene el perfil completo de un miembro
      */
-    public function getFullProfile($id) {
+    public function getFullProfile($id)
+    {
         try {
             // Asegurar que el ID sea un entero
             $id = (int)$id;
             
-            // Log para depuración
-            error_log("Buscando miembro con ID: $id");
+            // Registrar para depuración
+            error_log("Modelo: Buscando miembro con ID: $id");
             
-            // Usar sentencia preparada en lugar de consulta directa
-            $sql = "SELECT * FROM {$this->table} WHERE id = ?";
-            $stmt = $this->db->prepare($sql);
+            // Consulta principal
+            $stmt = $this->db->prepare("SELECT * FROM InformacionGeneral WHERE id = ?");
             $stmt->execute([$id]);
             $miembro = $stmt->fetch(\PDO::FETCH_ASSOC);
             
             if (!$miembro) {
-                error_log("No se encontró ningún miembro con ID $id");
+                error_log("Modelo: No se encontró miembro con ID: $id");
                 return null;
             }
             
-            // Obtener datos de tablas relacionadas y añadirlos al array principal
+            error_log("Modelo: Miembro encontrado, buscando datos relacionados");
+            
+            // Obtener datos relacionados
             $tablas = ['Contacto', 'EstudiosTrabajo', 'Tallas', 'SaludEmergencias', 'CarreraBiblica'];
             
             foreach ($tablas as $tabla) {
-                $sql = "SELECT * FROM $tabla WHERE miembro_id = ?";
-                $stmt = $this->db->prepare($sql);
-                $stmt->execute([$id]);
-                $datos = $stmt->fetch(\PDO::FETCH_ASSOC);
-                
-                if ($datos) {
-                    $miembro[strtolower($tabla)] = $datos;
+                try {
+                    $sql = "SELECT * FROM {$tabla} WHERE miembro_id = ?";
+                    $stmt = $this->db->prepare($sql);
+                    $stmt->execute([$id]);
+                    $datos = $stmt->fetch(\PDO::FETCH_ASSOC);
+                    
+                    if ($datos) {
+                        // Clave en minúsculas para consistencia
+                        $miembro[strtolower($tabla)] = $datos;
+                    } else {
+                        // Asignar array vacío para evitar errores
+                        $miembro[strtolower($tabla)] = [];
+                        error_log("Modelo: No se encontraron datos en $tabla para miembro ID: $id");
+                    }
+                } catch (\PDOException $e) {
+                    error_log("Modelo: Error al consultar $tabla: " . $e->getMessage());
+                    $miembro[strtolower($tabla)] = []; // Array vacío para evitar errores
                 }
             }
             
             return $miembro;
-        } catch (\PDOException $e) {
-            error_log("Error en getFullProfile: " . $e->getMessage());
+        } catch (\Exception $e) {
+            error_log("Modelo: Error en getFullProfile: " . $e->getMessage());
             return null;
         }
     }

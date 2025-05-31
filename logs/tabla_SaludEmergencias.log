@@ -1,0 +1,39 @@
+Actualizando tabla SaludEmergencias para miembro 1
+SQL: UPDATE SaludEmergencias SET rh = ?, eps = ?, acudiente1 = ?, telefono1 = ?, acudiente2 = ?, telefono2 = ? WHERE miembro_id = ?
+Valores: Array
+(
+    [0] => 
+    [1] => 
+    [2] => 
+    [3] => 
+    [4] => 
+    [5] => 
+    [6] => 1
+)
+
+Actualizando tabla SaludEmergencias para miembro 1
+SQL: UPDATE SaludEmergencias SET rh = ?, eps = ?, acudiente1 = ?, telefono1 = ?, acudiente2 = ?, telefono2 = ? WHERE miembro_id = ?
+Valores: Array
+(
+    [0] => 
+    [1] => 
+    [2] => 
+    [3] => 
+    [4] => 
+    [5] => 
+    [6] => 1
+)
+
+Actualizando tabla SaludEmergencias para miembro 1
+SQL: UPDATE SaludEmergencias SET rh = ?, eps = ?, acudiente1 = ?, telefono1 = ?, acudiente2 = ?, telefono2 = ? WHERE miembro_id = ?
+Valores: Array
+(
+    [0] => 
+    [1] => 
+    [2] => 
+    [3] => 
+    [4] => 
+    [5] => 
+    [6] => 1
+)
+

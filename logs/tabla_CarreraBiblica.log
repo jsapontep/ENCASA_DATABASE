@@ -1,0 +1,42 @@
+Actualizando tabla CarreraBiblica para miembro 1
+SQL: UPDATE CarreraBiblica SET estado = ?, carrera_biblica = ?, miembro_de = ?, casa_de_palabra_y_vida = ?, cobertura = ?, anotaciones = ?, recorrido_espiritual = ? WHERE miembro_id = ?
+Valores: Array
+(
+    [0] => 
+    [1] => 
+    [2] => Iglesia En Casa
+    [3] => 
+    [4] => 
+    [5] => 
+    [6] => Rafa Gamez lleva casi 10 años en encasa, ahora sirve en conexion y staff.
+    [7] => 1
+)
+
+Actualizando tabla CarreraBiblica para miembro 1
+SQL: UPDATE CarreraBiblica SET estado = ?, carrera_biblica = ?, miembro_de = ?, casa_de_palabra_y_vida = ?, cobertura = ?, anotaciones = ?, recorrido_espiritual = ? WHERE miembro_id = ?
+Valores: Array
+(
+    [0] => 
+    [1] => 
+    [2] => Iglesia En Casa
+    [3] => 
+    [4] => 
+    [5] => 
+    [6] => Rafa Gamez lleva casi 10 años en encasa, ahora sirve en conexion y staff.
+    [7] => 1
+)
+
+Actualizando tabla CarreraBiblica para miembro 1
+SQL: UPDATE CarreraBiblica SET estado = ?, carrera_biblica = ?, miembro_de = ?, casa_de_palabra_y_vida = ?, cobertura = ?, anotaciones = ?, recorrido_espiritual = ? WHERE miembro_id = ?
+Valores: Array
+(
+    [0] => 
+    [1] => 
+    [2] => Iglesia En Casa
+    [3] => 
+    [4] => 
+    [5] => 
+    [6] => Rafa Gamez lleva casi 10 años en encasa, ahora sirve en conexion y staff.
+    [7] => 1
+)
+

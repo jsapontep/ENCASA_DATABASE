@@ -1,0 +1,1 @@
+2025-05-31 14:25:50 - Error PDO: SQLSTATE[23000]: Integrity constraint violation: 1452 Cannot add or update a child row: a foreign key constraint fails (`iglesiaencasa`.`informaciongeneral`, CONSTRAINT `informaciongeneral_ibfk_1` FOREIGN KEY (`invitado_por`) REFERENCES `informaciongeneral` (`id`) ON DELETE SET NULL)

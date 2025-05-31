@@ -1,0 +1,33 @@
+Actualizando tabla Tallas para miembro 1
+SQL: UPDATE Tallas SET talla_camisa = ?, talla_camiseta = ?, talla_pantalon = ?, talla_zapatos = ? WHERE miembro_id = ?
+Valores: Array
+(
+    [0] => XXL
+    [1] => XXL
+    [2] => 42
+    [3] => 42
+    [4] => 1
+)
+
+Actualizando tabla Tallas para miembro 1
+SQL: UPDATE Tallas SET talla_camisa = ?, talla_camiseta = ?, talla_pantalon = ?, talla_zapatos = ? WHERE miembro_id = ?
+Valores: Array
+(
+    [0] => XXL
+    [1] => XXL
+    [2] => 42
+    [3] => 42
+    [4] => 1
+)
+
+Actualizando tabla Tallas para miembro 1
+SQL: UPDATE Tallas SET talla_camisa = ?, talla_camiseta = ?, talla_pantalon = ?, talla_zapatos = ? WHERE miembro_id = ?
+Valores: Array
+(
+    [0] => XXL
+    [1] => XXL
+    [2] => 42
+    [3] => 42
+    [4] => 1
+)
+

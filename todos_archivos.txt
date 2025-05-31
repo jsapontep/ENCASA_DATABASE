@@ -325,6 +325,70 @@ echo "<p><a href='miembros/{$id}'>Ver página de perfil</a></p>";
 
 
 =============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\debug_post.php
+=============================================================
+
+<?php
+
+// Script para depurar los datos POST enviados desde el formulario
+
+// Activar visualización de errores
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
+echo "<h1>Datos POST recibidos</h1>";
+
+// Comprobar si hay datos POST
+if (empty($_POST)) {
+    echo "<p>No se recibieron datos POST. Use este script como destino de un formulario.</p>";
+    
+    // Crear formulario de prueba
+    echo "<h2>Formulario de prueba</h2>";
+    echo "<form action='' method='post'>";
+    echo "<div class='mb-3'>";
+    echo "<label>Campo contacto[nombre]</label>";
+    echo "<input type='text' name='contacto[nombre]' class='form-control'>";
+    echo "</div>";
+    echo "<div class='mb-3'>";
+    echo "<label>Campo estudios[nivel]</label>";
+    echo "<input type='text' name='estudios[nivel]' class='form-control'>";
+    echo "</div>";
+    echo "<button type='submit' class='btn btn-primary'>Enviar</button>";
+    echo "</form>";
+    
+    exit;
+}
+
+// Mostrar los datos POST
+echo "<h2>Todos los datos POST:</h2>";
+echo "<pre>";
+print_r($_POST);
+echo "</pre>";
+
+// Mostrar datos específicos para tablas relacionadas
+$tablas = ['contacto', 'estudios', 'tallas', 'salud', 'carrera'];
+
+foreach ($tablas as $tabla) {
+    echo "<h2>Datos para tabla '$tabla':</h2>";
+    if (isset($_POST[$tabla]) && is_array($_POST[$tabla])) {
+        echo "<pre>";
+        print_r($_POST[$tabla]);
+        echo "</pre>";
+        
+        // Mostrar cómo se construiría la SQL
+        echo "<h3>SQL que se ejecutaría:</h3>";
+        $campos = array_keys($_POST[$tabla]);
+        $placeholders = array_fill(0, count($campos), '?');
+        
+        echo "<code>INSERT INTO " . ucfirst($tabla) . " (" . implode(', ', $campos) . ", miembro_id) 
+              VALUES (" . implode(', ', $placeholders) . ", 123);</code>";
+    } else {
+        echo "<p>No se encontraron datos para esta tabla.</p>";
+    }
+}
+
+
+=============================================================
 ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\debug_update.php
 =============================================================
 
@@ -386,6 +450,199 @@ try {
     
 } catch (Exception $e) {
     echo "<div style='color:red'>Error: " . $e->getMessage() . "</div>";
+}
+?>
+
+
+=============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\diagnostico_miembro.php
+=============================================================
+
+<?php
+
+// Archivo de diagnóstico para verificar todas las tablas relacionadas con un miembro
+
+// Configuración básica
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
+echo "<h1>Diagnóstico de Miembro</h1>";
+
+// Obtener ID de la URL o usar 1 por defecto
+$id = isset($_GET['id']) ? (int)$_GET['id'] : 1;
+
+echo "<h2>Verificando Miembro ID: $id</h2>";
+
+try {
+    // Conexión directa a la base de datos
+    $pdo = new PDO("mysql:host=localhost;dbname=IglesiaEnCasa;charset=utf8", "root", "");
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    
+    // 1. Verificar si el miembro existe
+    $stmt = $pdo->prepare("SELECT * FROM InformacionGeneral WHERE id = ?");
+    $stmt->execute([$id]);
+    $miembro = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    if (!$miembro) {
+        echo "<div style='color:red; padding:10px; background:#ffeeee; border:1px solid red;'>";
+        echo "<strong>ERROR:</strong> No existe ningún miembro con ID $id";
+        echo "</div>";
+        
+        // Mostrar los miembros disponibles
+        echo "<h3>Miembros disponibles en la base de datos:</h3>";
+        $stmt = $pdo->query("SELECT id, nombres, apellidos FROM InformacionGeneral ORDER BY id");
+        echo "<ul>";
+        while ($row = $stmt->fetch()) {
+            echo "<li><a href='?id={$row['id']}'>{$row['id']}: {$row['nombres']} {$row['apellidos']}</a></li>";
+        }
+        echo "</ul>";
+        
+        exit;
+    }
+    
+    echo "<div style='color:green; padding:10px; background:#eeffee; border:1px solid green;'>";
+    echo "<strong>✓</strong> Miembro encontrado: {$miembro['nombres']} {$miembro['apellidos']}";
+    echo "</div>";
+    
+    // 2. Verificar tablas relacionadas
+    $tablas = ['Contacto', 'EstudiosTrabajo', 'Tallas', 'SaludEmergencias', 'CarreraBiblica'];
+    
+    echo "<h3>Verificación de tablas relacionadas:</h3>";
+    echo "<table border='1' cellpadding='5' style='border-collapse:collapse;'>";
+    echo "<tr><th>Tabla</th><th>Estado</th><th>Acción</th></tr>";
+    
+    foreach ($tablas as $tabla) {
+        try {
+            // Verificar si la tabla existe
+            $stmt = $pdo->prepare("SHOW TABLES LIKE ?");
+            $stmt->execute([$tabla]);
+            
+            if ($stmt->rowCount() === 0) {
+                echo "<tr style='background:#fff0f0;'>";
+                echo "<td>$tabla</td><td><span style='color:red;'>La tabla no existe</span></td>";
+                echo "<td><a href='?id=$id&crear_tabla=$tabla'>Crear tabla</a></td>";
+                echo "</tr>";
+                continue;
+            }
+            
+            // Verificar si hay un registro para este miembro
+            $stmt = $pdo->prepare("SELECT id FROM $tabla WHERE miembro_id = ?");
+            $stmt->execute([$id]);
+            
+            if ($stmt->rowCount() === 0) {
+                echo "<tr style='background:#ffffd0;'>";
+                echo "<td>$tabla</td><td><span style='color:orange;'>Sin registro para este miembro</span></td>";
+                echo "<td><a href='?id=$id&crear_registro=$tabla'>Crear registro vacío</a></td>";
+                echo "</tr>";
+            } else {
+                echo "<tr style='background:#f0fff0;'>";
+                echo "<td>$tabla</td><td><span style='color:green;'>OK</span></td>";
+                echo "<td>-</td>";
+                echo "</tr>";
+            }
+            
+        } catch (PDOException $e) {
+            echo "<tr style='background:#fff0f0;'>";
+            echo "<td>$tabla</td><td><span style='color:red;'>Error: " . $e->getMessage() . "</span></td>";
+            echo "<td>-</td>";
+            echo "</tr>";
+        }
+    }
+    
+    echo "</table>";
+    
+    // 3. Procesar acciones
+    if (isset($_GET['crear_tabla'])) {
+        $tabla = $_GET['crear_tabla'];
+        
+        // Definiciones SQL para cada tabla
+        $sql = [];
+        $sql['Contacto'] = "CREATE TABLE Contacto (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            miembro_id INT NOT NULL,
+            tipo_documento VARCHAR(10),
+            numero_documento VARCHAR(20),
+            telefono VARCHAR(20),
+            pais VARCHAR(50),
+            ciudad VARCHAR(50),
+            direccion VARCHAR(200),
+            estado_civil VARCHAR(20),
+            correo_electronico VARCHAR(100),
+            instagram VARCHAR(100),
+            facebook VARCHAR(100),
+            notas TEXT,
+            familiares TEXT
+        )";
+        
+        $sql['EstudiosTrabajo'] = "CREATE TABLE EstudiosTrabajo (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            miembro_id INT NOT NULL,
+            nivel_estudios VARCHAR(50),
+            profesion VARCHAR(100),
+            otros_estudios TEXT,
+            empresa VARCHAR(100),
+            direccion_empresa VARCHAR(200),
+            emprendimientos TEXT
+        )";
+        
+        $sql['Tallas'] = "CREATE TABLE Tallas (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            miembro_id INT NOT NULL,
+            talla_camisa VARCHAR(10),
+            talla_camiseta VARCHAR(10),
+            talla_pantalon VARCHAR(10),
+            talla_zapatos VARCHAR(10)
+        )";
+        
+        $sql['SaludEmergencias'] = "CREATE TABLE SaludEmergencias (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            miembro_id INT NOT NULL,
+            rh VARCHAR(10),
+            eps VARCHAR(100),
+            acudiente1 VARCHAR(100),
+            telefono1 VARCHAR(20),
+            acudiente2 VARCHAR(100),
+            telefono2 VARCHAR(20),
+            fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )";
+        
+        $sql['CarreraBiblica'] = "CREATE TABLE CarreraBiblica (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            miembro_id INT NOT NULL,
+            carrera_biblica VARCHAR(100),
+            miembro_de VARCHAR(100),
+            casa_de_palabra_y_vida VARCHAR(100),
+            cobertura VARCHAR(100),
+            estado VARCHAR(50),
+            anotaciones TEXT,
+            recorrido_espiritual TEXT
+        )";
+        
+        if (isset($sql[$tabla])) {
+            $pdo->exec($sql[$tabla]);
+            echo "<div style='color:green; padding:10px; background:#eeffee; border:1px solid green; margin-top:10px;'>";
+            echo "✓ Tabla $tabla creada correctamente";
+            echo "</div>";
+        }
+    }
+    
+    if (isset($_GET['crear_registro'])) {
+        $tabla = $_GET['crear_registro'];
+        
+        $stmt = $pdo->prepare("INSERT INTO $tabla (miembro_id) VALUES (?)");
+        $stmt->execute([$id]);
+        
+        echo "<div style='color:green; padding:10px; background:#eeffee; border:1px solid green; margin-top:10px;'>";
+        echo "✓ Registro creado en $tabla para el miembro $id";
+        echo "</div>";
+    }
+    
+    echo "<p><a href='diagnostico_miembro.php?id=$id'>Actualizar página</a> | <a href='/ENCASA_DATABASE/miembros/editar/$id'>Intentar editar miembro</a></p>";
+    
+} catch (PDOException $e) {
+    echo "<div style='color:red; padding:10px; background:#ffeeee; border:1px solid red;'>";
+    echo "<strong>ERROR DE BASE DE DATOS:</strong> " . $e->getMessage();
+    echo "</div>";
 }
 ?>
 
@@ -859,246 +1116,82 @@ ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\miembro_proxy.php
 =============================================================
 
 <?php
-
-// Script de proxy directo para actualizar miembros sin problemas con túneles
-
-// Configuración básica
+// Habilitar visualización de errores temporalmente
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
+
+// Configurar cabecera JSON
 header('Content-Type: application/json');
 
-// Permitir CORS para túneles
-header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: POST");
-header("Access-Control-Allow-Headers: Content-Type");
-
-// Si es una solicitud OPTIONS (preflight), responder inmediatamente
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit;
+// Función básica para registrar cada paso
+function debug_log($mensaje) {
+    $logfile = __DIR__ . '/debug.log';
+    $timestamp = date('Y-m-d H:i:s');
+    file_put_contents($logfile, "[$timestamp] $mensaje\n", FILE_APPEND);
 }
 
-// Verificar método POST
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    echo json_encode(['success' => false, 'message' => 'Solo se aceptan solicitudes POST']);
-    exit;
-}
+// Registrar inicio
+debug_log("Inicio de la solicitud");
 
-// Obtener ID de miembro
-$miembroId = isset($_GET['id']) ? (int)$_GET['id'] : null;
-if (!$miembroId) {
-    echo json_encode(['success' => false, 'message' => 'ID de miembro no especificado']);
-    exit;
-}
-
-// Conectar directamente a la base de datos
 try {
-    require_once __DIR__ . '/app/config/config.php';
-    $db = new PDO("mysql:host=localhost;dbname=IglesiaEnCasa;charset=utf8", "root", "");
-    $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    
-    // Comprobar que el miembro existe
-    $stmt = $db->prepare("SELECT id FROM InformacionGeneral WHERE id = ?");
-    $stmt->execute([$miembroId]);
-    if ($stmt->rowCount() === 0) {
-        echo json_encode(['success' => false, 'message' => 'Miembro no encontrado']);
-        exit;
+    // Paso 1: Verificar configuración
+    debug_log("Verificando archivo de configuración");
+    $configFile = __DIR__ . '/app/config/database.php';
+    if (!file_exists($configFile)) {
+        debug_log("Archivo de configuración no encontrado");
+        throw new Exception("Archivo de configuración no encontrado: $configFile");
     }
     
-    // Iniciar transacción para asegurar integridad
-    $db->beginTransaction();
+    // Paso 2: Cargar configuración
+    debug_log("Cargando archivo de configuración");
+    require_once $configFile;
     
-    // 1. Actualizar tabla principal si se enviaron datos
-    $camposPrincipales = ['nombres', 'apellidos', 'celular', 'localidad', 'barrio', 
-        'fecha_nacimiento', 'estado_espiritual', 'recorrido_espiritual'];
-    
-    $actualizados = [];
-    $params = [];
-    
-    foreach ($camposPrincipales as $campo) {
-        if (!empty($_POST[$campo])) {
-            $actualizados[] = "$campo = ?";
-            $params[] = $_POST[$campo];
-        }
+    // Paso 3: Verificar clase Database
+    debug_log("Verificando clase Database");
+    if (!class_exists('Database')) {
+        debug_log("La clase Database no existe");
+        throw new Exception("La clase Database no está definida correctamente");
     }
     
-    if (!empty($actualizados)) {
-        $params[] = $miembroId;
-        $sql = "UPDATE InformacionGeneral SET " . implode(", ", $actualizados) . " WHERE id = ?";
-        $stmt = $db->prepare($sql);
-        $stmt->execute($params);
+    // Paso 4: Crear una conexión manual para probar
+    debug_log("Intentando conexión manual PDO");
+    try {
+        $pdo = new PDO("mysql:host=localhost;dbname=IglesiaEnCasa;charset=utf8", "root", "");
+        debug_log("Conexión manual PDO exitosa");
+    } catch (PDOException $e) {
+        debug_log("Error conexión manual PDO: " . $e->getMessage());
+        throw new Exception("Error en conexión manual: " . $e->getMessage());
     }
     
-    // 2. Actualizar tallas
-    $existe = $db->prepare("SELECT id FROM Tallas WHERE miembro_id = ?");
-    $existe->execute([$miembroId]);
+    // Paso 5: Intentar usar la clase Database
+    debug_log("Obteniendo conexión a través de Database::getInstance()");
+    $db = \Database::getInstance()->getConnection();
+    debug_log("Conexión exitosa a través de Database::getInstance()");
     
-    $tallas = [
-        'talla_camisa' => $_POST['talla_camisa'] ?? null,
-        'talla_camiseta' => $_POST['talla_camiseta'] ?? null,
-        'talla_pantalon' => $_POST['talla_pantalon'] ?? null,
-        'talla_zapatos' => $_POST['talla_zapatos'] ?? null
-    ];
+    // Si llegamos hasta aquí, la conexión funciona correctamente
+    // Podemos proceder con una operación simple para verificar
+    debug_log("Ejecutando consulta de prueba");
+    $stmt = $db->query("SELECT COUNT(*) FROM InformacionGeneral");
+    $count = $stmt->fetchColumn();
+    debug_log("Registros en InformacionGeneral: $count");
     
-    if ($existe->rowCount() > 0) {
-        // Actualizar registro existente
-        $actualizados = [];
-        $params = [];
-        
-        foreach ($tallas as $campo => $valor) {
-            if ($valor !== null) {
-                $actualizados[] = "$campo = ?";
-                $params[] = $valor;
-            }
-        }
-        
-        if (!empty($actualizados)) {
-            $params[] = $miembroId;
-            $sql = "UPDATE Tallas SET " . implode(", ", $actualizados) . " WHERE miembro_id = ?";
-            $stmt = $db->prepare($sql);
-            $stmt->execute($params);
-        }
-    } else {
-        // Crear nuevo registro
-        $tallas['miembro_id'] = $miembroId;
-        
-        // Filtrar valores nulos
-        $campos = [];
-        $valores = [];
-        $params = [];
-        
-        foreach ($tallas as $campo => $valor) {
-            if ($valor !== null) {
-                $campos[] = $campo;
-                $valores[] = "?";
-                $params[] = $valor;
-            }
-        }
-        
-        if (!empty($campos)) {
-            $sql = "INSERT INTO Tallas (" . implode(", ", $campos) . ") VALUES (" . implode(", ", $valores) . ")";
-            $stmt = $db->prepare($sql);
-            $stmt->execute($params);
-        }
-    }
-    
-    // Actualizar otras tablas relacionadas
-    $tablasRelacionadas = [
-        // Elimina o comenta las tablas que no existen en tu base de datos
-        // 'DatosAdicionales' => ['telefono_adicional', 'direccion_adicional'],
-        // 'Hijos' => ['cantidad_hijos'],
-        // 'Ocupacion' => ['ocupacion'],
-        // 'ReferidoPor' => ['referido_por']
-    ];
-    
-    foreach ($tablasRelacionadas as $tabla => $campos) {
-        actualizarTablaRelacionada($db, $miembroId, $tabla, $campos);
-    }
-    
-    // 3. Actualizar contacto
-    actualizarTablaRelacionada($db, $miembroId, 'Contacto', [
-        'tipo_documento', 'numero_documento', 'telefono', 
-        'correo_electronico', 'pais', 'ciudad', 'direccion', 'estado_civil',
-        'instagram', 'facebook', 'notas', 'familiares'
-    ]);
-    
-    // 4. Actualizar estudios/trabajo
-    actualizarTablaRelacionada($db, $miembroId, 'EstudiosTrabajo', [
-        'nivel_estudios', 'profesion', 'otros_estudios', 
-        'empresa', 'direccion_empresa', 'emprendimientos'
-    ]);
-    
-    // 5. Actualizar salud
-    actualizarTablaRelacionada($db, $miembroId, 'SaludEmergencias', [
-        'rh', 'eps', 'acudiente1', 'telefono1', 'acudiente2', 'telefono2'
-    ]);
-    
-    // 6. Actualizar carrera
-    actualizarTablaRelacionada($db, $miembroId, 'CarreraBiblica', [
-        'estado', 'carrera_biblica', 'miembro_de', 
-        'casa_de_palabra_y_vida', 'cobertura', 'anotaciones'
-    ]);
-    
-    // Confirmar todas las operaciones
-    $db->commit();
-    
+    // Responder con éxito
     echo json_encode([
         'success' => true,
-        'message' => 'Datos actualizados correctamente',
-        'id' => $miembroId,
-        'redirect' => "/ENCASA_DATABASE/miembros/$miembroId"
+        'message' => 'Prueba de conexión exitosa',
+        'count' => $count
     ]);
     
 } catch (Exception $e) {
-    // Revertir cambios en caso de error
-    if (isset($db) && $db->inTransaction()) {
-        $db->rollBack();
-    }
+    // Registrar el error
+    debug_log("ERROR: " . $e->getMessage());
     
+    // Responder con error
     echo json_encode([
-        'success' => false, 
+        'success' => false,
         'message' => 'Error: ' . $e->getMessage()
     ]);
 }
-
-// Función para actualizar tablas relacionadas
-function actualizarTablaRelacionada($db, $miembroId, $tabla, $camposPermitidos) {
-    // Verificar si hay datos para actualizar
-    $hayDatos = false;
-    $datos = [];
-    
-    foreach ($camposPermitidos as $campo) {
-        if (isset($_POST[$campo])) {
-            $datos[$campo] = $_POST[$campo];
-            $hayDatos = true;
-        }
-    }
-    
-    if (!$hayDatos) return;
-    
-    // Verificar si ya existe registro
-    $verificar = $db->prepare("SELECT id FROM $tabla WHERE miembro_id = ?");
-    $verificar->execute([$miembroId]);
-    $existe = $verificar->fetch();
-    
-    if ($existe) {
-        // Actualizar
-        $sets = [];
-        $params = [];
-        
-        foreach ($datos as $campo => $valor) {
-            $sets[] = "$campo = ?";
-            $params[] = $valor;
-        }
-        
-        if (empty($sets)) return;
-        
-        $params[] = $miembroId;
-        $sql = "UPDATE $tabla SET " . implode(', ', $sets) . " WHERE miembro_id = ?";
-        
-        $stmt = $db->prepare($sql);
-        $stmt->execute($params);
-    } else {
-        // Insertar
-        if (empty($datos)) return;
-        
-        $datos['miembro_id'] = $miembroId;
-        $campos = array_keys($datos);
-        $placeholders = array_fill(0, count($campos), '?');
-        
-        $sql = "INSERT INTO $tabla (" . implode(', ', $campos) . ") 
-                VALUES (" . implode(', ', $placeholders) . ")";
-        
-        $stmt = $db->prepare($sql);
-        $stmt->execute(array_values($datos));
-    }
-}
-
-// Solo para depuración - Eliminar en producción
-file_put_contents(__DIR__ . '/debug_proxy.log', "Solicitud recibida: " . date('Y-m-d H:i:s') . "\n", FILE_APPEND);
-file_put_contents(__DIR__ . '/debug_proxy.log', "POST: " . print_r($_POST, true) . "\n", FILE_APPEND);
-// Solo para depuración temporal
-file_put_contents(__DIR__ . '/campos_form.log', "Campos del formulario: " . print_r($_POST, true), FILE_APPEND);
 ?>
 
 
@@ -2061,6 +2154,70 @@ echo "<p>Fecha y hora actual: " . date('Y-m-d H:i:s') . "</p>";
 
 
 =============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\test_db.php
+=============================================================
+
+<?php
+
+// Configuración básica
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
+echo "<h1>Prueba de conexión a la base de datos</h1>";
+
+// 1. Verificar conexión PDO directa
+try {
+    echo "<h2>Prueba 1: Conexión PDO directa</h2>";
+    $pdo = new PDO("mysql:host=localhost;dbname=IglesiaEnCasa;charset=utf8", "root", "");
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    echo "<p style='color:green'>✅ Conexión PDO directa exitosa</p>";
+    
+    // Verificar tablas
+    $tablas = ['InformacionGeneral', 'Contacto', 'EstudiosTrabajo', 'Tallas', 'SaludEmergencias', 'CarreraBiblica'];
+    echo "<h3>Verificación de tablas:</h3><ul>";
+    
+    foreach ($tablas as $tabla) {
+        $stmt = $pdo->query("SHOW TABLES LIKE '$tabla'");
+        if ($stmt->rowCount() > 0) {
+            echo "<li>✅ $tabla: <span style='color:green'>Existe</span></li>";
+        } else {
+            echo "<li>❌ $tabla: <span style='color:red'>No existe</span></li>";
+        }
+    }
+    echo "</ul>";
+    
+} catch (PDOException $e) {
+    echo "<p style='color:red'>❌ Error en conexión PDO directa: " . $e->getMessage() . "</p>";
+}
+
+// 2. Verificar clase Database
+try {
+    echo "<h2>Prueba 2: Clase Database</h2>";
+    
+    // Incluir archivo
+    $configFile = __DIR__ . '/app/config/database.php';
+    if (file_exists($configFile)) {
+        require_once $configFile;
+        echo "<p>✅ Archivo de configuración encontrado</p>";
+        
+        if (class_exists('Database')) {
+            echo "<p>✅ Clase Database definida</p>";
+            
+            $db = \Database::getInstance()->getConnection();
+            echo "<p style='color:green'>✅ Conexión a través de Database::getInstance() exitosa</p>";
+        } else {
+            echo "<p style='color:red'>❌ Clase Database NO definida</p>";
+        }
+    } else {
+        echo "<p style='color:red'>❌ Archivo de configuración NO encontrado</p>";
+    }
+} catch (Exception $e) {
+    echo "<p style='color:red'>❌ Error en clase Database: " . $e->getMessage() . "</p>";
+}
+?>
+
+
+=============================================================
 ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\test_logs.php
 =============================================================
 
@@ -2249,6 +2406,72 @@ echo "<p>Ruta extraída: " . htmlspecialchars($route) . "</p>";
 if (preg_match('#^miembros/(\d+)$#', $route, $matches)) {
     echo "<p>ID detectado: " . $matches[1] . "</p>";
 }
+
+
+=============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\test_upload.php
+=============================================================
+
+<?php
+
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
+echo "<h1>Prueba de subida de archivos</h1>";
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Verificar que se subió un archivo
+    if (empty($_FILES['test_file']['name'])) {
+        echo "<p style='color:red'>No se seleccionó ningún archivo.</p>";
+        echo "<a href='verificar_directorios.php'>Volver</a>";
+        exit;
+    }
+    
+    // Información del archivo
+    echo "<h2>Información del archivo subido:</h2>";
+    echo "<pre>";
+    print_r($_FILES['test_file']);
+    echo "</pre>";
+    
+    // Directorio de destino
+    $uploadDir = __DIR__ . '/uploads/miembros/';
+    $uploadFile = $uploadDir . basename($_FILES['test_file']['name']);
+    
+    echo "<p>Intentando guardar en: <code>$uploadFile</code></p>";
+    
+    // Intentar guardar el archivo
+    if (move_uploaded_file($_FILES['test_file']['tmp_name'], $uploadFile)) {
+        echo "<p style='color:green'>✓ Archivo subido correctamente.</p>";
+        echo "<p><img src='/ENCASA_DATABASE/uploads/miembros/" . htmlspecialchars(basename($_FILES['test_file']['name'])) . "' style='max-height:200px;'></p>";
+    } else {
+        echo "<p style='color:red'>❌ Error al subir el archivo.</p>";
+        
+        // Información de error
+        $errorCode = $_FILES['test_file']['error'];
+        $errorMessages = [
+            UPLOAD_ERR_INI_SIZE => 'El archivo excede el tamaño máximo permitido en php.ini',
+            UPLOAD_ERR_FORM_SIZE => 'El archivo excede el tamaño máximo permitido en el formulario',
+            UPLOAD_ERR_PARTIAL => 'El archivo se subió parcialmente',
+            UPLOAD_ERR_NO_FILE => 'No se subió ningún archivo',
+            UPLOAD_ERR_NO_TMP_DIR => 'Falta la carpeta temporal',
+            UPLOAD_ERR_CANT_WRITE => 'No se pudo escribir en el disco',
+            UPLOAD_ERR_EXTENSION => 'Una extensión de PHP detuvo la subida'
+        ];
+        
+        if (isset($errorMessages[$errorCode])) {
+            echo "<p>Error específico: " . $errorMessages[$errorCode] . "</p>";
+        }
+        
+        // Verificar permisos
+        echo "<p>Permisos del directorio: " . substr(sprintf('%o', fileperms($uploadDir)), -4) . "</p>";
+    }
+    
+    echo "<p><a href='verificar_directorios.php'>Volver</a></p>";
+} else {
+    echo "<p>No se recibieron datos de formulario.</p>";
+    echo "<p><a href='verificar_directorios.php'>Volver</a></p>";
+}
+?>
 
 
 =============================================================
@@ -2526,6 +2749,60 @@ echo "</ul>";
 
 
 =============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\verificar_directorios.php
+=============================================================
+
+<?php
+
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
+echo "<h1>Verificación de directorios de subida</h1>";
+
+// Directorio de uploads
+$uploadDir = __DIR__ . '/uploads/miembros';
+
+echo "<p>Verificando directorio: <code>$uploadDir</code></p>";
+
+if (!is_dir($uploadDir)) {
+    echo "<p>El directorio no existe. Intentando crear...</p>";
+    
+    if (mkdir($uploadDir, 0755, true)) {
+        echo "<p style='color:green'>✓ Directorio creado exitosamente.</p>";
+    } else {
+        echo "<p style='color:red'>❌ No se pudo crear el directorio. Error: " . error_get_last()['message'] . "</p>";
+    }
+} else {
+    echo "<p style='color:green'>✓ El directorio existe.</p>";
+}
+
+// Verificar permisos
+if (is_writable($uploadDir)) {
+    echo "<p style='color:green'>✓ El directorio tiene permisos de escritura.</p>";
+} else {
+    echo "<p style='color:red'>❌ El directorio NO tiene permisos de escritura.</p>";
+    echo "<p>Ejecute este comando en la línea de comandos:<br>";
+    echo "<code>chmod -R 755 $uploadDir</code></p>";
+}
+
+// Verificar configuración PHP para subida de archivos
+echo "<h2>Configuración de PHP para subida de archivos</h2>";
+echo "<ul>";
+echo "<li>upload_max_filesize: " . ini_get('upload_max_filesize') . "</li>";
+echo "<li>post_max_size: " . ini_get('post_max_size') . "</li>";
+echo "<li>max_file_uploads: " . ini_get('max_file_uploads') . "</li>";
+echo "</ul>";
+
+// Crear formulario de prueba
+echo "<h2>Formulario de prueba de subida</h2>";
+echo "<form action='test_upload.php' method='post' enctype='multipart/form-data'>";
+echo "<div><input type='file' name='test_file'></div>";
+echo "<div style='margin-top:10px'><button type='submit'>Probar subida</button></div>";
+echo "</form>";
+?>
+
+
+=============================================================
 ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\verificar_miembro.php
 =============================================================
 
@@ -2658,6 +2935,12 @@ if (!defined('APP_NAME')) define('APP_NAME', 'Iglesia En Casa');
 if (!defined('APP_URL')) define('APP_URL', 'http://localhost/Encasa_Database');
 if (!defined('APP_ENV')) define('APP_ENV', 'development'); // 'development' o 'production'
 
+// URL base
+define('BASE_URL', '/ENCASA_DATABASE');
+
+// Directorio de carga de archivos
+define('UPLOAD_DIR', __DIR__ . '/../../uploads');
+
 // Configuración de zona horaria
 date_default_timezone_set('America/Bogota');
 
@@ -2680,9 +2963,6 @@ define('DB_HOST', 'localhost');
 define('DB_NAME', 'IglesiaEnCasa');
 define('DB_USER', 'root');
 define('DB_PASS', '');
-
-// Agregar esta línea al final del archivo
-define('ALLOW_INSECURE_FORMS', true);
 
 // Agregar esto al final del archivo para mejorar el registro de errores
 ini_set('display_errors', 1);
@@ -2792,23 +3072,27 @@ ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\config\database.php
 define('DB_PORT', '3306');
 define('DB_CHARSET', 'utf8mb4');
 
-// Clase Singleton para conexión a la base de datos
+/**
+ * Clase Database con patrón singleton para la conexión
+ */
 class Database {
     private static $instance = null;
-    private $conn;
+    private $connection = null;
     
     private function __construct() {
-        // Usar las constantes ya definidas en config.php
         try {
-            $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET;
-            $options = [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                PDO::ATTR_EMULATE_PREPARES => false,
-            ];
-            $this->conn = new PDO($dsn, DB_USER, DB_PASS, $options);
+            // Conexión básica a MySQL sin usar variables de entorno
+            $this->connection = new PDO(
+                "mysql:host=localhost;dbname=IglesiaEnCasa;charset=utf8", 
+                "root",  // Usuario por defecto de XAMPP 
+                ""       // Contraseña por defecto (vacía)
+            );
+            $this->connection->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $this->connection->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
-            die('Error de conexión: ' . $e->getMessage());
+            // Registrar error
+            file_put_contents(__DIR__ . '/../../db_error.log', date('Y-m-d H:i:s') . ' - ' . $e->getMessage() . "\n", FILE_APPEND);
+            throw new Exception("Error en la conexión a la base de datos");
         }
     }
     
@@ -2820,7 +3104,7 @@ class Database {
     }
     
     public function getConnection() {
-        return $this->conn;
+        return $this->connection;
     }
 }
 
@@ -3627,10 +3911,12 @@ use Exception;
 
 class MiembrosController extends Controller {
     private $miembroModel;
+    private $db;
     
     public function __construct() {
         parent::__construct();
         $this->miembroModel = new Miembro();
+        $this->db = \Database::getInstance()->getConnection();
     }
     
     /**
@@ -3793,46 +4079,34 @@ class MiembrosController extends Controller {
      */
     public function ver($id)
     {
-        try {
-            // Corregir la forma en que se maneja el parámetro ID
-            if (is_array($id)) {
-                // Si recibe un array asociativo con clave 'id'
-                if (isset($id['id'])) {
-                    $id = (int)$id['id'];
-                } 
-                // Si recibe un array indexado
-                elseif (isset($id[0])) {
-                    $id = (int)$id[0];
-                } 
-                else {
-                    $id = 0;
-                }
-            }
-            
-            $id = (int)$id;
-            
-            if ($id <= 0) {
-                $this->renderError(404, 'ID de miembro inválido');
-                return;
-            }
-            
-            // Obtener perfil completo
-            $miembro = $this->miembroModel->getFullProfile($id);
-            
-            if (!$miembro) {
-                $this->renderError(404, 'Miembro no encontrado');
-                return;
-            }
-            
-            // IMPORTANTE: Usar renderWithLayout en lugar de render
-            $this->renderWithLayout('miembros/ver', 'default', [
-                'miembro' => $miembro,
-                'title' => "{$miembro['nombres']} {$miembro['apellidos']}"
-            ]);
-        } catch (\Exception $e) {
-            error_log("Error en ver(): " . $e->getMessage());
-            $this->renderError(500, 'Error al cargar los datos del miembro');
+        // Asegurarse de que el ID sea un entero
+        if (is_array($id)) {
+            $id = $id[0]; // En caso de que el router pase un array
         }
+        $id = (int)$id;
+        
+        error_log("Controlador: Buscando miembro con ID: $id");
+        
+        // Obtener datos del miembro desde el modelo
+        $miembro = $this->miembroModel->getFullProfile($id);
+        
+        if (!$miembro) {
+            error_log("Controlador: No se encontró miembro con ID: $id");
+            $_SESSION['flash_message'] = 'Miembro no encontrado';
+            $_SESSION['flash_type'] = 'danger';
+            
+            // Redirigir a la lista de miembros
+            header("Location: " . url('miembros'));
+            exit;
+        }
+        
+        error_log("Controlador: Miembro encontrado, renderizando vista");
+        
+        // Renderizar la vista con los datos del miembro
+        return $this->renderWithLayout('miembros/ver', 'default', [
+            'title' => $miembro['nombres'] . ' ' . $miembro['apellidos'],
+            'miembro' => $miembro
+        ]);
     }
 
     private function obtenerDatosRelacionados($db, $miembroId, $tabla)
@@ -3857,14 +4131,26 @@ class MiembrosController extends Controller {
      */
     public function editar($id) 
     {
+        // Asegurar que el ID sea un entero (igual que en el método ver)
+        if (is_array($id)) {
+            $id = $id[0]; // En caso de que el router pase un array
+        }
+        $id = (int)$id;
+        
+        // Registrar para diagnóstico
+        error_log("Controlador: Buscando miembro para editar con ID: $id");
+        
         $miembro = $this->miembroModel->getFullProfile($id);
         
         if (!$miembro) {
+            error_log("Controlador: No se encontró miembro con ID: $id para editar");
             $_SESSION['flash_message'] = 'Miembro no encontrado';
             $_SESSION['flash_type'] = 'danger';
             $this->redirect('miembros');
             return;
         }
+        
+        error_log("Controlador: Miembro encontrado, mostrando formulario de edición");
         
         return $this->renderWithLayout('miembros/editar', 'default', [
             'miembro' => $miembro,
@@ -3877,409 +4163,391 @@ class MiembrosController extends Controller {
      */
     public function actualizar($id)
     {
-        // Limpiar el id
         if (is_array($id)) {
-            $id = (int) $id[0];
+            $id = $id[0];
         }
         $id = (int)$id;
         
-        // Para depuración
-        error_log("Iniciando actualización para miembro ID: $id");
-        error_log("Datos POST: " . json_encode($_POST));
+        // Verificar que el miembro existe
+        $miembro = $this->miembroModel->getFullProfile($id);
+        if (!$miembro) {
+            $this->respondJson([
+                'success' => false,
+                'message' => 'Miembro no encontrado'
+            ]);
+            return;
+        }
         
+        // Iniciar procesamiento
         try {
-            // Verificar método HTTP
-            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-                $this->responderJSON(['success' => false, 'message' => 'Método no permitido']);
-                return;
-            }
+            // Activar log para debugging
+            $resultados = ['general' => false, 'contacto' => false, 'estudios' => false, 
+                          'tallas' => false, 'salud' => false, 'carrera' => false];
             
-            // Obtener conexión a la BD
-            $db = \Database::getInstance()->getConnection();
+            // 1. Procesar datos básicos
+            $datosGenerales = $this->obtenerDatosPost([
+                'nombres', 'apellidos', 'celular', 'localidad', 'barrio',
+                'fecha_nacimiento', 'invitado_por', 'conector',
+                'recorrido_espiritual', 'estado_espiritual'
+            ]);
             
-            // Verificar que el miembro existe
-            $verificarStmt = $db->prepare("SELECT id FROM InformacionGeneral WHERE id = ?");
-            $verificarStmt->execute([$id]);
+            // Procesar checkbox habeas_data
+            $datosGenerales['habeas_data'] = isset($_POST['habeas_data']) ? '1' : null;
             
-            if ($verificarStmt->rowCount() === 0) {
-                $this->responderJSON(['success' => false, 'message' => 'El miembro no existe']);
-                return;
-            }
-            
-            // Datos básicos para actualizar
-            $datosGenerales = [];
-            $camposPermitidos = [
-                'nombres', 'apellidos', 'celular', 'localidad', 'barrio', 
-                'fecha_nacimiento', 'estado_espiritual', 'recorrido_espiritual'
-            ];
-            
-            foreach ($camposPermitidos as $campo) {
-                if (isset($_POST[$campo])) {
-                    $datosGenerales[$campo] = $_POST[$campo];
+            // 2. Procesar la foto si se ha subido una nueva
+            if (!empty($_FILES['foto']['name'])) {
+                // Usar directamente el path absoluto para garantizar que funcione
+                $uploadDir = __DIR__ . '/../../uploads/miembros/';
+                
+                // Asegurar que el directorio existe
+                if (!is_dir($uploadDir)) {
+                    mkdir($uploadDir, 0755, true);
+                }
+                
+                // Generar nombre único para el archivo
+                $extension = pathinfo($_FILES['foto']['name'], PATHINFO_EXTENSION);
+                $nombreArchivo = uniqid() . '.' . $extension;
+                $uploadFile = $uploadDir . $nombreArchivo;
+                
+                // Mover el archivo cargado al directorio de destino
+                if (move_uploaded_file($_FILES['foto']['tmp_name'], $uploadFile)) {
+                    $datosGenerales['foto'] = $nombreArchivo;
                 }
             }
             
-            // Actualizar tabla principal si hay datos
-            if (!empty($datosGenerales)) {
-                $sets = [];
-                $params = [];
-                
-                foreach ($datosGenerales as $campo => $valor) {
-                    $sets[] = "$campo = ?";
-                    $params[] = $valor;
-                }
-                
-                // Añadir ID al final
-                $params[] = $id;
-                
-                $sql = "UPDATE InformacionGeneral SET " . implode(', ', $sets) . " WHERE id = ?";
-                $stmt = $db->prepare($sql);
-                $resultado = $stmt->execute($params);
-                
-                if (!$resultado) {
-                    throw new \Exception("Error al actualizar datos generales: " . implode(", ", $stmt->errorInfo()));
-                }
-            }
+            // 3. Actualizar datos generales
+            $resultados['general'] = $this->miembroModel->actualizar($id, $datosGenerales);
             
-            // Actualizar tablas relacionadas (sólo si tenemos datos para ellas)
-            $this->actualizarContactoSimplificado($id, $_POST);
-            $this->actualizarEstudioSimplificado($id, $_POST);
-            $this->actualizarTallasSimplificado($id, $_POST);
-            $this->actualizarSaludSimplificado($id, $_POST);
-            $this->actualizarCarreraSimplificado($id, $_POST);
+            // 4. Actualizar tablas relacionadas
+            $resultados['contacto'] = $this->actualizarContacto($id);
+            $resultados['estudios'] = $this->actualizarEstudiosTrabajo($id);
+            $resultados['tallas'] = $this->actualizarTallas($id);
+            $resultados['salud'] = $this->actualizarSaludEmergencias($id);
+            $resultados['carrera'] = $this->actualizarCarreraBiblica($id);
+            
+            // Registrar resultados para debugging
+            error_log("Resultados de actualización para miembro ID $id: " . json_encode($resultados));
             
             // Responder con éxito
-            $this->responderJSON([
-                'success' => true, 
+            $this->respondJson([
+                'success' => true,
                 'message' => 'Miembro actualizado correctamente',
+                'redirect' => url("miembros/$id"),
                 'id' => $id,
-                'redirect' => APP_URL . '/miembros/' . $id
+                'debug' => APP_ENV === 'development' ? $resultados : null
             ]);
             
         } catch (\Exception $e) {
-            error_log("Error en actualizar(): " . $e->getMessage());
-            $this->responderJSON(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+            // Registrar error
+            error_log("Error al actualizar miembro ID $id: " . $e->getMessage());
+            
+            // Responder con error
+            $this->respondJson([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ]);
         }
     }
 
-    private function responderJSON($data) {
+    /**
+     * Actualiza los datos de contacto del miembro
+     */
+    private function actualizarContacto($id)
+    {
+        try {
+            if (!isset($_POST['contacto']) || !is_array($_POST['contacto'])) {
+                error_log("No hay datos de contacto para actualizar, miembro ID: $id");
+                return false;
+            }
+
+            $contacto = $_POST['contacto'];
+            error_log("Datos de contacto recibidos: " . json_encode($contacto));
+            
+            // Verificar existencia del registro
+            $stmt = $this->db->prepare("SELECT id FROM Contacto WHERE miembro_id = ?");
+            $stmt->execute([$id]);
+            $existente = $stmt->fetch();
+            
+            if ($existente) {
+                // Actualizar registro existente
+                $campos = [];
+                $valores = [];
+                
+                foreach ($contacto as $campo => $valor) {
+                    if ($campo !== 'miembro_id') {
+                        $campos[] = "$campo = ?";
+                        $valores[] = $valor;
+                    }
+                }
+                
+                if (empty($campos)) {
+                    return false; // No hay campos para actualizar
+                }
+                
+                $valores[] = $id; // Para la condición WHERE
+                
+                $sql = "UPDATE Contacto SET " . implode(', ', $campos) . " WHERE miembro_id = ?";
+                error_log("SQL actualizar contacto: $sql");
+                $stmt = $this->db->prepare($sql);
+                $resultado = $stmt->execute($valores);
+                error_log("Resultado actualización contacto: " . ($resultado ? "éxito" : "fallido"));
+                return $resultado;
+            } else {
+                // Insertar nuevo registro
+                $contacto['miembro_id'] = $id;
+                $campos = array_keys($contacto);
+                $placeholders = array_fill(0, count($campos), '?');
+                
+                $sql = "INSERT INTO Contacto (" . implode(', ', $campos) . ") VALUES (" . implode(', ', $placeholders) . ")";
+                error_log("SQL insertar contacto: $sql");
+                $stmt = $this->db->prepare($sql);
+                $resultado = $stmt->execute(array_values($contacto));
+                error_log("Resultado inserción contacto: " . ($resultado ? "éxito" : "fallido"));
+                return $resultado;
+            }
+        } catch (\Exception $e) {
+            error_log("Error en actualizarContacto() para miembro ID $id: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Actualiza los datos de estudios y trabajo del miembro
+     */
+    private function actualizarEstudiosTrabajo($id)
+    {
+        try {
+            if (!isset($_POST['estudios']) || !is_array($_POST['estudios'])) {
+                return false;
+            }
+
+            $estudios = $_POST['estudios'];
+            error_log("Datos de estudios recibidos: " . json_encode($estudios));
+            
+            // Verificar existencia del registro
+            $stmt = $this->db->prepare("SELECT id FROM EstudiosTrabajo WHERE miembro_id = ?");
+            $stmt->execute([$id]);
+            $existente = $stmt->fetch();
+            
+            if ($existente) {
+                // Actualizar registro existente
+                $campos = [];
+                $valores = [];
+                
+                foreach ($estudios as $campo => $valor) {
+                    if ($campo !== 'miembro_id') {
+                        $campos[] = "$campo = ?";
+                        $valores[] = $valor;
+                    }
+                }
+                
+                if (empty($campos)) {
+                    return false; // No hay campos para actualizar
+                }
+                
+                $valores[] = $id; // Para la condición WHERE
+                
+                $sql = "UPDATE EstudiosTrabajo SET " . implode(', ', $campos) . " WHERE miembro_id = ?";
+                $stmt = $this->db->prepare($sql);
+                return $stmt->execute($valores);
+            } else {
+                // Insertar nuevo registro
+                $estudios['miembro_id'] = $id;
+                $campos = array_keys($estudios);
+                $placeholders = array_fill(0, count($campos), '?');
+                
+                $sql = "INSERT INTO EstudiosTrabajo (" . implode(', ', $campos) . ") VALUES (" . implode(', ', $placeholders) . ")";
+                $stmt = $this->db->prepare($sql);
+                return $stmt->execute(array_values($estudios));
+            }
+        } catch (\Exception $e) {
+            error_log("Error en actualizarEstudiosTrabajo() para miembro ID $id: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Actualiza las tallas del miembro
+     */
+    private function actualizarTallas($id)
+    {
+        try {
+            if (!isset($_POST['tallas']) || !is_array($_POST['tallas'])) {
+                return false;
+            }
+
+            $tallas = $_POST['tallas'];
+            error_log("Datos de tallas recibidos: " . json_encode($tallas));
+            
+            // Verificar existencia del registro
+            $stmt = $this->db->prepare("SELECT id FROM Tallas WHERE miembro_id = ?");
+            $stmt->execute([$id]);
+            $existente = $stmt->fetch();
+            
+            if ($existente) {
+                // Actualizar registro existente
+                $campos = [];
+                $valores = [];
+                
+                foreach ($tallas as $campo => $valor) {
+                    if ($campo !== 'miembro_id') {
+                        $campos[] = "$campo = ?";
+                        $valores[] = $valor;
+                    }
+                }
+                
+                if (empty($campos)) {
+                    return false; // No hay campos para actualizar
+                }
+                
+                $valores[] = $id; // Para la condición WHERE
+                
+                $sql = "UPDATE Tallas SET " . implode(', ', $campos) . " WHERE miembro_id = ?";
+                $stmt = $this->db->prepare($sql);
+                return $stmt->execute($valores);
+            } else {
+                // Insertar nuevo registro
+                $tallas['miembro_id'] = $id;
+                $campos = array_keys($tallas);
+                $placeholders = array_fill(0, count($campos), '?');
+                
+                $sql = "INSERT INTO Tallas (" . implode(', ', $campos) . ") VALUES (" . implode(', ', $placeholders) . ")";
+                $stmt = $this->db->prepare($sql);
+                return $stmt->execute(array_values($tallas));
+            }
+        } catch (\Exception $e) {
+            error_log("Error en actualizarTallas() para miembro ID $id: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Actualiza los datos de salud y emergencias del miembro
+     */
+    private function actualizarSaludEmergencias($id)
+    {
+        try {
+            if (!isset($_POST['salud']) || !is_array($_POST['salud'])) {
+                return false;
+            }
+
+            $salud = $_POST['salud'];
+            error_log("Datos de salud recibidos: " . json_encode($salud));
+            
+            // Verificar existencia del registro
+            $stmt = $this->db->prepare("SELECT id FROM SaludEmergencias WHERE miembro_id = ?");
+            $stmt->execute([$id]);
+            $existente = $stmt->fetch();
+            
+            if ($existente) {
+                // Actualizar registro existente
+                $campos = [];
+                $valores = [];
+                
+                foreach ($salud as $campo => $valor) {
+                    if ($campo !== 'miembro_id') {
+                        $campos[] = "$campo = ?";
+                        $valores[] = $valor;
+                    }
+                }
+                
+                if (empty($campos)) {
+                    return false; // No hay campos para actualizar
+                }
+                
+                $valores[] = $id; // Para la condición WHERE
+                
+                $sql = "UPDATE SaludEmergencias SET " . implode(', ', $campos) . " WHERE miembro_id = ?";
+                $stmt = $this->db->prepare($sql);
+                return $stmt->execute($valores);
+            } else {
+                // Insertar nuevo registro
+                $salud['miembro_id'] = $id;
+                $campos = array_keys($salud);
+                $placeholders = array_fill(0, count($campos), '?');
+                
+                $sql = "INSERT INTO SaludEmergencias (" . implode(', ', $campos) . ") VALUES (" . implode(', ', $placeholders) . ")";
+                $stmt = $this->db->prepare($sql);
+                return $stmt->execute(array_values($salud));
+            }
+        } catch (\Exception $e) {
+            error_log("Error en actualizarSaludEmergencias() para miembro ID $id: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Actualiza los datos de carrera bíblica del miembro
+     */
+    private function actualizarCarreraBiblica($id)
+    {
+        try {
+            if (!isset($_POST['carrera']) || !is_array($_POST['carrera'])) {
+                return false;
+            }
+
+            $carrera = $_POST['carrera'];
+            error_log("Datos de carrera recibidos: " . json_encode($carrera));
+            
+            // Verificar existencia del registro
+            $stmt = $this->db->prepare("SELECT id FROM CarreraBiblica WHERE miembro_id = ?");
+            $stmt->execute([$id]);
+            $existente = $stmt->fetch();
+            
+            if ($existente) {
+                // Actualizar registro existente
+                $campos = [];
+                $valores = [];
+                
+                foreach ($carrera as $campo => $valor) {
+                    if ($campo !== 'miembro_id') {
+                        $campos[] = "$campo = ?";
+                        $valores[] = $valor;
+                    }
+                }
+                
+                if (empty($campos)) {
+                    return false; // No hay campos para actualizar
+                }
+                
+                $valores[] = $id; // Para la condición WHERE
+                
+                $sql = "UPDATE CarreraBiblica SET " . implode(', ', $campos) . " WHERE miembro_id = ?";
+                $stmt = $this->db->prepare($sql);
+                return $stmt->execute($valores);
+            } else {
+                // Insertar nuevo registro
+                $carrera['miembro_id'] = $id;
+                $campos = array_keys($carrera);
+                $placeholders = array_fill(0, count($campos), '?');
+                
+                $sql = "INSERT INTO CarreraBiblica (" . implode(', ', $campos) . ") VALUES (" . implode(', ', $placeholders) . ")";
+                $stmt = $this->db->prepare($sql);
+                return $stmt->execute(array_values($carrera));
+            }
+        } catch (\Exception $e) {
+            error_log("Error en actualizarCarreraBiblica() para miembro ID $id: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    // Método auxiliar para responder en formato JSON
+    private function respondJson($data)
+    {
         header('Content-Type: application/json');
         echo json_encode($data);
-        exit;
     }
 
-    // Métodos simplificados para actualizar tablas relacionadas
-    private function actualizarContactoSimplificado($id, $datos) {
-        try {
-            $db = \Database::getInstance()->getConnection();
-            
-            // Campos a actualizar (solo si están presentes en POST)
-            $campos = [
-                'tipo_documento', 'numero_documento', 'telefono', 
-                'correo_electronico', 'pais', 'ciudad', 'direccion', 'estado_civil'
-            ];
-            
-            // Verificar si hay datos para actualizar
-            $datosActualizar = [];
-            foreach ($campos as $campo) {
-                if (isset($datos[$campo])) {
-                    $datosActualizar[$campo] = $datos[$campo];
-                }
+    // Método auxiliar para obtener campos del POST
+    private function obtenerDatosPost($campos)
+    {
+        $datos = [];
+        foreach ($campos as $campo) {
+            if (isset($_POST[$campo])) {
+                $datos[$campo] = $_POST[$campo];
             }
-            
-            if (empty($datosActualizar)) {
-                return true; // No hay datos para actualizar
-            }
-            
-            // Verificar si existe registro
-            $verificar = $db->prepare("SELECT id FROM Contacto WHERE miembro_id = ?");
-            $verificar->execute([$id]);
-            $existe = $verificar->fetch();
-            
-            if ($existe) {
-                // Actualizar
-                $sets = [];
-                $params = [];
-                
-                foreach ($datosActualizar as $campo => $valor) {
-                    $sets[] = "$campo = ?";
-                    $params[] = $valor;
-                }
-                
-                $params[] = $id;
-                $sql = "UPDATE Contacto SET " . implode(', ', $sets) . " WHERE miembro_id = ?";
-                
-                $stmt = $db->prepare($sql);
-                $stmt->execute($params);
-            } else {
-                // Insertar
-                $datosActualizar['miembro_id'] = $id;
-                
-                $campos = array_keys($datosActualizar);
-                $placeholders = array_fill(0, count($campos), '?');
-                
-                $sql = "INSERT INTO Contacto (" . implode(', ', $campos) . ") 
-                        VALUES (" . implode(', ', $placeholders) . ")";
-                
-                $stmt = $db->prepare($sql);
-                $stmt->execute(array_values($datosActualizar));
-            }
-            
-            return true;
-        } catch (\Exception $e) {
-            error_log("Error al actualizar contacto: " . $e->getMessage());
-            return false; // No lanzamos la excepción para que no interrumpa el flujo
         }
-    }
-
-    private function actualizarEstudioSimplificado($id, $datos) {
-        try {
-            $db = \Database::getInstance()->getConnection();
-            
-            // Campos a actualizar
-            $campos = [
-                'nivel_estudios', 'profesion', 'otros_estudios', 
-                'empresa', 'direccion_empresa', 'emprendimientos'
-            ];
-            
-            // Verificar si hay datos para actualizar
-            $datosActualizar = [];
-            foreach ($campos as $campo) {
-                if (isset($datos[$campo])) {
-                    $datosActualizar[$campo] = $datos[$campo];
-                }
-            }
-            
-            if (empty($datosActualizar)) {
-                return true; // No hay datos para actualizar
-            }
-            
-            // Verificar si existe registro
-            $verificar = $db->prepare("SELECT id FROM EstudiosTrabajo WHERE miembro_id = ?");
-            $verificar->execute([$id]);
-            $existe = $verificar->fetch();
-            
-            if ($existe) {
-                // Actualizar
-                $sets = [];
-                $params = [];
-                
-                foreach ($datosActualizar as $campo => $valor) {
-                    $sets[] = "$campo = ?";
-                    $params[] = $valor;
-                }
-                
-                $params[] = $id;
-                $sql = "UPDATE EstudiosTrabajo SET " . implode(', ', $sets) . " WHERE miembro_id = ?";
-                
-                $stmt = $db->prepare($sql);
-                $stmt->execute($params);
-            } else {
-                // Insertar
-                $datosActualizar['miembro_id'] = $id;
-                
-                $campos = array_keys($datosActualizar);
-                $placeholders = array_fill(0, count($campos), '?');
-                
-                $sql = "INSERT INTO EstudiosTrabajo (" . implode(', ', $campos) . ") 
-                        VALUES (" . implode(', ', $placeholders) . ")";
-                
-                $stmt = $db->prepare($sql);
-                $stmt->execute(array_values($datosActualizar));
-            }
-            
-            return true;
-        } catch (\Exception $e) {
-            error_log("Error al actualizar estudios: " . $e->getMessage());
-            return false;
-        }
-    }
-
-    private function actualizarTallasSimplificado($id, $datos) {
-        try {
-            $db = \Database::getInstance()->getConnection();
-            
-            // Campos a actualizar
-            $campos = [
-                'talla_camisa', 'talla_camiseta', 'talla_pantalon', 'talla_zapatos'
-            ];
-            
-            // Verificar si hay datos para actualizar
-            $datosActualizar = [];
-            foreach ($campos as $campo) {
-                if (isset($datos[$campo])) {
-                    $datosActualizar[$campo] = $datos[$campo];
-                }
-            }
-            
-            if (empty($datosActualizar)) {
-                return true; // No hay datos para actualizar
-            }
-            
-            // Verificar si existe registro
-            $verificar = $db->prepare("SELECT id FROM Tallas WHERE miembro_id = ?");
-            $verificar->execute([$id]);
-            $existe = $verificar->fetch();
-            
-            if ($existe) {
-                // Actualizar
-                $sets = [];
-                $params = [];
-                
-                foreach ($datosActualizar as $campo => $valor) {
-                    $sets[] = "$campo = ?";
-                    $params[] = $valor;
-                }
-                
-                $params[] = $id;
-                $sql = "UPDATE Tallas SET " . implode(', ', $sets) . " WHERE miembro_id = ?";
-                
-                $stmt = $db->prepare($sql);
-                $stmt->execute($params);
-            } else {
-                // Insertar
-                $datosActualizar['miembro_id'] = $id;
-                
-                $campos = array_keys($datosActualizar);
-                $placeholders = array_fill(0, count($campos), '?');
-                
-                $sql = "INSERT INTO Tallas (" . implode(', ', $campos) . ") 
-                        VALUES (" . implode(', ', $placeholders) . ")";
-                
-                $stmt = $db->prepare($sql);
-                $stmt->execute(array_values($datosActualizar));
-            }
-            
-            return true;
-        } catch (\Exception $e) {
-            error_log("Error al actualizar tallas: " . $e->getMessage());
-            return false;
-        }
-    }
-
-    private function actualizarSaludSimplificado($id, $datos) {
-        try {
-            $db = \Database::getInstance()->getConnection();
-            
-            // Campos a actualizar
-            $campos = [
-                'rh', 'eps', 'acudiente1', 'telefono1', 'acudiente2', 'telefono2'
-            ];
-            
-            // Verificar si hay datos para actualizar
-            $datosActualizar = [];
-            foreach ($campos as $campo) {
-                if (isset($datos[$campo])) {
-                    $datosActualizar[$campo] = $datos[$campo];
-                }
-            }
-            
-            if (empty($datosActualizar)) {
-                return true; // No hay datos para actualizar
-            }
-            
-            // Verificar si existe registro
-            $verificar = $db->prepare("SELECT id FROM SaludEmergencias WHERE miembro_id = ?");
-            $verificar->execute([$id]);
-            $existe = $verificar->fetch();
-            
-            if ($existe) {
-                // Actualizar
-                $sets = [];
-                $params = [];
-                
-                foreach ($datosActualizar as $campo => $valor) {
-                    $sets[] = "$campo = ?";
-                    $params[] = $valor;
-                }
-                
-                $params[] = $id;
-                $sql = "UPDATE SaludEmergencias SET " . implode(', ', $sets) . " WHERE miembro_id = ?";
-                
-                $stmt = $db->prepare($sql);
-                $stmt->execute($params);
-            } else {
-                // Insertar
-                $datosActualizar['miembro_id'] = $id;
-                
-                $campos = array_keys($datosActualizar);
-                $placeholders = array_fill(0, count($campos), '?');
-                
-                $sql = "INSERT INTO SaludEmergencias (" . implode(', ', $campos) . ") 
-                        VALUES (" . implode(', ', $placeholders) . ")";
-                
-                $stmt = $db->prepare($sql);
-                $stmt->execute(array_values($datosActualizar));
-            }
-            
-            return true;
-        } catch (\Exception $e) {
-            error_log("Error al actualizar salud: " . $e->getMessage());
-            return false;
-        }
-    }
-
-    private function actualizarCarreraSimplificado($id, $datos) {
-        try {
-            $db = \Database::getInstance()->getConnection();
-            
-            // Campos a actualizar
-            $campos = [
-                'estado', 'carrera_biblica', 'miembro_de', 
-                'casa_de_palabra_y_vida', 'cobertura', 'anotaciones'
-            ];
-            
-            // Verificar si hay datos para actualizar
-            $datosActualizar = [];
-            foreach ($campos as $campo) {
-                if (isset($datos[$campo])) {
-                    $datosActualizar[$campo] = $datos[$campo];
-                }
-            }
-            
-            if (empty($datosActualizar)) {
-                return true; // No hay datos para actualizar
-            }
-            
-            // Verificar si existe registro
-            $verificar = $db->prepare("SELECT id FROM CarreraBiblica WHERE miembro_id = ?");
-            $verificar->execute([$id]);
-            $existe = $verificar->fetch();
-            
-            if ($existe) {
-                // Actualizar
-                $sets = [];
-                $params = [];
-                
-                foreach ($datosActualizar as $campo => $valor) {
-                    $sets[] = "$campo = ?";
-                    $params[] = $valor;
-                }
-                
-                $params[] = $id;
-                $sql = "UPDATE CarreraBiblica SET " . implode(', ', $sets) . " WHERE miembro_id = ?";
-                
-                $stmt = $db->prepare($sql);
-                $stmt->execute($params);
-            } else {
-                // Insertar
-                $datosActualizar['miembro_id'] = $id;
-                
-                $campos = array_keys($datosActualizar);
-                $placeholders = array_fill(0, count($campos), '?');
-                
-                $sql = "INSERT INTO CarreraBiblica (" . implode(', ', $campos) . ") 
-                        VALUES (" . implode(', ', $placeholders) . ")";
-                
-                $stmt = $db->prepare($sql);
-                $stmt->execute(array_values($datosActualizar));
-            }
-            
-            return true;
-        } catch (\Exception $e) {
-            error_log("Error al actualizar carrera: " . $e->getMessage());
-            return false;
-        }
+        return $datos;
     }
 }
 
@@ -5437,42 +5705,54 @@ class Miembro extends Model {
     /**
      * Obtiene el perfil completo de un miembro
      */
-    public function getFullProfile($id) {
+    public function getFullProfile($id)
+    {
         try {
             // Asegurar que el ID sea un entero
             $id = (int)$id;
             
-            // Log para depuración
-            error_log("Buscando miembro con ID: $id");
+            // Registrar para depuración
+            error_log("Modelo: Buscando miembro con ID: $id");
             
-            // Usar sentencia preparada en lugar de consulta directa
-            $sql = "SELECT * FROM {$this->table} WHERE id = ?";
-            $stmt = $this->db->prepare($sql);
+            // Consulta principal
+            $stmt = $this->db->prepare("SELECT * FROM InformacionGeneral WHERE id = ?");
             $stmt->execute([$id]);
             $miembro = $stmt->fetch(\PDO::FETCH_ASSOC);
             
             if (!$miembro) {
-                error_log("No se encontró ningún miembro con ID $id");
+                error_log("Modelo: No se encontró miembro con ID: $id");
                 return null;
             }
             
-            // Obtener datos de tablas relacionadas y añadirlos al array principal
+            error_log("Modelo: Miembro encontrado, buscando datos relacionados");
+            
+            // Obtener datos relacionados
             $tablas = ['Contacto', 'EstudiosTrabajo', 'Tallas', 'SaludEmergencias', 'CarreraBiblica'];
             
             foreach ($tablas as $tabla) {
-                $sql = "SELECT * FROM $tabla WHERE miembro_id = ?";
-                $stmt = $this->db->prepare($sql);
-                $stmt->execute([$id]);
-                $datos = $stmt->fetch(\PDO::FETCH_ASSOC);
-                
-                if ($datos) {
-                    $miembro[strtolower($tabla)] = $datos;
+                try {
+                    $sql = "SELECT * FROM {$tabla} WHERE miembro_id = ?";
+                    $stmt = $this->db->prepare($sql);
+                    $stmt->execute([$id]);
+                    $datos = $stmt->fetch(\PDO::FETCH_ASSOC);
+                    
+                    if ($datos) {
+                        // Clave en minúsculas para consistencia
+                        $miembro[strtolower($tabla)] = $datos;
+                    } else {
+                        // Asignar array vacío para evitar errores
+                        $miembro[strtolower($tabla)] = [];
+                        error_log("Modelo: No se encontraron datos en $tabla para miembro ID: $id");
+                    }
+                } catch (\PDOException $e) {
+                    error_log("Modelo: Error al consultar $tabla: " . $e->getMessage());
+                    $miembro[strtolower($tabla)] = []; // Array vacío para evitar errores
                 }
             }
             
             return $miembro;
-        } catch (\PDOException $e) {
-            error_log("Error en getFullProfile: " . $e->getMessage());
+        } catch (\Exception $e) {
+            error_log("Modelo: Error en getFullProfile: " . $e->getMessage());
             return null;
         }
     }
@@ -7237,13 +7517,12 @@ ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\views\miembros\editar.php
 =============================================================
 
 <?php
-
-// Establecer variables para valores existentes o predeterminados
+// Corregido
 $contacto = $miembro['contacto'] ?? [];
-$estudios = $miembro['estudios'] ?? [];
+$estudios = $miembro['estudiostrabajo'] ?? []; 
 $tallas = $miembro['tallas'] ?? [];
-$salud = $miembro['salud'] ?? [];
-$carrera = $miembro['carrera'] ?? [];
+$salud = $miembro['saludemergencias'] ?? [];
+$carrera = $miembro['carrerabiblica'] ?? [];
 ?>
 
 <div class="container mt-4">
@@ -7285,49 +7564,122 @@ $carrera = $miembro['carrera'] ?? [];
         
         <!-- Contenido de las pestañas -->
         <div class="tab-content" id="editorTabContent">
-            <!-- Pestaña de información general -->
+            <!-- Pestaña de Información General -->
             <div class="tab-pane fade show active" id="general" role="tabpanel">
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label for="nombres" class="form-label">Nombres*</label>
-                        <input type="text" class="form-control" id="nombres" name="nombres" value="<?= $miembro['nombres'] ?>" required>
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Información Personal</h5>
                     </div>
-                    <div class="col-md-6 mb-3">
-                        <label for="apellidos" class="form-label">Apellidos*</label>
-                        <input type="text" class="form-control" id="apellidos" name="apellidos" value="<?= $miembro['apellidos'] ?>" required>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label for="celular" class="form-label">Celular</label>
-                        <input type="text" class="form-control" id="celular" name="celular" value="<?= htmlspecialchars($miembro['celular'] ?? '') ?>">
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label for="localidad" class="form-label">Localidad</label>
-                        <input type="text" class="form-control" id="localidad" name="localidad" value="<?= htmlspecialchars($miembro['localidad'] ?? '') ?>">
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label for="barrio" class="form-label">Barrio</label>
-                        <input type="text" class="form-control" id="barrio" name="barrio" value="<?= htmlspecialchars($miembro['barrio'] ?? '') ?>">
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label for="fecha_nacimiento" class="form-label">Fecha de Nacimiento</label>
-                        <input type="date" class="form-control" id="fecha_nacimiento" name="fecha_nacimiento" value="<?= $miembro['fecha_nacimiento'] ?? '' ?>">
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label for="estado_espiritual" class="form-label">Estado Espiritual</label>
-                        <select class="form-select" id="estado_espiritual" name="estado_espiritual">
-                            <option value="">Seleccione</option>
-                            <option value="Discípulo" <?= ($miembro['estado_espiritual'] ?? '') == 'Discípulo' ? 'selected' : '' ?>>Discípulo</option>
-                            <option value="Catecúmeno" <?= ($miembro['estado_espiritual'] ?? '') == 'Catecúmeno' ? 'selected' : '' ?>>Catecúmeno</option>
-                            <option value="Simpatizante" <?= ($miembro['estado_espiritual'] ?? '') == 'Simpatizante' ? 'selected' : '' ?>>Simpatizante</option>
-                        </select>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label for="fecha_ingreso" class="form-label">Fecha de Ingreso</label>
-                        <input type="date" class="form-control" id="fecha_ingreso" name="fecha_ingreso" value="<?= $miembro['fecha_ingreso'] ?? '' ?>">
-                    </div>
-                    <div class="col-md-12 mb-3">
-                        <label for="recorrido_espiritual" class="form-label">Recorrido Espiritual</label>
-                        <textarea class="form-control" id="recorrido_espiritual" name="recorrido_espiritual" rows="4"><?= htmlspecialchars($miembro['recorrido_espiritual'] ?? '') ?></textarea>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="nombres" class="form-label">Nombres *</label>
+                                <input type="text" class="form-control" id="nombres" name="nombres" value="<?= htmlspecialchars($miembro['nombres']) ?>" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="apellidos" class="form-label">Apellidos *</label>
+                                <input type="text" class="form-control" id="apellidos" name="apellidos" value="<?= htmlspecialchars($miembro['apellidos']) ?>" required>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="celular" class="form-label">Celular *</label>
+                                <input type="text" class="form-control" id="celular" name="celular" value="<?= htmlspecialchars($miembro['celular']) ?>" required>
+                                <div class="form-text">Formato internacional: +573123456789</div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="fecha_nacimiento" class="form-label">Fecha de Nacimiento</label>
+                                <input type="date" class="form-control" id="fecha_nacimiento" name="fecha_nacimiento" value="<?= $miembro['fecha_nacimiento'] ?? '' ?>">
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="localidad" class="form-label">Localidad</label>
+                                <input type="text" class="form-control" id="localidad" name="localidad" value="<?= htmlspecialchars($miembro['localidad'] ?? '') ?>">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="barrio" class="form-label">Barrio</label>
+                                <input type="text" class="form-control" id="barrio" name="barrio" value="<?= htmlspecialchars($miembro['barrio'] ?? '') ?>">
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="conector" class="form-label">Conector</label>
+                                <input type="text" class="form-control" id="conector" name="conector" value="<?= htmlspecialchars($miembro['conector'] ?? '') ?>">
+                                <div class="form-text">Tipo de conexión con la iglesia</div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="invitado_por" class="form-label">Invitado por</label>
+                                <select class="form-select" id="invitado_por" name="invitado_por">
+                                    <option value="">Seleccione una opción</option>
+                                    <?php 
+                                    // Obtener lista de miembros para el select
+                                    $db = \Database::getInstance()->getConnection();
+                                    $stmt = $db->prepare("SELECT id, nombres, apellidos FROM InformacionGeneral WHERE id != ? ORDER BY nombres ASC");
+                                    $stmt->execute([$miembro['id']]);
+                                    $miembros = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                                    
+                                    foreach ($miembros as $m): 
+                                        $selected = ($miembro['invitado_por'] == $m['id']) ? 'selected' : '';
+                                    ?>
+                                    <option value="<?= $m['id'] ?>" <?= $selected ?>>
+                                        <?= htmlspecialchars($m['nombres'] . ' ' . $m['apellidos']) ?>
+                                    </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="estado_espiritual" class="form-label">Estado Espiritual</label>
+                                <select class="form-select" id="estado_espiritual" name="estado_espiritual">
+                                    <option value="">Seleccione una opción</option>
+                                    <?php 
+                                    $estados = ['Activo', 'Inactivo', 'Intermitente', 'Nuevo', 'En formación'];
+                                    foreach ($estados as $estado): 
+                                        $selected = ($miembro['estado_espiritual'] == $estado) ? 'selected' : '';
+                                    ?>
+                                    <option value="<?= $estado ?>" <?= $selected ?>><?= $estado ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="fecha_ingreso" class="form-label">Fecha de Ingreso</label>
+                                <input type="text" class="form-control" value="<?= date('d/m/Y H:i', strtotime($miembro['fecha_ingreso'])) ?>" readonly>
+                                <div class="form-text">Este campo no se puede editar</div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="foto" class="form-label">Foto de Perfil</label>
+                            <input type="file" class="form-control" id="foto" name="foto">
+                            <?php if(!empty($miembro['foto'])): ?>
+                            <div class="mt-2">
+                                <img src="<?= url('uploads/miembros/'.$miembro['foto']) ?>" alt="Foto actual" class="img-thumbnail" style="max-height: 100px;">
+                                <div class="form-text">Foto actual. Suba una nueva para cambiarla.</div>
+                            </div>
+                            <?php endif; ?>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="recorrido_espiritual" class="form-label">Recorrido Espiritual</label>
+                            <textarea class="form-control" id="recorrido_espiritual" name="recorrido_espiritual" rows="4"><?= htmlspecialchars($miembro['recorrido_espiritual'] ?? '') ?></textarea>
+                            <div class="form-text">Observaciones del recorrido espiritual del miembro</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="habeas_data" name="habeas_data" value="1" <?= !empty($miembro['habeas_data']) ? 'checked' : '' ?>>
+                                <label class="form-check-label" for="habeas_data">
+                                    Acepta tratamiento de datos personales (Habeas Data)
+                                </label>
+                            </div>
+                            <div class="form-text">Al marcar esta casilla, el miembro autoriza el tratamiento de sus datos personales.</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -7339,53 +7691,54 @@ $carrera = $miembro['carrera'] ?? [];
                         <h5 class="card-title">Información de Contacto</h5>
                         <input type="hidden" name="contacto_id" value="<?= $contacto['id'] ?? '' ?>">
                         
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="tipo_documento" class="form-label">Tipo de Documento</label>
-                                <select class="form-select" id="tipo_documento" name="tipo_documento">
-                                    <option value="">Seleccione</option>
-                                    <option value="CC" <?= ($contacto['tipo_documento'] ?? '') == 'CC' ? 'selected' : '' ?>>Cédula de Ciudadanía</option>
-                                    <option value="TI" <?= ($contacto['tipo_documento'] ?? '') == 'TI' ? 'selected' : '' ?>>Tarjeta de Identidad</option>
-                                    <option value="CE" <?= ($contacto['tipo_documento'] ?? '') == 'CE' ? 'selected' : '' ?>>Cédula de Extranjería</option>
-                                    <option value="PAS" <?= ($contacto['tipo_documento'] ?? '') == 'PAS' ? 'selected' : '' ?>>Pasaporte</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="numero_documento" class="form-label">Número de Documento</label>
-                                <input type="text" class="form-control" id="numero_documento" name="numero_documento" value="<?= htmlspecialchars($contacto['numero_documento'] ?? '') ?>">
-                            </div>
+                        <!-- Ejemplo para cada sección -->
+                        <!-- PESTAÑA CONTACTO -->
+                        <div class="mb-3">
+                            <label for="tipo_documento" class="form-label">Tipo de Documento</label>
+                            <select class="form-select" id="tipo_documento" name="contacto[tipo_documento]">
+                                <option value="">Seleccione</option>
+                                <option value="CC" <?= ($contacto['tipo_documento'] ?? '') == 'CC' ? 'selected' : '' ?>>Cédula de Ciudadanía</option>
+                                <option value="TI" <?= ($contacto['tipo_documento'] ?? '') == 'TI' ? 'selected' : '' ?>>Tarjeta de Identidad</option>
+                                <option value="CE" <?= ($contacto['tipo_documento'] ?? '') == 'CE' ? 'selected' : '' ?>>Cédula de Extranjería</option>
+                                <option value="PAS" <?= ($contacto['tipo_documento'] ?? '') == 'PAS' ? 'selected' : '' ?>>Pasaporte</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="numero_documento" class="form-label">Número de Documento</label>
+                            <input type="text" class="form-control" id="numero_documento" name="contacto[numero_documento]" value="<?= htmlspecialchars($contacto['numero_documento'] ?? '') ?>">
                         </div>
                         
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="telefono" class="form-label">Teléfono</label>
-                                <input type="text" class="form-control" id="telefono" name="telefono" value="<?= htmlspecialchars($contacto['telefono'] ?? '') ?>">
+                                <input type="text" class="form-control" id="telefono" name="contacto[telefono]" value="<?= htmlspecialchars($contacto['telefono'] ?? '') ?>">
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="correo_electronico" class="form-label">Correo Electrónico</label>
-                                <input type="email" class="form-control" id="correo_electronico" name="correo_electronico" value="<?= htmlspecialchars($contacto['correo_electronico'] ?? '') ?>">
+                                <input type="email" class="form-control" id="correo_electronico" name="contacto[correo_electronico]" value="<?= htmlspecialchars($contacto['correo_electronico'] ?? '') ?>">
                             </div>
                         </div>
                         
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="pais" class="form-label">País</label>
-                                <input type="text" class="form-control" id="pais" name="pais" value="<?= htmlspecialchars($contacto['pais'] ?? 'Colombia') ?>">
+                                <input type="text" class="form-control" id="pais" name="contacto[pais]" value="<?= htmlspecialchars($contacto['pais'] ?? 'Colombia') ?>">
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="ciudad" class="form-label">Ciudad</label>
-                                <input type="text" class="form-control" id="ciudad" name="ciudad" value="<?= htmlspecialchars($contacto['ciudad'] ?? '') ?>">
+                                <input type="text" class="form-control" id="ciudad" name="contacto[ciudad]" value="<?= htmlspecialchars($contacto['ciudad'] ?? '') ?>">
                             </div>
                         </div>
                         
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="direccion" class="form-label">Dirección</label>
-                                <input type="text" class="form-control" id="direccion" name="direccion" value="<?= htmlspecialchars($contacto['direccion'] ?? '') ?>">
+                                <input type="text" class="form-control" id="direccion" name="contacto[direccion]" value="<?= htmlspecialchars($contacto['direccion'] ?? '') ?>">
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="estado_civil" class="form-label">Estado Civil</label>
-                                <select class="form-select" id="estado_civil" name="estado_civil">
+                                <select class="form-select" id="estado_civil" name="contacto[estado_civil]">
                                     <option value="">Seleccione</option>
                                     <option value="Soltero/a" <?= ($contacto['estado_civil'] ?? '') == 'Soltero/a' ? 'selected' : '' ?>>Soltero/a</option>
                                     <option value="Casado/a" <?= ($contacto['estado_civil'] ?? '') == 'Casado/a' ? 'selected' : '' ?>>Casado/a</option>
@@ -7406,46 +7759,47 @@ $carrera = $miembro['carrera'] ?? [];
                         <h5 class="card-title">Información Académica y Laboral</h5>
                         <input type="hidden" name="estudios_id" value="<?= $estudios['id'] ?? '' ?>">
                         
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="nivel_estudios" class="form-label">Nivel de Estudios</label>
-                                <select class="form-select" id="nivel_estudios" name="nivel_estudios">
-                                    <option value="">Seleccione</option>
-                                    <option value="Primaria" <?= ($estudios['nivel_estudios'] ?? '') == 'Primaria' ? 'selected' : '' ?>>Primaria</option>
-                                    <option value="Secundaria" <?= ($estudios['nivel_estudios'] ?? '') == 'Secundaria' ? 'selected' : '' ?>>Secundaria</option>
-                                    <option value="Técnico" <?= ($estudios['nivel_estudios'] ?? '') == 'Técnico' ? 'selected' : '' ?>>Técnico</option>
-                                    <option value="Tecnólogo" <?= ($estudios['nivel_estudios'] ?? '') == 'Tecnólogo' ? 'selected' : '' ?>>Tecnólogo</option>
-                                    <option value="Universitario" <?= ($estudios['nivel_estudios'] ?? '') == 'Universitario' ? 'selected' : '' ?>>Universitario</option>
-                                    <option value="Especialización" <?= ($estudios['nivel_estudios'] ?? '') == 'Especialización' ? 'selected' : '' ?>>Especialización</option>
-                                    <option value="Maestría" <?= ($estudios['nivel_estudios'] ?? '') == 'Maestría' ? 'selected' : '' ?>>Maestría</option>
-                                    <option value="Doctorado" <?= ($estudios['nivel_estudios'] ?? '') == 'Doctorado' ? 'selected' : '' ?>>Doctorado</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="profesion" class="form-label">Profesión</label>
-                                <input type="text" class="form-control" id="profesion" name="profesion" value="<?= htmlspecialchars($estudios['profesion'] ?? '') ?>">
-                            </div>
+                        <!-- Ejemplo para cada sección -->
+                        <!-- PESTAÑA ESTUDIOS/TRABAJO -->
+                        <div class="mb-3">
+                            <label for="nivel_estudios" class="form-label">Nivel de Estudios</label>
+                            <select class="form-select" id="nivel_estudios" name="estudios[nivel_estudios]">
+                                <option value="">Seleccione</option>
+                                <option value="Primaria" <?= ($estudios['nivel_estudios'] ?? '') == 'Primaria' ? 'selected' : '' ?>>Primaria</option>
+                                <option value="Secundaria" <?= ($estudios['nivel_estudios'] ?? '') == 'Secundaria' ? 'selected' : '' ?>>Secundaria</option>
+                                <option value="Técnico" <?= ($estudios['nivel_estudios'] ?? '') == 'Técnico' ? 'selected' : '' ?>>Técnico</option>
+                                <option value="Tecnólogo" <?= ($estudios['nivel_estudios'] ?? '') == 'Tecnólogo' ? 'selected' : '' ?>>Tecnólogo</option>
+                                <option value="Universitario" <?= ($estudios['nivel_estudios'] ?? '') == 'Universitario' ? 'selected' : '' ?>>Universitario</option>
+                                <option value="Especialización" <?= ($estudios['nivel_estudios'] ?? '') == 'Especialización' ? 'selected' : '' ?>>Especialización</option>
+                                <option value="Maestría" <?= ($estudios['nivel_estudios'] ?? '') == 'Maestría' ? 'selected' : '' ?>>Maestría</option>
+                                <option value="Doctorado" <?= ($estudios['nivel_estudios'] ?? '') == 'Doctorado' ? 'selected' : '' ?>>Doctorado</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="profesion" class="form-label">Profesión</label>
+                            <input type="text" class="form-control" id="profesion" name="estudios[profesion]" value="<?= htmlspecialchars($estudios['profesion'] ?? '') ?>">
                         </div>
                         
                         <div class="mb-3">
                             <label for="otros_estudios" class="form-label">Otros Estudios</label>
-                            <textarea class="form-control" id="otros_estudios" name="otros_estudios" rows="2"><?= htmlspecialchars($estudios['otros_estudios'] ?? '') ?></textarea>
+                            <textarea class="form-control" id="otros_estudios" name="estudios[otros_estudios]" rows="2"><?= htmlspecialchars($estudios['otros_estudios'] ?? '') ?></textarea>
                         </div>
                         
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="empresa" class="form-label">Empresa</label>
-                                <input type="text" class="form-control" id="empresa" name="empresa" value="<?= htmlspecialchars($estudios['empresa'] ?? '') ?>">
+                                <input type="text" class="form-control" id="empresa" name="estudios[empresa]" value="<?= htmlspecialchars($estudios['empresa'] ?? '') ?>">
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="direccion_empresa" class="form-label">Dirección de Empresa</label>
-                                <input type="text" class="form-control" id="direccion_empresa" name="direccion_empresa" value="<?= htmlspecialchars($estudios['direccion_empresa'] ?? '') ?>">
+                                <input type="text" class="form-control" id="direccion_empresa" name="estudios[direccion_empresa]" value="<?= htmlspecialchars($estudios['direccion_empresa'] ?? '') ?>">
                             </div>
                         </div>
                         
                         <div class="mb-3">
                             <label for="emprendimientos" class="form-label">Emprendimientos</label>
-                            <textarea class="form-control" id="emprendimientos" name="emprendimientos" rows="2"><?= htmlspecialchars($estudios['emprendimientos'] ?? '') ?></textarea>
+                            <textarea class="form-control" id="emprendimientos" name="estudios[emprendimientos]" rows="2"><?= htmlspecialchars($estudios['emprendimientos'] ?? '') ?></textarea>
                         </div>
                     </div>
                 </div>
@@ -7461,7 +7815,7 @@ $carrera = $miembro['carrera'] ?? [];
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="talla_camisa" class="form-label">Talla de Camisa</label>
-                                <select class="form-select" id="talla_camisa" name="talla_camisa">
+                                <select class="form-select" id="talla_camisa" name="tallas[talla_camisa]">
                                     <option value="">Seleccione</option>
                                     <option value="XS" <?= ($tallas['talla_camisa'] ?? '') == 'XS' ? 'selected' : '' ?>>XS</option>
                                     <option value="S" <?= ($tallas['talla_camisa'] ?? '') == 'S' ? 'selected' : '' ?>>S</option>
@@ -7473,7 +7827,7 @@ $carrera = $miembro['carrera'] ?? [];
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="talla_camiseta" class="form-label">Talla de Camiseta</label>
-                                <select class="form-select" id="talla_camiseta" name="talla_camiseta">
+                                <select class="form-select" id="talla_camiseta" name="tallas[talla_camiseta]">
                                     <option value="">Seleccione</option>
                                     <option value="XS" <?= ($tallas['talla_camiseta'] ?? '') == 'XS' ? 'selected' : '' ?>>XS</option>
                                     <option value="S" <?= ($tallas['talla_camiseta'] ?? '') == 'S' ? 'selected' : '' ?>>S</option>
@@ -7488,11 +7842,11 @@ $carrera = $miembro['carrera'] ?? [];
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="talla_pantalon" class="form-label">Talla de Pantalón</label>
-                                <input type="text" class="form-control" id="talla_pantalon" name="talla_pantalon" value="<?= htmlspecialchars($tallas['talla_pantalon'] ?? '') ?>">
+                                <input type="text" class="form-control" id="talla_pantalon" name="tallas[talla_pantalon]" value="<?= htmlspecialchars($tallas['talla_pantalon'] ?? '') ?>">
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="talla_zapatos" class="form-label">Talla de Zapatos</label>
-                                <input type="text" class="form-control" id="talla_zapatos" name="talla_zapatos" value="<?= htmlspecialchars($tallas['talla_zapatos'] ?? '') ?>">
+                                <input type="text" class="form-control" id="talla_zapatos" name="tallas[talla_zapatos]" value="<?= htmlspecialchars($tallas['talla_zapatos'] ?? '') ?>">
                             </div>
                         </div>
                     </div>
@@ -7509,7 +7863,7 @@ $carrera = $miembro['carrera'] ?? [];
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="rh" class="form-label">Tipo de Sangre (RH)</label>
-                                <select class="form-select" id="rh" name="rh">
+                                <select class="form-select" id="rh" name="salud[rh]">
                                     <option value="">Seleccione</option>
                                     <option value="A+" <?= ($salud['rh'] ?? '') == 'A+' ? 'selected' : '' ?>>A+</option>
                                     <option value="A-" <?= ($salud['rh'] ?? '') == 'A-' ? 'selected' : '' ?>>A-</option>
@@ -7523,7 +7877,7 @@ $carrera = $miembro['carrera'] ?? [];
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="eps" class="form-label">EPS</label>
-                                <input type="text" class="form-control" id="eps" name="eps" value="<?= htmlspecialchars($salud['eps'] ?? '') ?>">
+                                <input type="text" class="form-control" id="eps" name="salud[eps]" value="<?= htmlspecialchars($salud['eps'] ?? '') ?>">
                             </div>
                         </div>
                         
@@ -7533,22 +7887,22 @@ $carrera = $miembro['carrera'] ?? [];
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="acudiente1" class="form-label">Primer Contacto</label>
-                                <input type="text" class="form-control" id="acudiente1" name="acudiente1" value="<?= htmlspecialchars($salud['acudiente1'] ?? '') ?>">
+                                <input type="text" class="form-control" id="acudiente1" name="salud[acudiente1]" value="<?= htmlspecialchars($salud['acudiente1'] ?? '') ?>">
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="telefono1" class="form-label">Teléfono Primer Contacto</label>
-                                <input type="text" class="form-control" id="telefono1" name="telefono1" value="<?= htmlspecialchars($salud['telefono1'] ?? '') ?>">
+                                <input type="text" class="form-control" id="telefono1" name="salud[telefono1]" value="<?= htmlspecialchars($salud['telefono1'] ?? '') ?>">
                             </div>
                         </div>
                         
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="acudiente2" class="form-label">Segundo Contacto</label>
-                                <input type="text" class="form-control" id="acudiente2" name="acudiente2" value="<?= htmlspecialchars($salud['acudiente2'] ?? '') ?>">
+                                <input type="text" class="form-control" id="acudiente2" name="salud[acudiente2]" value="<?= htmlspecialchars($salud['acudiente2'] ?? '') ?>">
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="telefono2" class="form-label">Teléfono Segundo Contacto</label>
-                                <input type="text" class="form-control" id="telefono2" name="telefono2" value="<?= htmlspecialchars($salud['telefono2'] ?? '') ?>">
+                                <input type="text" class="form-control" id="telefono2" name="salud[telefono2]" value="<?= htmlspecialchars($salud['telefono2'] ?? '') ?>">
                             </div>
                         </div>
                     </div>
@@ -7565,7 +7919,7 @@ $carrera = $miembro['carrera'] ?? [];
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="estado" class="form-label">Estado</label>
-                                <select class="form-select" id="estado" name="estado">
+                                <select class="form-select" id="estado" name="carrera[estado]">
                                     <option value="">Seleccione</option>
                                     <option value="Activo" <?= ($carrera['estado'] ?? '') == 'Activo' ? 'selected' : '' ?>>Activo</option>
                                     <option value="Inactivo" <?= ($carrera['estado'] ?? '') == 'Inactivo' ? 'selected' : '' ?>>Inactivo</option>
@@ -7574,7 +7928,7 @@ $carrera = $miembro['carrera'] ?? [];
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="carrera_biblica" class="form-label">Carrera Bíblica</label>
-                                <select class="form-select" id="carrera_biblica" name="carrera_biblica">
+                                <select class="form-select" id="carrera_biblica" name="carrera[carrera_biblica]">
                                     <option value="">Seleccione</option>
                                     <option value="Catecumenado" <?= ($carrera['carrera_biblica'] ?? '') == 'Catecumenado' ? 'selected' : '' ?>>Catecumenado</option>
                                     <option value="Discipulado" <?= ($carrera['carrera_biblica'] ?? '') == 'Discipulado' ? 'selected' : '' ?>>Discipulado</option>
@@ -7586,22 +7940,22 @@ $carrera = $miembro['carrera'] ?? [];
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="miembro_de" class="form-label">Miembro de</label>
-                                <input type="text" class="form-control" id="miembro_de" name="miembro_de" value="<?= htmlspecialchars($carrera['miembro_de'] ?? 'Iglesia En Casa') ?>">
+                                <input type="text" class="form-control" id="miembro_de" name="carrera[miembro_de]" value="<?= htmlspecialchars($carrera['miembro_de'] ?? 'Iglesia En Casa') ?>">
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="casa_de_palabra_y_vida" class="form-label">Casa de Palabra y Vida</label>
-                                <input type="text" class="form-control" id="casa_de_palabra_y_vida" name="casa_de_palabra_y_vida" value="<?= htmlspecialchars($carrera['casa_de_palabra_y_vida'] ?? '') ?>">
+                                <input type="text" class="form-control" id="casa_de_palabra_y_vida" name="carrera[casa_de_palabra_y_vida]" value="<?= htmlspecialchars($carrera['casa_de_palabra_y_vida'] ?? '') ?>">
                             </div>
                         </div>
                         
                         <div class="mb-3">
                             <label for="cobertura" class="form-label">Cobertura</label>
-                            <input type="text" class="form-control" id="cobertura" name="cobertura" value="<?= htmlspecialchars($carrera['cobertura'] ?? '') ?>">
+                            <input type="text" class="form-control" id="cobertura" name="carrera[cobertura]" value="<?= htmlspecialchars($carrera['cobertura'] ?? '') ?>">
                         </div>
                         
                         <div class="mb-3">
                             <label for="anotaciones" class="form-label">Anotaciones</label>
-                            <textarea class="form-control" id="anotaciones" name="anotaciones" rows="3"><?= htmlspecialchars($carrera['anotaciones'] ?? '') ?></textarea>
+                            <textarea class="form-control" id="anotaciones" name="carrera[anotaciones]" rows="3"><?= htmlspecialchars($carrera['anotaciones'] ?? '') ?></textarea>
                         </div>
                     </div>
                 </div>
@@ -7624,13 +7978,12 @@ $carrera = $miembro['carrera'] ?? [];
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Referencia al formulario y botón
+    // Referencias
     const form = document.getElementById('editForm');
     const btnGuardar = document.getElementById('btnGuardar');
     
     // Función para mostrar mensajes
     function showMessage(message, type = 'success') {
-        // Crear elemento de alerta
         const alertDiv = document.createElement('div');
         alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
         alertDiv.innerHTML = `
@@ -7638,124 +7991,65 @@ document.addEventListener('DOMContentLoaded', function() {
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         `;
         
-        // Añadir al inicio del formulario
         form.prepend(alertDiv);
         
-        // Auto-ocultar después de 5 segundos
         setTimeout(() => {
             alertDiv.classList.remove('show');
             setTimeout(() => alertDiv.remove(), 300);
         }, 5000);
     }
     
-    // Agregar evento al botón de guardar
+    // Manejador para el botón guardar con mejor manejo de errores
     btnGuardar.addEventListener('click', function() {
-        // Mostrar indicador de carga
+        // Indicador de carga
         btnGuardar.disabled = true;
         btnGuardar.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Guardando...';
         
-        // Crear un objeto FormData con todos los campos del formulario
+        // FormData para envío AJAX
         const formData = new FormData(form);
         
-        // Enviar datos mediante fetch API
         fetch('/ENCASA_DATABASE/miembros/actualizar/<?= $miembro['id'] ?>', {
             method: 'POST',
             body: formData
         })
         .then(response => {
-            // Primero intentar obtener el texto de respuesta
-            return response.text().then(text => {
-                try {
-                    // Intentar analizar como JSON
-                    return JSON.parse(text);
-                } catch (e) {
-                    // Si no es JSON válido, mostrar el texto para depuración
-                    console.error('Respuesta no es JSON válido:', text);
-                    throw new Error('La respuesta del servidor no es un formato válido');
-                }
+            if (!response.ok) {
+                throw new Error(`Error HTTP: ${response.status}`);
+            }
+            
+            // Clonamos la respuesta para poder leerla como texto si falla el JSON
+            const responseClone = response.clone();
+            
+            return response.json().catch(e => {
+                console.error("Error al parsear JSON:", e);
+                return responseClone.text().then(text => {
+                    throw new Error(`Respuesta no válida: ${text.substring(0, 100)}...`);
+                });
             });
         })
         .then(data => {
-            // Procesar la respuesta JSON
+            btnGuardar.disabled = false;
+            btnGuardar.innerHTML = '<i class="fas fa-save me-1"></i> Guardar Cambios';
+            
             if (data.success) {
-                showMessage('Datos guardados correctamente', 'success');
+                // Mostrar solo un mensaje
+                showMessage('Miembro actualizado correctamente');
                 
-                // Redirigir después de un breve retraso
+                // Redirigir después de 1 segundo
                 setTimeout(() => {
-                    window.location.href = data.redirect || `/ENCASA_DATABASE/miembros/<?= $miembro['id'] ?>`;
-                }, 1500);
+                    window.location.href = data.redirect || "/ENCASA_DATABASE/miembros/<?= $miembro['id'] ?>";
+                }, 1000);
             } else {
-                showMessage('Error: ' + (data.message || 'No se pudieron guardar los cambios'), 'danger');
-                btnGuardar.disabled = false;
-                btnGuardar.innerHTML = '<i class="fas fa-save me-1"></i> Guardar Cambios';
+                showMessage(data.message || 'Error al guardar los datos', 'danger');
             }
         })
         .catch(error => {
-            console.error('Error:', error);
-            showMessage('Error al procesar la respuesta del servidor', 'danger');
+            console.error('Error completo:', error);
             btnGuardar.disabled = false;
             btnGuardar.innerHTML = '<i class="fas fa-save me-1"></i> Guardar Cambios';
+            showMessage('Error al procesar la solicitud: ' + error.message, 'danger');
         });
     });
-});
-</script>
-
-<!-- Agregar este script antes del cierre de </body> -->
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Capturar el botón de guardar
-    const btnGuardar = document.getElementById('btnGuardar');
-    
-    if (btnGuardar) {
-        btnGuardar.addEventListener('click', function() {
-            // Mensaje visual de carga
-            btnGuardar.disabled = true;
-            btnGuardar.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Guardando...';
-            
-            // Recopilar todos los datos del formulario
-            const formulario = document.getElementById('editForm') || document.querySelector('form');
-            const formData = new FormData(formulario);
-            
-            // Usar el proxy directo que evita problemas con túneles
-            fetch('/ENCASA_DATABASE/miembro_proxy.php?id=<?= $miembro['id'] ?>', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => {
-                // Intentar obtener respuesta como texto para depuración
-                return response.text().then(text => {
-                    try {
-                        // Intentar convertir a JSON
-                        return JSON.parse(text);
-                    } catch (e) {
-                        // Si falla, mostrar el texto recibido
-                        console.error("Respuesta no es JSON válido:", text);
-                        throw new Error("Formato de respuesta inválido");
-                    }
-                });
-            })
-            .then(data => {
-                if (data.success) {
-                    // Mostrar mensaje de éxito
-                    alert("Datos guardados correctamente");
-                    
-                    // Redireccionar
-                    window.location.href = data.redirect || `/ENCASA_DATABASE/miembros/<?= $miembro['id'] ?>`;
-                } else {
-                    // Mostrar error
-                    alert("Error: " + (data.message || "No se pudo guardar la información"));
-                    btnGuardar.disabled = false;
-                    btnGuardar.innerHTML = '<i class="fas fa-save me-1"></i> Guardar Cambios';
-                }
-            })
-            .catch(error => {
-                console.error("Error en la solicitud:", error);
-                alert("Error de conexión. Por favor intente nuevamente.");
-                btnGuardar.disabled = false;
-                btnGuardar.innerHTML = '<i class="fas fa-save me-1"></i> Guardar Cambios';
-            });
-        });
-    }
 });
 </script>
 
@@ -7974,11 +8268,18 @@ if (!isset($miembro) || !is_array($miembro)) {
                 </div>
                 <div class="col-md-8">
                     <div class="card">
+                        <div class="card-header">
+                            <h5>Información Personal</h5>
+                        </div>
                         <div class="card-body">
                             <table class="table">
                                 <tbody>
                                     <tr>
-                                        <th width="35%">Nombres:</th>
+                                        <th width="35%">ID:</th>
+                                        <td><?= htmlspecialchars($miembro['id']) ?></td>
+                                    </tr>
+                                    <tr>
+                                        <th>Nombres:</th>
                                         <td><?= htmlspecialchars($miembro['nombres']) ?></td>
                                     </tr>
                                     <tr>
@@ -8002,8 +8303,43 @@ if (!isset($miembro) || !is_array($miembro)) {
                                         <td><?= $miembro['fecha_nacimiento'] ? date('d/m/Y', strtotime($miembro['fecha_nacimiento'])) : 'No registrada' ?></td>
                                     </tr>
                                     <tr>
+                                        <th>Fecha de Ingreso:</th>
+                                        <td><?= date('d/m/Y H:i', strtotime($miembro['fecha_ingreso'])) ?></td>
+                                    </tr>
+                                    <tr>
                                         <th>Estado Espiritual:</th>
                                         <td><?= htmlspecialchars($miembro['estado_espiritual'] ?? 'No registrado') ?></td>
+                                    </tr>
+                                    <tr>
+                                        <th>Conector:</th>
+                                        <td><?= htmlspecialchars($miembro['conector'] ?? 'No registrado') ?></td>
+                                    </tr>
+                                    <tr>
+                                        <th>Invitado por:</th>
+                                        <td>
+                                            <?php if(!empty($miembro['invitado_por'])): ?>
+                                                <?php 
+                                                // Recuperar datos del invitador
+                                                $db = \Database::getInstance()->getConnection();
+                                                $stmt = $db->prepare("SELECT nombres, apellidos FROM InformacionGeneral WHERE id = ?");
+                                                $stmt->execute([$miembro['invitado_por']]);
+                                                $invitador = $stmt->fetch(PDO::FETCH_ASSOC);
+                                                
+                                                if($invitador): ?>
+                                                <a href="<?= url('miembros/'.$miembro['invitado_por']) ?>">
+                                                    <?= htmlspecialchars($invitador['nombres'] . ' ' . $invitador['apellidos']) ?>
+                                                </a>
+                                                <?php else: ?>
+                                                    Miembro #<?= $miembro['invitado_por'] ?> (No encontrado)
+                                                <?php endif; ?>
+                                            <?php else: ?>
+                                                No registrado
+                                            <?php endif; ?>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>Habeas Data:</th>
+                                        <td><?= !empty($miembro['habeas_data']) ? '<i class="fas fa-check-circle text-success"></i> Aceptado' : '<i class="fas fa-times-circle text-danger"></i> No aceptado' ?></td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -8012,8 +8348,10 @@ if (!isset($miembro) || !is_array($miembro)) {
                     
                     <?php if(isset($miembro['recorrido_espiritual']) && !empty($miembro['recorrido_espiritual'])): ?>
                     <div class="card mt-3">
+                        <div class="card-header">
+                            <h5>Recorrido Espiritual</h5>
+                        </div>
                         <div class="card-body">
-                            <h5 class="card-title">Recorrido Espiritual</h5>
                             <p class="card-text"><?= nl2br(htmlspecialchars($miembro['recorrido_espiritual'])) ?></p>
                         </div>
                     </div>
@@ -8145,7 +8483,7 @@ if (!isset($miembro) || !is_array($miembro)) {
             </div>
         </div>
 
-        <!-- Pestaña de Salud -->
+        <!-- Pestaña de Salud y Emergencias -->
         <div class="tab-pane fade" id="salud" role="tabpanel">
             <div class="card">
                 <div class="card-body">

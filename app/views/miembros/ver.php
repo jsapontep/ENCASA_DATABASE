@@ -90,11 +90,18 @@ if (!isset($miembro) || !is_array($miembro)) {
                 </div>
                 <div class="col-md-8">
                     <div class="card">
+                        <div class="card-header">
+                            <h5>Información Personal</h5>
+                        </div>
                         <div class="card-body">
                             <table class="table">
                                 <tbody>
                                     <tr>
-                                        <th width="35%">Nombres:</th>
+                                        <th width="35%">ID:</th>
+                                        <td><?= htmlspecialchars($miembro['id']) ?></td>
+                                    </tr>
+                                    <tr>
+                                        <th>Nombres:</th>
                                         <td><?= htmlspecialchars($miembro['nombres']) ?></td>
                                     </tr>
                                     <tr>
@@ -118,8 +125,43 @@ if (!isset($miembro) || !is_array($miembro)) {
                                         <td><?= $miembro['fecha_nacimiento'] ? date('d/m/Y', strtotime($miembro['fecha_nacimiento'])) : 'No registrada' ?></td>
                                     </tr>
                                     <tr>
+                                        <th>Fecha de Ingreso:</th>
+                                        <td><?= date('d/m/Y H:i', strtotime($miembro['fecha_ingreso'])) ?></td>
+                                    </tr>
+                                    <tr>
                                         <th>Estado Espiritual:</th>
                                         <td><?= htmlspecialchars($miembro['estado_espiritual'] ?? 'No registrado') ?></td>
+                                    </tr>
+                                    <tr>
+                                        <th>Conector:</th>
+                                        <td><?= htmlspecialchars($miembro['conector'] ?? 'No registrado') ?></td>
+                                    </tr>
+                                    <tr>
+                                        <th>Invitado por:</th>
+                                        <td>
+                                            <?php if(!empty($miembro['invitado_por'])): ?>
+                                                <?php 
+                                                // Recuperar datos del invitador
+                                                $db = \Database::getInstance()->getConnection();
+                                                $stmt = $db->prepare("SELECT nombres, apellidos FROM InformacionGeneral WHERE id = ?");
+                                                $stmt->execute([$miembro['invitado_por']]);
+                                                $invitador = $stmt->fetch(PDO::FETCH_ASSOC);
+                                                
+                                                if($invitador): ?>
+                                                <a href="<?= url('miembros/'.$miembro['invitado_por']) ?>">
+                                                    <?= htmlspecialchars($invitador['nombres'] . ' ' . $invitador['apellidos']) ?>
+                                                </a>
+                                                <?php else: ?>
+                                                    Miembro #<?= $miembro['invitado_por'] ?> (No encontrado)
+                                                <?php endif; ?>
+                                            <?php else: ?>
+                                                No registrado
+                                            <?php endif; ?>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>Habeas Data:</th>
+                                        <td><?= !empty($miembro['habeas_data']) ? '<i class="fas fa-check-circle text-success"></i> Aceptado' : '<i class="fas fa-times-circle text-danger"></i> No aceptado' ?></td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -128,8 +170,10 @@ if (!isset($miembro) || !is_array($miembro)) {
                     
                     <?php if(isset($miembro['recorrido_espiritual']) && !empty($miembro['recorrido_espiritual'])): ?>
                     <div class="card mt-3">
+                        <div class="card-header">
+                            <h5>Recorrido Espiritual</h5>
+                        </div>
                         <div class="card-body">
-                            <h5 class="card-title">Recorrido Espiritual</h5>
                             <p class="card-text"><?= nl2br(htmlspecialchars($miembro['recorrido_espiritual'])) ?></p>
                         </div>
                     </div>
@@ -261,7 +305,7 @@ if (!isset($miembro) || !is_array($miembro)) {
             </div>
         </div>
 
-        <!-- Pestaña de Salud -->
+        <!-- Pestaña de Salud y Emergencias -->
         <div class="tab-pane fade" id="salud" role="tabpanel">
             <div class="card">
                 <div class="card-body">

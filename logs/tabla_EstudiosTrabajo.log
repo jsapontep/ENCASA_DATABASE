@@ -1,0 +1,39 @@
+Actualizando tabla EstudiosTrabajo para miembro 1
+SQL: UPDATE EstudiosTrabajo SET nivel_estudios = ?, profesion = ?, otros_estudios = ?, empresa = ?, direccion_empresa = ?, emprendimientos = ? WHERE miembro_id = ?
+Valores: Array
+(
+    [0] => 
+    [1] => 
+    [2] => 
+    [3] => 
+    [4] => 
+    [5] => 
+    [6] => 1
+)
+
+Actualizando tabla EstudiosTrabajo para miembro 1
+SQL: UPDATE EstudiosTrabajo SET nivel_estudios = ?, profesion = ?, otros_estudios = ?, empresa = ?, direccion_empresa = ?, emprendimientos = ? WHERE miembro_id = ?
+Valores: Array
+(
+    [0] => 
+    [1] => 
+    [2] => 
+    [3] => 
+    [4] => 
+    [5] => 
+    [6] => 1
+)
+
+Actualizando tabla EstudiosTrabajo para miembro 1
+SQL: UPDATE EstudiosTrabajo SET nivel_estudios = ?, profesion = ?, otros_estudios = ?, empresa = ?, direccion_empresa = ?, emprendimientos = ? WHERE miembro_id = ?
+Valores: Array
+(
+    [0] => 
+    [1] => 
+    [2] => 
+    [3] => 
+    [4] => 
+    [5] => 
+    [6] => 1
+)
+

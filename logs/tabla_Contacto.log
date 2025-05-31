@@ -1,0 +1,45 @@
+Actualizando tabla Contacto para miembro 1
+SQL: UPDATE Contacto SET tipo_documento = ?, numero_documento = ?, telefono = ?, correo_electronico = ?, pais = ?, ciudad = ?, direccion = ?, estado_civil = ? WHERE miembro_id = ?
+Valores: Array
+(
+    [0] => CC
+    [1] => 1032373186
+    [2] => 3042629153
+    [3] => rafa.gzfr@gmail.com
+    [4] => Colombia
+    [5] => Bogota
+    [6] => Carrera 82#24d-48
+    [7] => Casado/a
+    [8] => 1
+)
+
+Actualizando tabla Contacto para miembro 1
+SQL: UPDATE Contacto SET tipo_documento = ?, numero_documento = ?, telefono = ?, correo_electronico = ?, pais = ?, ciudad = ?, direccion = ?, estado_civil = ? WHERE miembro_id = ?
+Valores: Array
+(
+    [0] => CC
+    [1] => 1032373186
+    [2] => 3042629153
+    [3] => rafa.gzfr@gmail.com
+    [4] => Colombia
+    [5] => Bogota
+    [6] => Carrera 82#24d-48
+    [7] => Casado/a
+    [8] => 1
+)
+
+Actualizando tabla Contacto para miembro 1
+SQL: UPDATE Contacto SET tipo_documento = ?, numero_documento = ?, telefono = ?, correo_electronico = ?, pais = ?, ciudad = ?, direccion = ?, estado_civil = ? WHERE miembro_id = ?
+Valores: Array
+(
+    [0] => CC
+    [1] => 1032373186
+    [2] => 3042629153
+    [3] => rafa.gzfr@gmail.com
+    [4] => Colombia
+    [5] => Bogota
+    [6] => Carrera 82#24d-48
+    [7] => Casado/a
+    [8] => 1
+)
+

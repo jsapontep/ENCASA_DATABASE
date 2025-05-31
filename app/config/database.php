@@ -11,23 +11,27 @@
 define('DB_PORT', '3306');
 define('DB_CHARSET', 'utf8mb4');
 
-// Clase Singleton para conexión a la base de datos
+/**
+ * Clase Database con patrón singleton para la conexión
+ */
 class Database {
     private static $instance = null;
-    private $conn;
+    private $connection = null;
     
     private function __construct() {
-        // Usar las constantes ya definidas en config.php
         try {
-            $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET;
-            $options = [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                PDO::ATTR_EMULATE_PREPARES => false,
-            ];
-            $this->conn = new PDO($dsn, DB_USER, DB_PASS, $options);
+            // Conexión básica a MySQL sin usar variables de entorno
+            $this->connection = new PDO(
+                "mysql:host=localhost;dbname=IglesiaEnCasa;charset=utf8", 
+                "root",  // Usuario por defecto de XAMPP 
+                ""       // Contraseña por defecto (vacía)
+            );
+            $this->connection->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $this->connection->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
-            die('Error de conexión: ' . $e->getMessage());
+            // Registrar error
+            file_put_contents(__DIR__ . '/../../db_error.log', date('Y-m-d H:i:s') . ' - ' . $e->getMessage() . "\n", FILE_APPEND);
+            throw new Exception("Error en la conexión a la base de datos");
         }
     }
     
@@ -39,7 +43,7 @@ class Database {
     }
     
     public function getConnection() {
-        return $this->conn;
+        return $this->connection;
     }
 }
 
