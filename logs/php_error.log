@@ -2059,3 +2059,395 @@ Stack trace:
 [31-May-2025 17:04:09 America/Bogota] Eliminación de registro principal: Éxito
 [31-May-2025 17:04:10 America/Bogota] Transacción confirmada, miembro eliminado
 [31-May-2025 17:04:10 America/Bogota] URL a procesar: 'miembros'
+[31-May-2025 17:13:21 America/Bogota] URL a procesar: 'miembros'
+[31-May-2025 17:13:25 America/Bogota] URL a procesar: 'miembros/crear'
+[31-May-2025 17:16:52 America/Bogota] URL a procesar: 'miembros/guardar'
+[31-May-2025 17:16:55 America/Bogota] PHP Fatal error:  Uncaught Error: Call to undefined method App\Models\Miembro::guardarEstudiosTrabajo() in C:\xampp\htdocs\ENCASA_DATABASE\app\Controllers\MiembrosController.php:126
+Stack trace:
+#0 C:\xampp\htdocs\ENCASA_DATABASE\app\helpers\Router.php(145): App\Controllers\MiembrosController->guardar()
+#1 C:\xampp\htdocs\ENCASA_DATABASE\index.php(65): App\Helpers\Router->dispatch()
+#2 {main}
+  thrown in C:\xampp\htdocs\ENCASA_DATABASE\app\Controllers\MiembrosController.php on line 126
+[31-May-2025 17:17:20 America/Bogota] URL a procesar: 'miembros/crear'
+[31-May-2025 17:18:56 America/Bogota] URL a procesar: 'miembros/crear'
+[31-May-2025 17:19:30 America/Bogota] URL a procesar: 'miembros/guardar'
+[31-May-2025 17:19:31 America/Bogota] PHP Fatal error:  Uncaught ArgumentCountError: Too few arguments to function App\Models\Miembro::guardarEstudiosTrabajo(), 1 passed in C:\xampp\htdocs\ENCASA_DATABASE\app\Controllers\MiembrosController.php on line 126 and exactly 2 expected in C:\xampp\htdocs\ENCASA_DATABASE\app\models\Miembro.php:316
+Stack trace:
+#0 C:\xampp\htdocs\ENCASA_DATABASE\app\Controllers\MiembrosController.php(126): App\Models\Miembro->guardarEstudiosTrabajo(Array)
+#1 C:\xampp\htdocs\ENCASA_DATABASE\app\helpers\Router.php(145): App\Controllers\MiembrosController->guardar()
+#2 C:\xampp\htdocs\ENCASA_DATABASE\index.php(65): App\Helpers\Router->dispatch()
+#3 {main}
+  thrown in C:\xampp\htdocs\ENCASA_DATABASE\app\models\Miembro.php on line 316
+[31-May-2025 17:25:36 America/Bogota] URL a procesar: 'miembros/crear'
+[31-May-2025 17:25:38 America/Bogota] URL a procesar: 'miembros/guardar'
+[31-May-2025 17:25:39 America/Bogota] PHP Warning:  Undefined array key "estudios" in C:\xampp\htdocs\ENCASA_DATABASE\app\Controllers\MiembrosController.php on line 126
+[31-May-2025 17:25:39 America/Bogota] PHP Fatal error:  Uncaught Error: Call to undefined method App\Models\Miembro::guardarTallas() in C:\xampp\htdocs\ENCASA_DATABASE\app\Controllers\MiembrosController.php:133
+Stack trace:
+#0 C:\xampp\htdocs\ENCASA_DATABASE\app\helpers\Router.php(145): App\Controllers\MiembrosController->guardar()
+#1 C:\xampp\htdocs\ENCASA_DATABASE\index.php(65): App\Helpers\Router->dispatch()
+#2 {main}
+  thrown in C:\xampp\htdocs\ENCASA_DATABASE\app\Controllers\MiembrosController.php on line 133
+[31-May-2025 17:25:44 America/Bogota] URL a procesar: 'miembros/crear'
+[31-May-2025 17:25:55 America/Bogota] URL a procesar: 'miembros/guardar'
+[31-May-2025 17:25:56 America/Bogota] PHP Warning:  Undefined array key "estudios" in C:\xampp\htdocs\ENCASA_DATABASE\app\Controllers\MiembrosController.php on line 126
+[31-May-2025 17:25:56 America/Bogota] PHP Fatal error:  Uncaught Error: Call to undefined method App\Models\Miembro::guardarTallas() in C:\xampp\htdocs\ENCASA_DATABASE\app\Controllers\MiembrosController.php:133
+Stack trace:
+#0 C:\xampp\htdocs\ENCASA_DATABASE\app\helpers\Router.php(145): App\Controllers\MiembrosController->guardar()
+#1 C:\xampp\htdocs\ENCASA_DATABASE\index.php(65): App\Helpers\Router->dispatch()
+#2 {main}
+  thrown in C:\xampp\htdocs\ENCASA_DATABASE\app\Controllers\MiembrosController.php on line 133
+[31-May-2025 17:29:31 America/Bogota] URL a procesar: 'miembros/crear'
+[31-May-2025 17:29:33 America/Bogota] URL a procesar: 'miembros/guardar'
+[31-May-2025 17:29:33 America/Bogota] PHP Warning:  Undefined array key "estudios" in C:\xampp\htdocs\ENCASA_DATABASE\app\Controllers\MiembrosController.php on line 126
+[31-May-2025 17:29:34 America/Bogota] URL a procesar: 'miembros/8'
+[31-May-2025 17:29:34 America/Bogota] Controlador: Buscando miembro con ID: 8
+[31-May-2025 17:29:34 America/Bogota] Modelo: Buscando miembro con ID: 8
+[31-May-2025 17:29:34 America/Bogota] Modelo: Miembro encontrado, buscando datos relacionados
+[31-May-2025 17:29:34 America/Bogota] Modelo: No se encontraron datos en SaludEmergencias para miembro ID: 8
+[31-May-2025 17:29:34 America/Bogota] Controlador: Miembro encontrado, renderizando vista
+[31-May-2025 17:29:34 America/Bogota] ID detectado en URL: 8
+[31-May-2025 17:29:48 America/Bogota] URL a procesar: 'miembros/editar/8'
+[31-May-2025 17:29:48 America/Bogota] Controlador: Buscando miembro para editar con ID: 8
+[31-May-2025 17:29:48 America/Bogota] Modelo: Buscando miembro con ID: 8
+[31-May-2025 17:29:48 America/Bogota] Modelo: Miembro encontrado, buscando datos relacionados
+[31-May-2025 17:29:48 America/Bogota] Modelo: No se encontraron datos en SaludEmergencias para miembro ID: 8
+[31-May-2025 17:29:48 America/Bogota] Controlador: Miembro encontrado, mostrando formulario de edición
+[31-May-2025 17:31:47 America/Bogota] URL a procesar: 'miembros/actualizar/8'
+[31-May-2025 17:31:47 America/Bogota] Modelo: Buscando miembro con ID: 8
+[31-May-2025 17:31:47 America/Bogota] Modelo: Miembro encontrado, buscando datos relacionados
+[31-May-2025 17:31:47 America/Bogota] Modelo: No se encontraron datos en SaludEmergencias para miembro ID: 8
+[31-May-2025 17:31:47 America/Bogota] SQL de actualización: UPDATE InformacionGeneral SET nombres = :nombres, apellidos = :apellidos, celular = :celular, localidad = :localidad, barrio = :barrio, fecha_nacimiento = :fecha_nacimiento, invitado_por = :invitado_por, conector = :conector, recorrido_espiritual = :recorrido_espiritual, estado_espiritual = :estado_espiritual, habeas_data = :habeas_data, foto = :foto WHERE id = :id
+[31-May-2025 17:31:47 America/Bogota] Resultado de actualización de miembro ID 8: éxito
+[31-May-2025 17:31:47 America/Bogota] Datos de contacto recibidos: {"tipo_documento":"CC","numero_documento":"1056370099","telefono":"+57 3045977547","correo_electronico":"ypvilla.oc@outlook.com","pais":"Colombia","ciudad":"Bogot\u00e1","direccion":"Carrera 82 24d-48","estado_civil":"Casado\/a"}
+[31-May-2025 17:31:47 America/Bogota] SQL actualizar contacto: UPDATE Contacto SET tipo_documento = ?, numero_documento = ?, telefono = ?, correo_electronico = ?, pais = ?, ciudad = ?, direccion = ?, estado_civil = ? WHERE miembro_id = ?
+[31-May-2025 17:31:47 America/Bogota] Resultado actualización contacto: éxito
+[31-May-2025 17:31:47 America/Bogota] Datos de estudios recibidos: {"nivel_estudios":"Universitario","profesion":"Ingenieria Ambiental 4 Semestre","otros_estudios":"","empresa":"Tinsa","direccion_empresa":"","emprendimientos":""}
+[31-May-2025 17:31:47 America/Bogota] Datos de tallas recibidos: {"talla_camisa":"","talla_camiseta":"","talla_pantalon":"","talla_zapatos":""}
+[31-May-2025 17:31:47 America/Bogota] Datos de salud recibidos: {"rh":"","eps":"","acudiente1":"","telefono1":"","acudiente2":"","telefono2":""}
+[31-May-2025 17:31:47 America/Bogota] Datos de carrera recibidos: {"estado":"","carrera_biblica":"","miembro_de":"","casa_de_palabra_y_vida":"","cobertura":"","anotaciones":""}
+[31-May-2025 17:31:47 America/Bogota] Resultados de actualización para miembro ID 8: {"general":true,"contacto":true,"estudios":true,"tallas":true,"salud":true,"carrera":true}
+[31-May-2025 17:31:49 America/Bogota] URL a procesar: 'miembros/8'
+[31-May-2025 17:31:49 America/Bogota] Controlador: Buscando miembro con ID: 8
+[31-May-2025 17:31:49 America/Bogota] Modelo: Buscando miembro con ID: 8
+[31-May-2025 17:31:49 America/Bogota] Modelo: Miembro encontrado, buscando datos relacionados
+[31-May-2025 17:31:49 America/Bogota] Controlador: Miembro encontrado, renderizando vista
+[31-May-2025 17:31:49 America/Bogota] ID detectado en URL: 8
+[31-May-2025 17:31:59 America/Bogota] URL a procesar: 'miembros/editar/8'
+[31-May-2025 17:31:59 America/Bogota] Controlador: Buscando miembro para editar con ID: 8
+[31-May-2025 17:31:59 America/Bogota] Modelo: Buscando miembro con ID: 8
+[31-May-2025 17:31:59 America/Bogota] Modelo: Miembro encontrado, buscando datos relacionados
+[31-May-2025 17:31:59 America/Bogota] Controlador: Miembro encontrado, mostrando formulario de edición
+[31-May-2025 17:33:01 America/Bogota] URL a procesar: 'miembros/actualizar/8'
+[31-May-2025 17:33:01 America/Bogota] Modelo: Buscando miembro con ID: 8
+[31-May-2025 17:33:01 America/Bogota] Modelo: Miembro encontrado, buscando datos relacionados
+[31-May-2025 17:33:01 America/Bogota] SQL de actualización: UPDATE InformacionGeneral SET nombres = :nombres, apellidos = :apellidos, celular = :celular, localidad = :localidad, barrio = :barrio, fecha_nacimiento = :fecha_nacimiento, invitado_por = :invitado_por, conector = :conector, recorrido_espiritual = :recorrido_espiritual, estado_espiritual = :estado_espiritual, habeas_data = :habeas_data WHERE id = :id
+[31-May-2025 17:33:01 America/Bogota] Resultado de actualización de miembro ID 8: éxito
+[31-May-2025 17:33:01 America/Bogota] Datos de contacto recibidos: {"tipo_documento":"CC","numero_documento":"1056370099","telefono":"+57 3045977547","correo_electronico":"ypvilla.oc@outlook.com","pais":"Colombia","ciudad":"Bogot\u00e1","direccion":"Carrera 82 24d-48","estado_civil":"Casado\/a"}
+[31-May-2025 17:33:01 America/Bogota] SQL actualizar contacto: UPDATE Contacto SET tipo_documento = ?, numero_documento = ?, telefono = ?, correo_electronico = ?, pais = ?, ciudad = ?, direccion = ?, estado_civil = ? WHERE miembro_id = ?
+[31-May-2025 17:33:01 America/Bogota] Resultado actualización contacto: éxito
+[31-May-2025 17:33:01 America/Bogota] Datos de estudios recibidos: {"nivel_estudios":"Universitario","profesion":"Ingenieria Ambiental 4 Semestre","otros_estudios":"","empresa":"Tinsa","direccion_empresa":"","emprendimientos":""}
+[31-May-2025 17:33:01 America/Bogota] Datos de tallas recibidos: {"talla_camisa":"L","talla_camiseta":"XL","talla_pantalon":"","talla_zapatos":"42"}
+[31-May-2025 17:33:02 America/Bogota] Datos de salud recibidos: {"rh":"AB+","eps":"Nueva Eps","acudiente1":"Hernando Rafael Gamez Fragozo","telefono1":"3042629153","acudiente2":"","telefono2":""}
+[31-May-2025 17:33:02 America/Bogota] Datos de carrera recibidos: {"estado":"Activo","carrera_biblica":"Discipulado","miembro_de":"Iglesia En Casa","casa_de_palabra_y_vida":"Hayuelos","cobertura":"Pastor Javier Aponte","anotaciones":""}
+[31-May-2025 17:33:02 America/Bogota] Resultados de actualización para miembro ID 8: {"general":true,"contacto":true,"estudios":true,"tallas":true,"salud":true,"carrera":true}
+[31-May-2025 17:33:03 America/Bogota] URL a procesar: 'miembros/8'
+[31-May-2025 17:33:03 America/Bogota] Controlador: Buscando miembro con ID: 8
+[31-May-2025 17:33:03 America/Bogota] Modelo: Buscando miembro con ID: 8
+[31-May-2025 17:33:03 America/Bogota] Modelo: Miembro encontrado, buscando datos relacionados
+[31-May-2025 17:33:03 America/Bogota] Controlador: Miembro encontrado, renderizando vista
+[31-May-2025 17:33:03 America/Bogota] ID detectado en URL: 8
+[31-May-2025 17:33:12 America/Bogota] URL a procesar: 'miembros/editar/8'
+[31-May-2025 17:33:12 America/Bogota] Controlador: Buscando miembro para editar con ID: 8
+[31-May-2025 17:33:12 America/Bogota] Modelo: Buscando miembro con ID: 8
+[31-May-2025 17:33:12 America/Bogota] Modelo: Miembro encontrado, buscando datos relacionados
+[31-May-2025 17:33:12 America/Bogota] Controlador: Miembro encontrado, mostrando formulario de edición
+[31-May-2025 17:33:18 America/Bogota] URL a procesar: 'miembros/actualizar/8'
+[31-May-2025 17:33:18 America/Bogota] Modelo: Buscando miembro con ID: 8
+[31-May-2025 17:33:18 America/Bogota] Modelo: Miembro encontrado, buscando datos relacionados
+[31-May-2025 17:33:18 America/Bogota] SQL de actualización: UPDATE InformacionGeneral SET nombres = :nombres, apellidos = :apellidos, celular = :celular, localidad = :localidad, barrio = :barrio, fecha_nacimiento = :fecha_nacimiento, invitado_por = :invitado_por, conector = :conector, recorrido_espiritual = :recorrido_espiritual, estado_espiritual = :estado_espiritual, habeas_data = :habeas_data WHERE id = :id
+[31-May-2025 17:33:18 America/Bogota] Resultado de actualización de miembro ID 8: éxito
+[31-May-2025 17:33:18 America/Bogota] Datos de contacto recibidos: {"tipo_documento":"CC","numero_documento":"1056370099","telefono":"+57 3045977547","correo_electronico":"ypvilla.oc@outlook.com","pais":"Colombia","ciudad":"Bogot\u00e1","direccion":"Carrera 82 24d-48","estado_civil":"Casado\/a"}
+[31-May-2025 17:33:18 America/Bogota] SQL actualizar contacto: UPDATE Contacto SET tipo_documento = ?, numero_documento = ?, telefono = ?, correo_electronico = ?, pais = ?, ciudad = ?, direccion = ?, estado_civil = ? WHERE miembro_id = ?
+[31-May-2025 17:33:18 America/Bogota] Resultado actualización contacto: éxito
+[31-May-2025 17:33:18 America/Bogota] Datos de estudios recibidos: {"nivel_estudios":"Universitario","profesion":"Ingenieria Ambiental 4 Semestre","otros_estudios":"","empresa":"Tinsa","direccion_empresa":"","emprendimientos":""}
+[31-May-2025 17:33:18 America/Bogota] Datos de tallas recibidos: {"talla_camisa":"L","talla_camiseta":"XL","talla_pantalon":"","talla_zapatos":"42"}
+[31-May-2025 17:33:18 America/Bogota] Datos de salud recibidos: {"rh":"AB+","eps":"Nueva Eps","acudiente1":"Hernando Rafael Gamez Fragozo","telefono1":"3042629153","acudiente2":"","telefono2":""}
+[31-May-2025 17:33:18 America/Bogota] Datos de carrera recibidos: {"estado":"Activo","carrera_biblica":"Discipulado","miembro_de":"Iglesia En Casa","casa_de_palabra_y_vida":"Hayuelos","cobertura":"Pastor Javier Aponte","anotaciones":""}
+[31-May-2025 17:33:18 America/Bogota] Resultados de actualización para miembro ID 8: {"general":true,"contacto":true,"estudios":true,"tallas":true,"salud":true,"carrera":true}
+[31-May-2025 17:33:19 America/Bogota] URL a procesar: 'miembros/8'
+[31-May-2025 17:33:19 America/Bogota] Controlador: Buscando miembro con ID: 8
+[31-May-2025 17:33:19 America/Bogota] Modelo: Buscando miembro con ID: 8
+[31-May-2025 17:33:19 America/Bogota] Modelo: Miembro encontrado, buscando datos relacionados
+[31-May-2025 17:33:19 America/Bogota] Controlador: Miembro encontrado, renderizando vista
+[31-May-2025 17:33:19 America/Bogota] ID detectado en URL: 8
+[31-May-2025 17:33:32 America/Bogota] URL a procesar: 'miembros'
+[31-May-2025 17:33:39 America/Bogota] URL a procesar: 'miembros/4'
+[31-May-2025 17:33:39 America/Bogota] Controlador: Buscando miembro con ID: 4
+[31-May-2025 17:33:39 America/Bogota] Modelo: Buscando miembro con ID: 4
+[31-May-2025 17:33:39 America/Bogota] Modelo: Miembro encontrado, buscando datos relacionados
+[31-May-2025 17:33:39 America/Bogota] Modelo: No se encontraron datos en EstudiosTrabajo para miembro ID: 4
+[31-May-2025 17:33:39 America/Bogota] Modelo: No se encontraron datos en Tallas para miembro ID: 4
+[31-May-2025 17:33:39 America/Bogota] Modelo: No se encontraron datos en SaludEmergencias para miembro ID: 4
+[31-May-2025 17:33:39 America/Bogota] Modelo: No se encontraron datos en CarreraBiblica para miembro ID: 4
+[31-May-2025 17:33:39 America/Bogota] Controlador: Miembro encontrado, renderizando vista
+[31-May-2025 17:33:39 America/Bogota] ID detectado en URL: 4
+[31-May-2025 17:33:39 America/Bogota] URL a procesar: 'uploads/miembros/683b7fd4031ce_Morena.png'
+[31-May-2025 17:33:43 America/Bogota] URL a procesar: 'miembros/eliminar/4'
+[31-May-2025 17:33:43 America/Bogota] Iniciando eliminación, ID recibido: 4
+[31-May-2025 17:33:43 America/Bogota] ID final validado a procesar: 4
+[31-May-2025 17:33:43 America/Bogota] Modelo: Buscando miembro con ID: 4
+[31-May-2025 17:33:43 America/Bogota] Modelo: Miembro encontrado, buscando datos relacionados
+[31-May-2025 17:33:43 America/Bogota] Modelo: No se encontraron datos en EstudiosTrabajo para miembro ID: 4
+[31-May-2025 17:33:43 America/Bogota] Modelo: No se encontraron datos en Tallas para miembro ID: 4
+[31-May-2025 17:33:43 America/Bogota] Modelo: No se encontraron datos en SaludEmergencias para miembro ID: 4
+[31-May-2025 17:33:43 America/Bogota] Modelo: No se encontraron datos en CarreraBiblica para miembro ID: 4
+[31-May-2025 17:33:43 America/Bogota] Resultado de getFullProfile: Miembro encontrado
+[31-May-2025 17:33:43 America/Bogota] Eliminación de Contacto: Éxito
+[31-May-2025 17:33:43 America/Bogota] Eliminación de EstudiosTrabajo: Sin registros
+[31-May-2025 17:33:43 America/Bogota] Eliminación de Tallas: Sin registros
+[31-May-2025 17:33:43 America/Bogota] Eliminación de SaludEmergencias: Sin registros
+[31-May-2025 17:33:43 America/Bogota] Eliminación de CarreraBiblica: Sin registros
+[31-May-2025 17:33:43 America/Bogota] No se encontró la foto: C:\xampp\htdocs\ENCASA_DATABASE/uploads/miembros/683b7fd4031ce_Morena.png
+[31-May-2025 17:33:43 America/Bogota] Eliminación de registro principal: Éxito
+[31-May-2025 17:33:43 America/Bogota] Transacción confirmada, miembro eliminado
+[31-May-2025 17:33:44 America/Bogota] URL a procesar: 'miembros'
+[31-May-2025 17:33:48 America/Bogota] URL a procesar: 'miembros/8'
+[31-May-2025 17:33:48 America/Bogota] Controlador: Buscando miembro con ID: 8
+[31-May-2025 17:33:48 America/Bogota] Modelo: Buscando miembro con ID: 8
+[31-May-2025 17:33:48 America/Bogota] Modelo: Miembro encontrado, buscando datos relacionados
+[31-May-2025 17:33:48 America/Bogota] Controlador: Miembro encontrado, renderizando vista
+[31-May-2025 17:33:48 America/Bogota] ID detectado en URL: 8
+[31-May-2025 17:33:50 America/Bogota] URL a procesar: 'miembros'
+[31-May-2025 17:33:51 America/Bogota] URL a procesar: 'miembros/5'
+[31-May-2025 17:33:51 America/Bogota] Controlador: Buscando miembro con ID: 5
+[31-May-2025 17:33:51 America/Bogota] Modelo: Buscando miembro con ID: 5
+[31-May-2025 17:33:51 America/Bogota] Modelo: Miembro encontrado, buscando datos relacionados
+[31-May-2025 17:33:51 America/Bogota] Modelo: No se encontraron datos en EstudiosTrabajo para miembro ID: 5
+[31-May-2025 17:33:51 America/Bogota] Modelo: No se encontraron datos en Tallas para miembro ID: 5
+[31-May-2025 17:33:51 America/Bogota] Modelo: No se encontraron datos en SaludEmergencias para miembro ID: 5
+[31-May-2025 17:33:51 America/Bogota] Modelo: No se encontraron datos en CarreraBiblica para miembro ID: 5
+[31-May-2025 17:33:51 America/Bogota] Controlador: Miembro encontrado, renderizando vista
+[31-May-2025 17:33:51 America/Bogota] ID detectado en URL: 5
+[31-May-2025 17:33:54 America/Bogota] URL a procesar: 'miembros/eliminar/5'
+[31-May-2025 17:33:54 America/Bogota] Iniciando eliminación, ID recibido: 5
+[31-May-2025 17:33:54 America/Bogota] ID final validado a procesar: 5
+[31-May-2025 17:33:54 America/Bogota] Modelo: Buscando miembro con ID: 5
+[31-May-2025 17:33:54 America/Bogota] Modelo: Miembro encontrado, buscando datos relacionados
+[31-May-2025 17:33:54 America/Bogota] Modelo: No se encontraron datos en EstudiosTrabajo para miembro ID: 5
+[31-May-2025 17:33:54 America/Bogota] Modelo: No se encontraron datos en Tallas para miembro ID: 5
+[31-May-2025 17:33:54 America/Bogota] Modelo: No se encontraron datos en SaludEmergencias para miembro ID: 5
+[31-May-2025 17:33:54 America/Bogota] Modelo: No se encontraron datos en CarreraBiblica para miembro ID: 5
+[31-May-2025 17:33:54 America/Bogota] Resultado de getFullProfile: Miembro encontrado
+[31-May-2025 17:33:54 America/Bogota] Eliminación de Contacto: Éxito
+[31-May-2025 17:33:54 America/Bogota] Eliminación de EstudiosTrabajo: Sin registros
+[31-May-2025 17:33:54 America/Bogota] Eliminación de Tallas: Sin registros
+[31-May-2025 17:33:54 America/Bogota] Eliminación de SaludEmergencias: Sin registros
+[31-May-2025 17:33:54 America/Bogota] Eliminación de CarreraBiblica: Sin registros
+[31-May-2025 17:33:54 America/Bogota] Eliminación de registro principal: Éxito
+[31-May-2025 17:33:54 America/Bogota] Transacción confirmada, miembro eliminado
+[31-May-2025 17:33:54 America/Bogota] URL a procesar: 'miembros'
+[31-May-2025 17:34:01 America/Bogota] URL a procesar: 'miembros/6'
+[31-May-2025 17:34:01 America/Bogota] Controlador: Buscando miembro con ID: 6
+[31-May-2025 17:34:01 America/Bogota] Modelo: Buscando miembro con ID: 6
+[31-May-2025 17:34:01 America/Bogota] Modelo: Miembro encontrado, buscando datos relacionados
+[31-May-2025 17:34:01 America/Bogota] Modelo: No se encontraron datos en Tallas para miembro ID: 6
+[31-May-2025 17:34:01 America/Bogota] Modelo: No se encontraron datos en SaludEmergencias para miembro ID: 6
+[31-May-2025 17:34:01 America/Bogota] Modelo: No se encontraron datos en CarreraBiblica para miembro ID: 6
+[31-May-2025 17:34:01 America/Bogota] Controlador: Miembro encontrado, renderizando vista
+[31-May-2025 17:34:01 America/Bogota] ID detectado en URL: 6
+[31-May-2025 17:34:07 America/Bogota] URL a procesar: 'miembros/eliminar/6'
+[31-May-2025 17:34:07 America/Bogota] Iniciando eliminación, ID recibido: 6
+[31-May-2025 17:34:07 America/Bogota] ID final validado a procesar: 6
+[31-May-2025 17:34:07 America/Bogota] Modelo: Buscando miembro con ID: 6
+[31-May-2025 17:34:07 America/Bogota] Modelo: Miembro encontrado, buscando datos relacionados
+[31-May-2025 17:34:07 America/Bogota] Modelo: No se encontraron datos en Tallas para miembro ID: 6
+[31-May-2025 17:34:07 America/Bogota] Modelo: No se encontraron datos en SaludEmergencias para miembro ID: 6
+[31-May-2025 17:34:07 America/Bogota] Modelo: No se encontraron datos en CarreraBiblica para miembro ID: 6
+[31-May-2025 17:34:07 America/Bogota] Resultado de getFullProfile: Miembro encontrado
+[31-May-2025 17:34:07 America/Bogota] Eliminación de Contacto: Éxito
+[31-May-2025 17:34:07 America/Bogota] Eliminación de EstudiosTrabajo: Éxito
+[31-May-2025 17:34:07 America/Bogota] Eliminación de Tallas: Sin registros
+[31-May-2025 17:34:07 America/Bogota] Eliminación de SaludEmergencias: Sin registros
+[31-May-2025 17:34:07 America/Bogota] Eliminación de CarreraBiblica: Sin registros
+[31-May-2025 17:34:07 America/Bogota] Eliminación de registro principal: Éxito
+[31-May-2025 17:34:08 America/Bogota] Transacción confirmada, miembro eliminado
+[31-May-2025 17:34:08 America/Bogota] URL a procesar: 'miembros'
+[31-May-2025 17:34:18 America/Bogota] URL a procesar: 'miembros/7'
+[31-May-2025 17:34:18 America/Bogota] Controlador: Buscando miembro con ID: 7
+[31-May-2025 17:34:18 America/Bogota] Modelo: Buscando miembro con ID: 7
+[31-May-2025 17:34:18 America/Bogota] Modelo: Miembro encontrado, buscando datos relacionados
+[31-May-2025 17:34:18 America/Bogota] Modelo: No se encontraron datos en Tallas para miembro ID: 7
+[31-May-2025 17:34:18 America/Bogota] Modelo: No se encontraron datos en SaludEmergencias para miembro ID: 7
+[31-May-2025 17:34:18 America/Bogota] Modelo: No se encontraron datos en CarreraBiblica para miembro ID: 7
+[31-May-2025 17:34:18 America/Bogota] Controlador: Miembro encontrado, renderizando vista
+[31-May-2025 17:34:18 America/Bogota] ID detectado en URL: 7
+[31-May-2025 17:34:21 America/Bogota] URL a procesar: 'miembros/eliminar/7'
+[31-May-2025 17:34:21 America/Bogota] Iniciando eliminación, ID recibido: 7
+[31-May-2025 17:34:21 America/Bogota] ID final validado a procesar: 7
+[31-May-2025 17:34:21 America/Bogota] Modelo: Buscando miembro con ID: 7
+[31-May-2025 17:34:21 America/Bogota] Modelo: Miembro encontrado, buscando datos relacionados
+[31-May-2025 17:34:21 America/Bogota] Modelo: No se encontraron datos en Tallas para miembro ID: 7
+[31-May-2025 17:34:21 America/Bogota] Modelo: No se encontraron datos en SaludEmergencias para miembro ID: 7
+[31-May-2025 17:34:21 America/Bogota] Modelo: No se encontraron datos en CarreraBiblica para miembro ID: 7
+[31-May-2025 17:34:21 America/Bogota] Resultado de getFullProfile: Miembro encontrado
+[31-May-2025 17:34:21 America/Bogota] Eliminación de Contacto: Éxito
+[31-May-2025 17:34:21 America/Bogota] Eliminación de EstudiosTrabajo: Éxito
+[31-May-2025 17:34:21 America/Bogota] Eliminación de Tallas: Sin registros
+[31-May-2025 17:34:21 America/Bogota] Eliminación de SaludEmergencias: Sin registros
+[31-May-2025 17:34:21 America/Bogota] Eliminación de CarreraBiblica: Sin registros
+[31-May-2025 17:34:21 America/Bogota] Eliminación de registro principal: Éxito
+[31-May-2025 17:34:21 America/Bogota] Transacción confirmada, miembro eliminado
+[31-May-2025 17:34:21 America/Bogota] URL a procesar: 'miembros'
+[31-May-2025 17:34:24 America/Bogota] URL a procesar: 'miembros/8'
+[31-May-2025 17:34:24 America/Bogota] Controlador: Buscando miembro con ID: 8
+[31-May-2025 17:34:24 America/Bogota] Modelo: Buscando miembro con ID: 8
+[31-May-2025 17:34:24 America/Bogota] Modelo: Miembro encontrado, buscando datos relacionados
+[31-May-2025 17:34:24 America/Bogota] Controlador: Miembro encontrado, renderizando vista
+[31-May-2025 17:34:24 America/Bogota] ID detectado en URL: 8
+[31-May-2025 17:34:28 America/Bogota] URL a procesar: 'miembros/editar/8'
+[31-May-2025 17:34:28 America/Bogota] Controlador: Buscando miembro para editar con ID: 8
+[31-May-2025 17:34:28 America/Bogota] Modelo: Buscando miembro con ID: 8
+[31-May-2025 17:34:28 America/Bogota] Modelo: Miembro encontrado, buscando datos relacionados
+[31-May-2025 17:34:28 America/Bogota] Controlador: Miembro encontrado, mostrando formulario de edición
+[31-May-2025 17:34:36 America/Bogota] URL a procesar: 'miembros/actualizar/8'
+[31-May-2025 17:34:36 America/Bogota] Modelo: Buscando miembro con ID: 8
+[31-May-2025 17:34:36 America/Bogota] Modelo: Miembro encontrado, buscando datos relacionados
+[31-May-2025 17:34:36 America/Bogota] SQL de actualización: UPDATE InformacionGeneral SET nombres = :nombres, apellidos = :apellidos, celular = :celular, localidad = :localidad, barrio = :barrio, fecha_nacimiento = :fecha_nacimiento, invitado_por = :invitado_por, conector = :conector, recorrido_espiritual = :recorrido_espiritual, estado_espiritual = :estado_espiritual, habeas_data = :habeas_data WHERE id = :id
+[31-May-2025 17:34:36 America/Bogota] Resultado de actualización de miembro ID 8: éxito
+[31-May-2025 17:34:36 America/Bogota] Datos de contacto recibidos: {"tipo_documento":"CC","numero_documento":"1056370099","telefono":"+57 3045977547","correo_electronico":"ypvilla.oc@outlook.com","pais":"Colombia","ciudad":"Bogot\u00e1","direccion":"Carrera 82 24d-48","estado_civil":"Casado\/a"}
+[31-May-2025 17:34:36 America/Bogota] SQL actualizar contacto: UPDATE Contacto SET tipo_documento = ?, numero_documento = ?, telefono = ?, correo_electronico = ?, pais = ?, ciudad = ?, direccion = ?, estado_civil = ? WHERE miembro_id = ?
+[31-May-2025 17:34:36 America/Bogota] Resultado actualización contacto: éxito
+[31-May-2025 17:34:36 America/Bogota] Datos de estudios recibidos: {"nivel_estudios":"Universitario","profesion":"Ingenieria Ambiental 4 Semestre","otros_estudios":"","empresa":"Tinsa","direccion_empresa":"","emprendimientos":""}
+[31-May-2025 17:34:36 America/Bogota] Datos de tallas recibidos: {"talla_camisa":"L","talla_camiseta":"XL","talla_pantalon":"","talla_zapatos":"42"}
+[31-May-2025 17:34:36 America/Bogota] Datos de salud recibidos: {"rh":"AB+","eps":"Nueva Eps","acudiente1":"Hernando Rafael Gamez Fragozo","telefono1":"3042629153","acudiente2":"","telefono2":""}
+[31-May-2025 17:34:36 America/Bogota] Datos de carrera recibidos: {"estado":"Activo","carrera_biblica":"Discipulado","miembro_de":"Iglesia En Casa","casa_de_palabra_y_vida":"Hayuelos","cobertura":"Pastor Javier Aponte","anotaciones":""}
+[31-May-2025 17:34:36 America/Bogota] Resultados de actualización para miembro ID 8: {"general":true,"contacto":true,"estudios":true,"tallas":true,"salud":true,"carrera":true}
+[31-May-2025 17:34:37 America/Bogota] URL a procesar: 'miembros/8'
+[31-May-2025 17:34:37 America/Bogota] Controlador: Buscando miembro con ID: 8
+[31-May-2025 17:34:37 America/Bogota] Modelo: Buscando miembro con ID: 8
+[31-May-2025 17:34:37 America/Bogota] Modelo: Miembro encontrado, buscando datos relacionados
+[31-May-2025 17:34:37 America/Bogota] Controlador: Miembro encontrado, renderizando vista
+[31-May-2025 17:34:37 America/Bogota] ID detectado en URL: 8
+[31-May-2025 17:34:44 America/Bogota] URL a procesar: 'miembros'
+[31-May-2025 17:34:47 America/Bogota] URL a procesar: 'miembros/8'
+[31-May-2025 17:34:47 America/Bogota] Controlador: Buscando miembro con ID: 8
+[31-May-2025 17:34:47 America/Bogota] Modelo: Buscando miembro con ID: 8
+[31-May-2025 17:34:47 America/Bogota] Modelo: Miembro encontrado, buscando datos relacionados
+[31-May-2025 17:34:47 America/Bogota] Controlador: Miembro encontrado, renderizando vista
+[31-May-2025 17:34:47 America/Bogota] ID detectado en URL: 8
+[31-May-2025 17:35:18 America/Bogota] URL a procesar: 'miembros/editar/8'
+[31-May-2025 17:35:18 America/Bogota] Controlador: Buscando miembro para editar con ID: 8
+[31-May-2025 17:35:18 America/Bogota] Modelo: Buscando miembro con ID: 8
+[31-May-2025 17:35:18 America/Bogota] Modelo: Miembro encontrado, buscando datos relacionados
+[31-May-2025 17:35:18 America/Bogota] Controlador: Miembro encontrado, mostrando formulario de edición
+[31-May-2025 17:35:43 America/Bogota] URL a procesar: 'miembros/actualizar/8'
+[31-May-2025 17:35:43 America/Bogota] Modelo: Buscando miembro con ID: 8
+[31-May-2025 17:35:43 America/Bogota] Modelo: Miembro encontrado, buscando datos relacionados
+[31-May-2025 17:35:43 America/Bogota] SQL de actualización: UPDATE InformacionGeneral SET nombres = :nombres, apellidos = :apellidos, celular = :celular, localidad = :localidad, barrio = :barrio, fecha_nacimiento = :fecha_nacimiento, invitado_por = :invitado_por, conector = :conector, recorrido_espiritual = :recorrido_espiritual, estado_espiritual = :estado_espiritual, habeas_data = :habeas_data WHERE id = :id
+[31-May-2025 17:35:43 America/Bogota] Resultado de actualización de miembro ID 8: éxito
+[31-May-2025 17:35:43 America/Bogota] Datos de contacto recibidos: {"tipo_documento":"CC","numero_documento":"1056370099","telefono":"+57 3045977547","correo_electronico":"ypvilla.oc@outlook.com","pais":"Colombia","ciudad":"Bogot\u00e1","direccion":"Carrera 82 24d-48","estado_civil":"Casado\/a"}
+[31-May-2025 17:35:43 America/Bogota] SQL actualizar contacto: UPDATE Contacto SET tipo_documento = ?, numero_documento = ?, telefono = ?, correo_electronico = ?, pais = ?, ciudad = ?, direccion = ?, estado_civil = ? WHERE miembro_id = ?
+[31-May-2025 17:35:43 America/Bogota] Resultado actualización contacto: éxito
+[31-May-2025 17:35:43 America/Bogota] Datos de estudios recibidos: {"nivel_estudios":"Universitario","profesion":"Ingenieria Ambiental 4 Semestre","otros_estudios":"","empresa":"Tinsa","direccion_empresa":"","emprendimientos":""}
+[31-May-2025 17:35:43 America/Bogota] Datos de tallas recibidos: {"talla_camisa":"L","talla_camiseta":"XL","talla_pantalon":"","talla_zapatos":"42"}
+[31-May-2025 17:35:43 America/Bogota] Datos de salud recibidos: {"rh":"AB+","eps":"Nueva Eps","acudiente1":"Hernando Rafael Gamez Fragozo","telefono1":"3042629153","acudiente2":"","telefono2":""}
+[31-May-2025 17:35:43 America/Bogota] Datos de carrera recibidos: {"estado":"Activo","carrera_biblica":"Discipulado","miembro_de":"Iglesia En Casa","casa_de_palabra_y_vida":"Hayuelos","cobertura":"Pastor Javier Aponte","anotaciones":""}
+[31-May-2025 17:35:43 America/Bogota] Resultados de actualización para miembro ID 8: {"general":true,"contacto":true,"estudios":true,"tallas":true,"salud":true,"carrera":true}
+[31-May-2025 17:35:45 America/Bogota] URL a procesar: 'miembros/8'
+[31-May-2025 17:35:45 America/Bogota] Controlador: Buscando miembro con ID: 8
+[31-May-2025 17:35:45 America/Bogota] Modelo: Buscando miembro con ID: 8
+[31-May-2025 17:35:45 America/Bogota] Modelo: Miembro encontrado, buscando datos relacionados
+[31-May-2025 17:35:45 America/Bogota] Controlador: Miembro encontrado, renderizando vista
+[31-May-2025 17:35:45 America/Bogota] ID detectado en URL: 8
+[31-May-2025 17:36:10 America/Bogota] URL a procesar: 'miembros/editar/8'
+[31-May-2025 17:36:10 America/Bogota] Controlador: Buscando miembro para editar con ID: 8
+[31-May-2025 17:36:10 America/Bogota] Modelo: Buscando miembro con ID: 8
+[31-May-2025 17:36:10 America/Bogota] Modelo: Miembro encontrado, buscando datos relacionados
+[31-May-2025 17:36:10 America/Bogota] Controlador: Miembro encontrado, mostrando formulario de edición
+[31-May-2025 17:36:21 America/Bogota] URL a procesar: 'miembros/actualizar/8'
+[31-May-2025 17:36:21 America/Bogota] Modelo: Buscando miembro con ID: 8
+[31-May-2025 17:36:21 America/Bogota] Modelo: Miembro encontrado, buscando datos relacionados
+[31-May-2025 17:36:21 America/Bogota] SQL de actualización: UPDATE InformacionGeneral SET nombres = :nombres, apellidos = :apellidos, celular = :celular, localidad = :localidad, barrio = :barrio, fecha_nacimiento = :fecha_nacimiento, invitado_por = :invitado_por, conector = :conector, recorrido_espiritual = :recorrido_espiritual, estado_espiritual = :estado_espiritual, habeas_data = :habeas_data WHERE id = :id
+[31-May-2025 17:36:21 America/Bogota] Resultado de actualización de miembro ID 8: éxito
+[31-May-2025 17:36:21 America/Bogota] Datos de contacto recibidos: {"tipo_documento":"CC","numero_documento":"1056370099","telefono":"+57 3045977547","correo_electronico":"ypvilla.oc@outlook.com","pais":"Colombia","ciudad":"Bogot\u00e1","direccion":"Carrera 82 24d-48","estado_civil":"Casado\/a"}
+[31-May-2025 17:36:21 America/Bogota] SQL actualizar contacto: UPDATE Contacto SET tipo_documento = ?, numero_documento = ?, telefono = ?, correo_electronico = ?, pais = ?, ciudad = ?, direccion = ?, estado_civil = ? WHERE miembro_id = ?
+[31-May-2025 17:36:21 America/Bogota] Resultado actualización contacto: éxito
+[31-May-2025 17:36:21 America/Bogota] Datos de estudios recibidos: {"nivel_estudios":"Universitario","profesion":"Ingenieria Ambiental 4 Semestre","otros_estudios":"","empresa":"Tinsa","direccion_empresa":"","emprendimientos":""}
+[31-May-2025 17:36:21 America/Bogota] Datos de tallas recibidos: {"talla_camisa":"L","talla_camiseta":"XL","talla_pantalon":"14","talla_zapatos":"42"}
+[31-May-2025 17:36:21 America/Bogota] Datos de salud recibidos: {"rh":"AB+","eps":"Nueva Eps","acudiente1":"Hernando Rafael Gamez Fragozo","telefono1":"3042629153","acudiente2":"","telefono2":""}
+[31-May-2025 17:36:21 America/Bogota] Datos de carrera recibidos: {"estado":"Activo","carrera_biblica":"Discipulado","miembro_de":"Iglesia En Casa","casa_de_palabra_y_vida":"Hayuelos","cobertura":"Pastor Javier Aponte","anotaciones":""}
+[31-May-2025 17:36:21 America/Bogota] Resultados de actualización para miembro ID 8: {"general":true,"contacto":true,"estudios":true,"tallas":true,"salud":true,"carrera":true}
+[31-May-2025 17:36:22 America/Bogota] URL a procesar: 'miembros/8'
+[31-May-2025 17:36:22 America/Bogota] Controlador: Buscando miembro con ID: 8
+[31-May-2025 17:36:22 America/Bogota] Modelo: Buscando miembro con ID: 8
+[31-May-2025 17:36:22 America/Bogota] Modelo: Miembro encontrado, buscando datos relacionados
+[31-May-2025 17:36:22 America/Bogota] Controlador: Miembro encontrado, renderizando vista
+[31-May-2025 17:36:22 America/Bogota] ID detectado en URL: 8
+[31-May-2025 17:36:26 America/Bogota] URL a procesar: 'miembros/editar/8'
+[31-May-2025 17:36:26 America/Bogota] Controlador: Buscando miembro para editar con ID: 8
+[31-May-2025 17:36:26 America/Bogota] Modelo: Buscando miembro con ID: 8
+[31-May-2025 17:36:26 America/Bogota] Modelo: Miembro encontrado, buscando datos relacionados
+[31-May-2025 17:36:26 America/Bogota] Controlador: Miembro encontrado, mostrando formulario de edición
+[31-May-2025 17:36:36 America/Bogota] URL a procesar: 'miembros/actualizar/8'
+[31-May-2025 17:36:36 America/Bogota] Modelo: Buscando miembro con ID: 8
+[31-May-2025 17:36:36 America/Bogota] Modelo: Miembro encontrado, buscando datos relacionados
+[31-May-2025 17:36:36 America/Bogota] SQL de actualización: UPDATE InformacionGeneral SET nombres = :nombres, apellidos = :apellidos, celular = :celular, localidad = :localidad, barrio = :barrio, fecha_nacimiento = :fecha_nacimiento, invitado_por = :invitado_por, conector = :conector, recorrido_espiritual = :recorrido_espiritual, estado_espiritual = :estado_espiritual, habeas_data = :habeas_data WHERE id = :id
+[31-May-2025 17:36:36 America/Bogota] Resultado de actualización de miembro ID 8: éxito
+[31-May-2025 17:36:36 America/Bogota] Datos de contacto recibidos: {"tipo_documento":"CC","numero_documento":"1056370099","telefono":"+57 3045977547","correo_electronico":"ypvilla.oc@outlook.com","pais":"Colombia","ciudad":"Bogot\u00e1","direccion":"Carrera 82 24d-48","estado_civil":"Casado\/a"}
+[31-May-2025 17:36:36 America/Bogota] SQL actualizar contacto: UPDATE Contacto SET tipo_documento = ?, numero_documento = ?, telefono = ?, correo_electronico = ?, pais = ?, ciudad = ?, direccion = ?, estado_civil = ? WHERE miembro_id = ?
+[31-May-2025 17:36:36 America/Bogota] Resultado actualización contacto: éxito
+[31-May-2025 17:36:36 America/Bogota] Datos de estudios recibidos: {"nivel_estudios":"Universitario","profesion":"Ingenieria Ambiental 4 Semestre","otros_estudios":"","empresa":"Tinsa","direccion_empresa":"","emprendimientos":""}
+[31-May-2025 17:36:36 America/Bogota] Datos de tallas recibidos: {"talla_camisa":"L","talla_camiseta":"XL","talla_pantalon":"14","talla_zapatos":"39"}
+[31-May-2025 17:36:36 America/Bogota] Datos de salud recibidos: {"rh":"AB+","eps":"Nueva Eps","acudiente1":"Hernando Rafael Gamez Fragozo","telefono1":"3042629153","acudiente2":"","telefono2":""}
+[31-May-2025 17:36:36 America/Bogota] Datos de carrera recibidos: {"estado":"Activo","carrera_biblica":"Discipulado","miembro_de":"Iglesia En Casa","casa_de_palabra_y_vida":"Hayuelos","cobertura":"Pastor Javier Aponte","anotaciones":""}
+[31-May-2025 17:36:36 America/Bogota] Resultados de actualización para miembro ID 8: {"general":true,"contacto":true,"estudios":true,"tallas":true,"salud":true,"carrera":true}
+[31-May-2025 17:36:38 America/Bogota] URL a procesar: 'miembros/8'
+[31-May-2025 17:36:38 America/Bogota] Controlador: Buscando miembro con ID: 8
+[31-May-2025 17:36:38 America/Bogota] Modelo: Buscando miembro con ID: 8
+[31-May-2025 17:36:38 America/Bogota] Modelo: Miembro encontrado, buscando datos relacionados
+[31-May-2025 17:36:38 America/Bogota] Controlador: Miembro encontrado, renderizando vista
+[31-May-2025 17:36:38 America/Bogota] ID detectado en URL: 8
+[31-May-2025 17:37:15 America/Bogota] URL a procesar: 'miembros'
+[31-May-2025 17:37:38 America/Bogota] URL a procesar: 'miembros/8'
+[31-May-2025 17:37:38 America/Bogota] Controlador: Buscando miembro con ID: 8
+[31-May-2025 17:37:38 America/Bogota] Modelo: Buscando miembro con ID: 8
+[31-May-2025 17:37:38 America/Bogota] Modelo: Miembro encontrado, buscando datos relacionados
+[31-May-2025 17:37:38 America/Bogota] Controlador: Miembro encontrado, renderizando vista
+[31-May-2025 17:37:38 America/Bogota] ID detectado en URL: 8
+[31-May-2025 17:37:40 America/Bogota] URL a procesar: 'miembros/editar/8'
+[31-May-2025 17:37:40 America/Bogota] Controlador: Buscando miembro para editar con ID: 8
+[31-May-2025 17:37:40 America/Bogota] Modelo: Buscando miembro con ID: 8
+[31-May-2025 17:37:40 America/Bogota] Modelo: Miembro encontrado, buscando datos relacionados
+[31-May-2025 17:37:40 America/Bogota] Controlador: Miembro encontrado, mostrando formulario de edición
+[31-May-2025 17:38:52 America/Bogota] URL a procesar: 'miembros/actualizar/8'
+[31-May-2025 17:38:52 America/Bogota] Modelo: Buscando miembro con ID: 8
+[31-May-2025 17:38:52 America/Bogota] Modelo: Miembro encontrado, buscando datos relacionados
+[31-May-2025 17:38:52 America/Bogota] SQL de actualización: UPDATE InformacionGeneral SET nombres = :nombres, apellidos = :apellidos, celular = :celular, localidad = :localidad, barrio = :barrio, fecha_nacimiento = :fecha_nacimiento, invitado_por = :invitado_por, conector = :conector, recorrido_espiritual = :recorrido_espiritual, estado_espiritual = :estado_espiritual, habeas_data = :habeas_data WHERE id = :id
+[31-May-2025 17:38:52 America/Bogota] Resultado de actualización de miembro ID 8: éxito
+[31-May-2025 17:38:52 America/Bogota] Datos de contacto recibidos: {"tipo_documento":"CC","numero_documento":"1056370099","telefono":"+57 3045977547","correo_electronico":"ypvilla.oc@outlook.com","pais":"Colombia","ciudad":"Bogot\u00e1","direccion":"Carrera 82 24d-48","estado_civil":"Casado\/a"}
+[31-May-2025 17:38:52 America/Bogota] SQL actualizar contacto: UPDATE Contacto SET tipo_documento = ?, numero_documento = ?, telefono = ?, correo_electronico = ?, pais = ?, ciudad = ?, direccion = ?, estado_civil = ? WHERE miembro_id = ?
+[31-May-2025 17:38:52 America/Bogota] Resultado actualización contacto: éxito
+[31-May-2025 17:38:52 America/Bogota] Datos de estudios recibidos: {"nivel_estudios":"T\u00e9cnico","profesion":"T\u00e9cnico Forestal","otros_estudios":"Ingenier\u00eda Ambiental 5 semestre","empresa":"Tinsa","direccion_empresa":"","emprendimientos":""}
+[31-May-2025 17:38:52 America/Bogota] Datos de tallas recibidos: {"talla_camisa":"L","talla_camiseta":"XL","talla_pantalon":"14","talla_zapatos":"39"}
+[31-May-2025 17:38:52 America/Bogota] Datos de salud recibidos: {"rh":"AB+","eps":"Nueva Eps","acudiente1":"Hernando Rafael Gamez Fragozo","telefono1":"3042629153","acudiente2":"","telefono2":""}
+[31-May-2025 17:38:52 America/Bogota] Datos de carrera recibidos: {"estado":"Activo","carrera_biblica":"Discipulado","miembro_de":"Iglesia En Casa","casa_de_palabra_y_vida":"Hayuelos","cobertura":"Pastor Javier Aponte","anotaciones":""}
+[31-May-2025 17:38:52 America/Bogota] Resultados de actualización para miembro ID 8: {"general":true,"contacto":true,"estudios":true,"tallas":true,"salud":true,"carrera":true}
+[31-May-2025 17:38:53 America/Bogota] URL a procesar: 'miembros/8'
+[31-May-2025 17:38:53 America/Bogota] Controlador: Buscando miembro con ID: 8
+[31-May-2025 17:38:53 America/Bogota] Modelo: Buscando miembro con ID: 8
+[31-May-2025 17:38:53 America/Bogota] Modelo: Miembro encontrado, buscando datos relacionados
+[31-May-2025 17:38:53 America/Bogota] Controlador: Miembro encontrado, renderizando vista
+[31-May-2025 17:38:53 America/Bogota] ID detectado en URL: 8
+[31-May-2025 17:39:02 America/Bogota] URL a procesar: 'miembros/1'
+[31-May-2025 17:39:02 America/Bogota] Controlador: Buscando miembro con ID: 1
+[31-May-2025 17:39:02 America/Bogota] Modelo: Buscando miembro con ID: 1
+[31-May-2025 17:39:02 America/Bogota] Modelo: Miembro encontrado, buscando datos relacionados
+[31-May-2025 17:39:02 America/Bogota] Controlador: Miembro encontrado, renderizando vista
+[31-May-2025 17:39:02 America/Bogota] ID detectado en URL: 1
+[31-May-2025 17:39:09 America/Bogota] URL a procesar: 'miembros'
+[31-May-2025 17:42:00 America/Bogota] URL a procesar: 'miembros/1'
+[31-May-2025 17:42:00 America/Bogota] Controlador: Buscando miembro con ID: 1
+[31-May-2025 17:42:00 America/Bogota] Modelo: Buscando miembro con ID: 1
+[31-May-2025 17:42:00 America/Bogota] Modelo: Miembro encontrado, buscando datos relacionados
+[31-May-2025 17:42:00 America/Bogota] Controlador: Miembro encontrado, renderizando vista
+[31-May-2025 17:42:00 America/Bogota] ID detectado en URL: 1

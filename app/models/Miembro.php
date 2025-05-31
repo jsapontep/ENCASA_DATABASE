@@ -204,48 +204,49 @@ class Miembro extends Model {
     /**
      * Guarda datos de contacto de un miembro
      */
-    public function guardarContacto($datos) {
+    public function guardarContacto($datos)
+    {
         try {
-            // Verificar si ya existe un registro para este miembro
-            $stmt = $this->db->prepare("SELECT id FROM Contacto WHERE miembro_id = ?");
-            $stmt->execute([$datos['miembro_id']]);
-            $existe = $stmt->fetch(\PDO::FETCH_ASSOC);
+            // Extraer miembro_id del array
+            $miembroId = $datos['miembro_id'];
             
+            // Verificar si ya existe un registro para este miembro
+            $stmt = $this->db->prepare("SELECT COUNT(*) FROM Contacto WHERE miembro_id = ?");
+            $stmt->execute([$miembroId]);
+            $existe = (bool)$stmt->fetchColumn();
+
             if ($existe) {
                 // Actualizar registro existente
-                $id = $existe['id'];
+                $campos = [];
+                $valores = [];
                 
-                // Eliminar miembro_id del array para la actualización
-                $miembro_id = $datos['miembro_id'];
-                unset($datos['miembro_id']);
-                
-                $sets = [];
                 foreach ($datos as $campo => $valor) {
-                    $sets[] = "$campo = ?";
+                    if ($campo !== 'miembro_id') {
+                        $campos[] = "$campo = ?";
+                        $valores[] = $valor;
+                    }
                 }
-                $sets_str = implode(', ', $sets);
                 
-                $sql = "UPDATE Contacto SET $sets_str WHERE id = ?";
+                if (empty($campos)) {
+                    return false; // No hay campos para actualizar
+                }
                 
+                $valores[] = $miembroId; // Para la condición WHERE
+                
+                $sql = "UPDATE Contacto SET " . implode(', ', $campos) . " WHERE miembro_id = ?";
                 $stmt = $this->db->prepare($sql);
-                $stmt->execute([...array_values($datos), $id]);
+                return $stmt->execute($valores);
             } else {
                 // Insertar nuevo registro
                 $campos = array_keys($datos);
-                $valores = array_values($datos);
+                $placeholders = array_fill(0, count($campos), '?');
                 
-                $campos_str = implode(', ', $campos);
-                $placeholders = implode(', ', array_fill(0, count($campos), '?'));
-                
-                $sql = "INSERT INTO Contacto ($campos_str) VALUES ($placeholders)";
-                
+                $sql = "INSERT INTO Contacto (" . implode(', ', $campos) . ") VALUES (" . implode(', ', $placeholders) . ")";
                 $stmt = $this->db->prepare($sql);
-                $stmt->execute($valores);
+                return $stmt->execute(array_values($datos));
             }
-            
-            return true;
         } catch (\PDOException $e) {
-            error_log("Error al guardar contacto: " . $e->getMessage());
+            error_log("Error al guardar datos de contacto: " . $e->getMessage());
             return false;
         }
     }
@@ -306,8 +307,169 @@ class Miembro extends Model {
         }
     }
     
-    // Implementar métodos similares para las otras tablas:
-    // - guardarEstudiosTrabajo()
-    // - guardarTallas()
-    // - guardarCarreraBiblica()
+    /**
+     * Guarda o actualiza los datos de estudios y trabajo de un miembro
+     * 
+     * @param int $miembroId ID del miembro
+     * @param array $datos Datos de estudios y trabajo
+     * @return bool Resultado de la operación
+     */
+    public function guardarEstudiosTrabajo($miembroId, $datos)
+    {
+        try {
+            // Verificar si ya existe un registro para este miembro
+            $stmt = $this->db->prepare("SELECT COUNT(*) FROM EstudiosTrabajo WHERE miembro_id = ?");
+            $stmt->execute([$miembroId]);
+            $existe = (bool)$stmt->fetchColumn();
+
+            if ($existe) {
+                // Actualizar registro existente
+                $sql = "UPDATE EstudiosTrabajo SET 
+                    nivel_estudios = ?, 
+                    profesion = ?, 
+                    otros_estudios = ?, 
+                    empresa = ?, 
+                    direccion_empresa = ?, 
+                    emprendimientos = ?
+                    WHERE miembro_id = ?";
+                
+                $stmt = $this->db->prepare($sql);
+                return $stmt->execute([
+                    $datos['nivel_estudios'] ?? null,
+                    $datos['profesion'] ?? null,
+                    $datos['otros_estudios'] ?? null,
+                    $datos['empresa'] ?? null,
+                    $datos['direccion_empresa'] ?? null,
+                    $datos['emprendimientos'] ?? null,
+                    $miembroId
+                ]);
+            } else {
+                // Insertar nuevo registro
+                $sql = "INSERT INTO EstudiosTrabajo (
+                    miembro_id, nivel_estudios, profesion, otros_estudios, 
+                    empresa, direccion_empresa, emprendimientos
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)";
+                
+                $stmt = $this->db->prepare($sql);
+                return $stmt->execute([
+                    $miembroId,
+                    $datos['nivel_estudios'] ?? null,
+                    $datos['profesion'] ?? null,
+                    $datos['otros_estudios'] ?? null,
+                    $datos['empresa'] ?? null,
+                    $datos['direccion_empresa'] ?? null,
+                    $datos['emprendimientos'] ?? null
+                ]);
+            }
+        } catch (\PDOException $e) {
+            error_log("Error al guardar datos de estudios y trabajo: " . $e->getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Guarda o actualiza las tallas de un miembro
+     * 
+     * @param array $datos Datos de tallas
+     * @return bool Resultado de la operación
+     */
+    public function guardarTallas($datos)
+    {
+        try {
+            // Extraer miembro_id del array
+            $miembroId = $datos['miembro_id'];
+            
+            // Verificar si ya existe un registro para este miembro
+            $stmt = $this->db->prepare("SELECT COUNT(*) FROM Tallas WHERE miembro_id = ?");
+            $stmt->execute([$miembroId]);
+            $existe = (bool)$stmt->fetchColumn();
+
+            if ($existe) {
+                // Actualizar registro existente
+                $campos = [];
+                $valores = [];
+                
+                foreach ($datos as $campo => $valor) {
+                    if ($campo !== 'miembro_id') {
+                        $campos[] = "$campo = ?";
+                        $valores[] = $valor;
+                    }
+                }
+                
+                if (empty($campos)) {
+                    return false; // No hay campos para actualizar
+                }
+                
+                $valores[] = $miembroId; // Para la condición WHERE
+                
+                $sql = "UPDATE Tallas SET " . implode(', ', $campos) . " WHERE miembro_id = ?";
+                $stmt = $this->db->prepare($sql);
+                return $stmt->execute($valores);
+            } else {
+                // Insertar nuevo registro
+                $campos = array_keys($datos);
+                $placeholders = array_fill(0, count($campos), '?');
+                
+                $sql = "INSERT INTO Tallas (" . implode(', ', $campos) . ") VALUES (" . implode(', ', $placeholders) . ")";
+                $stmt = $this->db->prepare($sql);
+                return $stmt->execute(array_values($datos));
+            }
+        } catch (\PDOException $e) {
+            error_log("Error al guardar datos de tallas: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Guarda o actualiza los datos de carrera bíblica de un miembro
+     * 
+     * @param array $datos Datos de carrera bíblica
+     * @return bool Resultado de la operación
+     */
+    public function guardarCarreraBiblica($datos)
+    {
+        try {
+            // Extraer miembro_id del array
+            $miembroId = $datos['miembro_id'];
+            
+            // Verificar si ya existe un registro para este miembro
+            $stmt = $this->db->prepare("SELECT COUNT(*) FROM CarreraBiblica WHERE miembro_id = ?");
+            $stmt->execute([$miembroId]);
+            $existe = (bool)$stmt->fetchColumn();
+
+            if ($existe) {
+                // Actualizar registro existente
+                $campos = [];
+                $valores = [];
+                
+                foreach ($datos as $campo => $valor) {
+                    if ($campo !== 'miembro_id') {
+                        $campos[] = "$campo = ?";
+                        $valores[] = $valor;
+                    }
+                }
+                
+                if (empty($campos)) {
+                    return false; // No hay campos para actualizar
+                }
+                
+                $valores[] = $miembroId; // Para la condición WHERE
+                
+                $sql = "UPDATE CarreraBiblica SET " . implode(', ', $campos) . " WHERE miembro_id = ?";
+                $stmt = $this->db->prepare($sql);
+                return $stmt->execute($valores);
+            } else {
+                // Insertar nuevo registro
+                $campos = array_keys($datos);
+                $placeholders = array_fill(0, count($campos), '?');
+                
+                $sql = "INSERT INTO CarreraBiblica (" . implode(', ', $campos) . ") VALUES (" . implode(', ', $placeholders) . ")";
+                $stmt = $this->db->prepare($sql);
+                return $stmt->execute(array_values($datos));
+            }
+        } catch (\PDOException $e) {
+            error_log("Error al guardar datos de carrera bíblica: " . $e->getMessage());
+            return false;
+        }
+    }
 }

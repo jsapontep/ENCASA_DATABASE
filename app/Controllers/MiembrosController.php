@@ -123,7 +123,7 @@ class MiembrosController extends Controller {
         if (isset($_POST['estudios']) && is_array($_POST['estudios'])) {
             $estudios = $_POST['estudios'];
             $estudios['miembro_id'] = $miembroId;
-            $this->miembroModel->guardarEstudiosTrabajo($estudios);
+            $this->miembroModel->guardarEstudiosTrabajo($miembroId, $datos['estudios']);
         }
         
         // Guardar tallas
