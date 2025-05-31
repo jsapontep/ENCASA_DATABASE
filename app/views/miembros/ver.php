@@ -35,13 +35,18 @@ if (!isset($miembro) || !is_array($miembro)) {
 ?>
 
 <div class="container mt-4">
+    <!-- Reemplazar la sección actual de botones -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1><?= htmlspecialchars($miembro['nombres'] . ' ' . $miembro['apellidos']) ?></h1>
-        <div>
+        <div class="btn-group" role="group">
             <a href="<?= url('miembros/editar/'.$miembro['id']) ?>" class="btn btn-primary me-2">
                 <i class="fas fa-edit"></i> Editar
             </a>
-            <a href="<?= url('miembros') ?>" class="btn btn-secondary">
+            <a href="<?= url('miembros/eliminar/'.$miembro['id']) ?>" class="btn btn-danger" 
+               onclick="return confirm('¿Está seguro que desea eliminar este miembro? Esta acción no se puede deshacer.');">
+                <i class="fas fa-trash"></i> Eliminar
+            </a>
+            <a href="<?= url('miembros') ?>" class="btn btn-secondary ms-2">
                 <i class="fas fa-arrow-left"></i> Volver
             </a>
         </div>
@@ -398,13 +403,80 @@ if (!isset($miembro) || !is_array($miembro)) {
     </div>
 </div>
 
+<!-- Modal de confirmación para eliminar -->
+<div class="modal fade" id="eliminarMiembroModal" tabindex="-1" aria-labelledby="eliminarMiembroModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="eliminarMiembroModalLabel">Confirmar Eliminación</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Estás seguro de que deseas eliminar a <strong><?= htmlspecialchars($miembro['nombres'] . ' ' . $miembro['apellidos']) ?></strong>?</p>
+                <p class="text-danger"><strong>Atención:</strong> Esta acción no se puede deshacer y eliminará todos los datos asociados al miembro.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <a href="<?= url('miembros/eliminar/'.$miembro['id']) ?>" class="btn btn-danger">
+                    Eliminar Definitivamente
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
-// Activar las pestañas de Bootstrap
 document.addEventListener('DOMContentLoaded', function() {
-    // Obtener todas las pestañas
-    var tabTriggerList = [].slice.call(document.querySelectorAll('#perfilTabs a'))
+    // Script para activar la eliminación de miembro
+    const btnConfirmarEliminar = document.getElementById('btnConfirmarEliminar');
     
-    // Inicializar cada una
+    btnConfirmarEliminar.addEventListener('click', function() {
+        // Deshabilitar botón para evitar múltiples clics
+        btnConfirmarEliminar.disabled = true;
+        btnConfirmarEliminar.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Eliminando...';
+        
+        // Enviar solicitud para eliminar el miembro
+        fetch('<?= url('miembros/eliminar/'.$miembro['id']) ?>', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Error HTTP: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                // Mostrar mensaje temporal de éxito
+                const alertDiv = document.createElement('div');
+                alertDiv.className = 'alert alert-success';
+                alertDiv.textContent = 'Miembro eliminado correctamente';
+                document.body.insertBefore(alertDiv, document.body.firstChild);
+                
+                // Redireccionar después de un segundo
+                setTimeout(() => {
+                    window.location.href = '<?= url('miembros') ?>';
+                }, 1000);
+            } else {
+                alert('Error: ' + (data.message || 'No se pudo eliminar el miembro'));
+                btnConfirmarEliminar.disabled = false;
+                btnConfirmarEliminar.innerHTML = 'Eliminar Miembro';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error al procesar la solicitud');
+            btnConfirmarEliminar.disabled = false;
+            btnConfirmarEliminar.innerHTML = 'Eliminar Miembro';
+        });
+    });
+    
+    // Activar las pestañas de Bootstrap
+    var tabTriggerList = [].slice.call(document.querySelectorAll('#perfilTabs a'))
     tabTriggerList.forEach(function(tabTriggerEl) {
         new bootstrap.Tab(tabTriggerEl)
     });

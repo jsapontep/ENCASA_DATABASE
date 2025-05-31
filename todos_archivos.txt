@@ -2881,6 +2881,12 @@ echo "<p><a href='miembros/2?nocache=" . time() . "' target='_blank'>Intentar ac
 
 
 =============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\Router.php
+=============================================================
+
+
+
+=============================================================
 ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\config\autoload.php
 =============================================================
 
@@ -2931,40 +2937,41 @@ ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\config\config.php
 
 <?php
 // Configuración general de la aplicación
-if (!defined('APP_NAME')) define('APP_NAME', 'Iglesia En Casa');
-if (!defined('APP_URL')) define('APP_URL', 'http://localhost/Encasa_Database');
-if (!defined('APP_ENV')) define('APP_ENV', 'development'); // 'development' o 'production'
+if (!defined('APP_NAME'))    define('APP_NAME', 'Iglesia En Casa');
+if (!defined('APP_URL'))     define('APP_URL', 'http://localhost/Encasa_Database');
+if (!defined('APP_ENV'))     define('APP_ENV', 'development'); // 'development' o 'production'
 
-// URL base
-define('BASE_URL', '/ENCASA_DATABASE');
+// URL base y ruta base
+if (!defined('BASE_URL'))    define('BASE_URL', '/ENCASA_DATABASE');
+if (!defined('BASE_PATH'))   define('BASE_PATH', dirname(__DIR__, 2));
 
 // Directorio de carga de archivos
-define('UPLOAD_DIR', __DIR__ . '/../../uploads');
+if (!defined('UPLOAD_DIR'))  define('UPLOAD_DIR', __DIR__ . '/../../uploads');
 
 // Configuración de zona horaria
 date_default_timezone_set('America/Bogota');
 
 // Configuración de correo electrónico con cuenta de Gmail para autenticación
-define('SMTP_HOST', 'smtp.gmail.com');  // Servidor SMTP de Gmail
-define('SMTP_PORT', 587);  // Puerto para TLS
-define('SMTP_SECURE', 'tls');  // Tipo de seguridad
-define('SMTP_AUTH', true);  // Requiere autenticación
-define('SMTP_USER', 'iglesiaencasautenticador@gmail.com');  // Nueva cuenta de correo
-define('SMTP_PASS', 'uhko nczq nclq uzkx');  // Nueva contraseña de aplicación
-define('MAIL_FROM', 'iglesiaencasautenticador@gmail.com');  // Actualizado
-define('MAIL_FROM_NAME', 'Iglesia En Casa');
+if (!defined('SMTP_HOST'))   define('SMTP_HOST', 'smtp.gmail.com');
+if (!defined('SMTP_PORT'))   define('SMTP_PORT', 587);
+if (!defined('SMTP_SECURE')) define('SMTP_SECURE', 'tls');
+if (!defined('SMTP_AUTH'))   define('SMTP_AUTH', true);
+if (!defined('SMTP_USER'))   define('SMTP_USER', 'iglesiaencasautenticador@gmail.com');
+if (!defined('SMTP_PASS'))   define('SMTP_PASS', 'uhko nczq nclq uzkx');
+if (!defined('MAIL_FROM'))   define('MAIL_FROM', 'iglesiaencasautenticador@gmail.com');
+if (!defined('MAIL_FROM_NAME')) define('MAIL_FROM_NAME', 'Iglesia En Casa');
 
 // Controles para la verificación
-define('REQUIRE_EMAIL_VERIFICATION', true);
-define('REQUIRE_2FA_LOGIN', true);
+if (!defined('REQUIRE_EMAIL_VERIFICATION')) define('REQUIRE_EMAIL_VERIFICATION', true);
+if (!defined('REQUIRE_2FA_LOGIN'))          define('REQUIRE_2FA_LOGIN', true);
 
 // Constantes de Base de Datos
-define('DB_HOST', 'localhost');
-define('DB_NAME', 'IglesiaEnCasa');
-define('DB_USER', 'root');
-define('DB_PASS', '');
+if (!defined('DB_HOST'))     define('DB_HOST', 'localhost');
+if (!defined('DB_NAME'))     define('DB_NAME', 'iglesiaencasa');
+if (!defined('DB_USER'))     define('DB_USER', 'root');
+if (!defined('DB_PASS'))     define('DB_PASS', '');
 
-// Agregar esto al final del archivo para mejorar el registro de errores
+// Configuración del manejo de errores
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 ini_set('error_log', __DIR__ . '/../../logs/php_error.log');
@@ -3062,11 +3069,11 @@ ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\config\database.php
 <?php
 // filepath: c:\xampp\htdocs\ENCASA_DATABASE\app\config\database.php
 
-// Eliminar estas líneas que causan la redefinición de constantes
-// define('DB_HOST', 'localhost');
-// define('DB_NAME', 'IglesiaEnCasa');
-// define('DB_USER', 'root');
-// define('DB_PASS', '');
+// Definir constantes si no existen
+if (!defined('DB_HOST')) define('DB_HOST', 'localhost');
+if (!defined('DB_USER')) define('DB_USER', 'root'); // Usuario predeterminado de XAMPP
+if (!defined('DB_PASS')) define('DB_PASS', ''); // Contraseña en blanco por defecto en XAMPP
+if (!defined('DB_NAME')) define('DB_NAME', 'encasa_db'); // Nombre de tu base de datos
 
 // Solo mantener las que no están en config.php
 define('DB_PORT', '3306');
@@ -3316,6 +3323,7 @@ $router->post('miembros/guardar', 'Miembros', 'guardar', ['Auth']);
 $router->get('miembros/{id}', 'Miembros', 'ver', ['Auth']);
 $router->get('miembros/editar/{id}', 'Miembros', 'editar');
 $router->post('miembros/actualizar/{id}', 'Miembros', 'actualizar');
+$router->get('miembros/eliminar/{id}', 'Miembros', 'eliminar', ['Auth']);
 
 // Rutas de ministerios
 $router->get('ministerios', 'Ministerios', 'index', ['Auth']);
@@ -4531,6 +4539,103 @@ class MiembrosController extends Controller {
         }
     }
 
+    /**
+     * Elimina un miembro y todos sus datos relacionados
+     */
+    public function eliminar($id)
+    {
+        // Añadir estos logs para depuración
+        error_log("Iniciando eliminación, ID recibido: " . print_r($id, true));
+        
+        // Mejorar el manejo del ID
+        if (is_array($id)) {
+            $id = isset($id[0]) && !empty($id[0]) ? $id[0] : null;
+            error_log("ID procesado de array: " . ($id ?? 'null'));
+        }
+        
+        // Validar que el ID sea un valor numérico válido
+        if ($id === null || !is_numeric($id) || (int)$id <= 0) {
+            $_SESSION['flash_message'] = 'ID de miembro inválido o no proporcionado';
+            $_SESSION['flash_type'] = 'danger';
+            $this->redirect('miembros');
+            return;
+        }
+        
+        $id = (int)$id;
+        error_log("ID final validado a procesar: $id");
+        
+        // Obtener el miembro completo
+        $miembro = $this->miembroModel->getFullProfile($id);
+        error_log("Resultado de getFullProfile: " . ($miembro ? "Miembro encontrado" : "Miembro NO encontrado"));
+        
+        if (!$miembro) {
+            $_SESSION['flash_message'] = "Miembro con ID $id no encontrado";
+            $_SESSION['flash_type'] = 'danger';
+            $this->redirect('miembros');
+            return;
+        }
+        
+        // Intentar eliminar el miembro y sus datos relacionados
+        try {
+            // Comenzar una transacción
+            $this->db->beginTransaction();
+            
+            // 1. Eliminar registros de tablas relacionadas
+            $tablasRelacionadas = [
+                'Contacto',
+                'EstudiosTrabajo',
+                'Tallas',
+                'SaludEmergencias',
+                'CarreraBiblica'
+            ];
+            
+            foreach ($tablasRelacionadas as $tabla) {
+                $stmt = $this->db->prepare("DELETE FROM {$tabla} WHERE miembro_id = ?");
+                $stmt->execute([$id]);
+                error_log("Eliminación de $tabla: " . ($stmt->rowCount() > 0 ? "Éxito" : "Sin registros"));
+            }
+            
+            // 2. Eliminar foto si existe
+            if (!empty($miembro['foto'])) {
+                $rutaFoto = BASE_PATH . '/uploads/miembros/' . $miembro['foto'];
+                if (file_exists($rutaFoto)) {
+                    unlink($rutaFoto);
+                    error_log("Foto eliminada: $rutaFoto");
+                } else {
+                    error_log("No se encontró la foto: $rutaFoto");
+                }
+            }
+            
+            // 3. Eliminar el registro principal
+            $stmt = $this->db->prepare("DELETE FROM InformacionGeneral WHERE id = ?");
+            $resultado = $stmt->execute([$id]);
+            error_log("Eliminación de registro principal: " . ($resultado ? "Éxito" : "Fallido"));
+            
+            // Si todo salió bien, confirmar transacción
+            if ($resultado) {
+                $this->db->commit();
+                $_SESSION['flash_message'] = 'Miembro eliminado correctamente';
+                $_SESSION['flash_type'] = 'success';
+                error_log("Transacción confirmada, miembro eliminado");
+            } else {
+                // Si hubo algún problema
+                $this->db->rollBack();
+                $_SESSION['flash_message'] = 'Error al eliminar el miembro';
+                $_SESSION['flash_type'] = 'danger';
+                error_log("Falló la eliminación del registro principal, transacción revertida");
+            }
+        } catch (\Exception $e) {
+            // En caso de excepción, deshacer cambios
+            $this->db->rollBack();
+            $_SESSION['flash_message'] = 'Error: ' . $e->getMessage();
+            $_SESSION['flash_type'] = 'danger';
+            error_log("Excepción al eliminar miembro: " . $e->getMessage());
+        }
+        
+        // Redireccionar a la lista de miembros
+        $this->redirect('miembros');
+    }
+
     // Método auxiliar para responder en formato JSON
     private function respondJson($data)
     {
@@ -5159,12 +5264,21 @@ class Router {
                     if (method_exists($controller, $action)) {
                         // Ejecutar la acción del controlador
                         // Si esperamos un ID, extraerlo del array de parámetros
-                        if ($action === 'ver' || $action === 'editar' || $action === 'actualizar') {
-                            $id = isset($this->params['id']) ? $this->params['id'] : null;
+                        if ($action === 'ver' || $action === 'editar' || $action === 'actualizar' || $action === 'eliminar') {
+                            // Extraer ID del array de parámetros
+                            $id = !empty($this->params) ? array_values($this->params)[0] : null;
                             $controller->$action($id);
                         } else {
-                            // Para otros métodos, pasar todos los parámetros
-                            $controller->$action($this->params);
+                            // Para otras acciones que no requieren ID
+                            // Extraer parámetros si existen
+                            if (!empty($this->params)) {
+                                // Convertir parámetros asociativos a indexados para pasarlos como argumentos
+                                $params = array_values($this->params);
+                                $controller->$action(...$params);
+                            } else {
+                                // Sin parámetros
+                                $controller->$action();
+                            }
                         }
                         return;
                     }
@@ -8213,13 +8327,18 @@ if (!isset($miembro) || !is_array($miembro)) {
 ?>
 
 <div class="container mt-4">
+    <!-- Reemplazar la sección actual de botones -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1><?= htmlspecialchars($miembro['nombres'] . ' ' . $miembro['apellidos']) ?></h1>
-        <div>
+        <div class="btn-group" role="group">
             <a href="<?= url('miembros/editar/'.$miembro['id']) ?>" class="btn btn-primary me-2">
                 <i class="fas fa-edit"></i> Editar
             </a>
-            <a href="<?= url('miembros') ?>" class="btn btn-secondary">
+            <a href="<?= url('miembros/eliminar/'.$miembro['id']) ?>" class="btn btn-danger" 
+               onclick="return confirm('¿Está seguro que desea eliminar este miembro? Esta acción no se puede deshacer.');">
+                <i class="fas fa-trash"></i> Eliminar
+            </a>
+            <a href="<?= url('miembros') ?>" class="btn btn-secondary ms-2">
                 <i class="fas fa-arrow-left"></i> Volver
             </a>
         </div>
@@ -8576,13 +8695,80 @@ if (!isset($miembro) || !is_array($miembro)) {
     </div>
 </div>
 
+<!-- Modal de confirmación para eliminar -->
+<div class="modal fade" id="eliminarMiembroModal" tabindex="-1" aria-labelledby="eliminarMiembroModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="eliminarMiembroModalLabel">Confirmar Eliminación</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Estás seguro de que deseas eliminar a <strong><?= htmlspecialchars($miembro['nombres'] . ' ' . $miembro['apellidos']) ?></strong>?</p>
+                <p class="text-danger"><strong>Atención:</strong> Esta acción no se puede deshacer y eliminará todos los datos asociados al miembro.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <a href="<?= url('miembros/eliminar/'.$miembro['id']) ?>" class="btn btn-danger">
+                    Eliminar Definitivamente
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
-// Activar las pestañas de Bootstrap
 document.addEventListener('DOMContentLoaded', function() {
-    // Obtener todas las pestañas
-    var tabTriggerList = [].slice.call(document.querySelectorAll('#perfilTabs a'))
+    // Script para activar la eliminación de miembro
+    const btnConfirmarEliminar = document.getElementById('btnConfirmarEliminar');
     
-    // Inicializar cada una
+    btnConfirmarEliminar.addEventListener('click', function() {
+        // Deshabilitar botón para evitar múltiples clics
+        btnConfirmarEliminar.disabled = true;
+        btnConfirmarEliminar.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Eliminando...';
+        
+        // Enviar solicitud para eliminar el miembro
+        fetch('<?= url('miembros/eliminar/'.$miembro['id']) ?>', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`Error HTTP: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                // Mostrar mensaje temporal de éxito
+                const alertDiv = document.createElement('div');
+                alertDiv.className = 'alert alert-success';
+                alertDiv.textContent = 'Miembro eliminado correctamente';
+                document.body.insertBefore(alertDiv, document.body.firstChild);
+                
+                // Redireccionar después de un segundo
+                setTimeout(() => {
+                    window.location.href = '<?= url('miembros') ?>';
+                }, 1000);
+            } else {
+                alert('Error: ' + (data.message || 'No se pudo eliminar el miembro'));
+                btnConfirmarEliminar.disabled = false;
+                btnConfirmarEliminar.innerHTML = 'Eliminar Miembro';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error al procesar la solicitud');
+            btnConfirmarEliminar.disabled = false;
+            btnConfirmarEliminar.innerHTML = 'Eliminar Miembro';
+        });
+    });
+    
+    // Activar las pestañas de Bootstrap
+    var tabTriggerList = [].slice.call(document.querySelectorAll('#perfilTabs a'))
     tabTriggerList.forEach(function(tabTriggerEl) {
         new bootstrap.Tab(tabTriggerEl)
     });

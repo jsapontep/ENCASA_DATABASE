@@ -632,6 +632,103 @@ class MiembrosController extends Controller {
         }
     }
 
+    /**
+     * Elimina un miembro y todos sus datos relacionados
+     */
+    public function eliminar($id)
+    {
+        // Añadir estos logs para depuración
+        error_log("Iniciando eliminación, ID recibido: " . print_r($id, true));
+        
+        // Mejorar el manejo del ID
+        if (is_array($id)) {
+            $id = isset($id[0]) && !empty($id[0]) ? $id[0] : null;
+            error_log("ID procesado de array: " . ($id ?? 'null'));
+        }
+        
+        // Validar que el ID sea un valor numérico válido
+        if ($id === null || !is_numeric($id) || (int)$id <= 0) {
+            $_SESSION['flash_message'] = 'ID de miembro inválido o no proporcionado';
+            $_SESSION['flash_type'] = 'danger';
+            $this->redirect('miembros');
+            return;
+        }
+        
+        $id = (int)$id;
+        error_log("ID final validado a procesar: $id");
+        
+        // Obtener el miembro completo
+        $miembro = $this->miembroModel->getFullProfile($id);
+        error_log("Resultado de getFullProfile: " . ($miembro ? "Miembro encontrado" : "Miembro NO encontrado"));
+        
+        if (!$miembro) {
+            $_SESSION['flash_message'] = "Miembro con ID $id no encontrado";
+            $_SESSION['flash_type'] = 'danger';
+            $this->redirect('miembros');
+            return;
+        }
+        
+        // Intentar eliminar el miembro y sus datos relacionados
+        try {
+            // Comenzar una transacción
+            $this->db->beginTransaction();
+            
+            // 1. Eliminar registros de tablas relacionadas
+            $tablasRelacionadas = [
+                'Contacto',
+                'EstudiosTrabajo',
+                'Tallas',
+                'SaludEmergencias',
+                'CarreraBiblica'
+            ];
+            
+            foreach ($tablasRelacionadas as $tabla) {
+                $stmt = $this->db->prepare("DELETE FROM {$tabla} WHERE miembro_id = ?");
+                $stmt->execute([$id]);
+                error_log("Eliminación de $tabla: " . ($stmt->rowCount() > 0 ? "Éxito" : "Sin registros"));
+            }
+            
+            // 2. Eliminar foto si existe
+            if (!empty($miembro['foto'])) {
+                $rutaFoto = BASE_PATH . '/uploads/miembros/' . $miembro['foto'];
+                if (file_exists($rutaFoto)) {
+                    unlink($rutaFoto);
+                    error_log("Foto eliminada: $rutaFoto");
+                } else {
+                    error_log("No se encontró la foto: $rutaFoto");
+                }
+            }
+            
+            // 3. Eliminar el registro principal
+            $stmt = $this->db->prepare("DELETE FROM InformacionGeneral WHERE id = ?");
+            $resultado = $stmt->execute([$id]);
+            error_log("Eliminación de registro principal: " . ($resultado ? "Éxito" : "Fallido"));
+            
+            // Si todo salió bien, confirmar transacción
+            if ($resultado) {
+                $this->db->commit();
+                $_SESSION['flash_message'] = 'Miembro eliminado correctamente';
+                $_SESSION['flash_type'] = 'success';
+                error_log("Transacción confirmada, miembro eliminado");
+            } else {
+                // Si hubo algún problema
+                $this->db->rollBack();
+                $_SESSION['flash_message'] = 'Error al eliminar el miembro';
+                $_SESSION['flash_type'] = 'danger';
+                error_log("Falló la eliminación del registro principal, transacción revertida");
+            }
+        } catch (\Exception $e) {
+            // En caso de excepción, deshacer cambios
+            $this->db->rollBack();
+            $_SESSION['flash_message'] = 'Error: ' . $e->getMessage();
+            $_SESSION['flash_type'] = 'danger';
+            error_log("Excepción al eliminar miembro: " . $e->getMessage());
+        }
+        
+        // Redireccionar a la lista de miembros
+        $this->redirect('miembros');
+    }
+
     // Método auxiliar para responder en formato JSON
     private function respondJson($data)
     {

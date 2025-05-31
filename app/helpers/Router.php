@@ -129,12 +129,21 @@ class Router {
                     if (method_exists($controller, $action)) {
                         // Ejecutar la acción del controlador
                         // Si esperamos un ID, extraerlo del array de parámetros
-                        if ($action === 'ver' || $action === 'editar' || $action === 'actualizar') {
-                            $id = isset($this->params['id']) ? $this->params['id'] : null;
+                        if ($action === 'ver' || $action === 'editar' || $action === 'actualizar' || $action === 'eliminar') {
+                            // Extraer ID del array de parámetros
+                            $id = !empty($this->params) ? array_values($this->params)[0] : null;
                             $controller->$action($id);
                         } else {
-                            // Para otros métodos, pasar todos los parámetros
-                            $controller->$action($this->params);
+                            // Para otras acciones que no requieren ID
+                            // Extraer parámetros si existen
+                            if (!empty($this->params)) {
+                                // Convertir parámetros asociativos a indexados para pasarlos como argumentos
+                                $params = array_values($this->params);
+                                $controller->$action(...$params);
+                            } else {
+                                // Sin parámetros
+                                $controller->$action();
+                            }
                         }
                         return;
                     }

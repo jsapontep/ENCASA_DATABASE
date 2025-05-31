@@ -1,11 +1,11 @@
 <?php
 // filepath: c:\xampp\htdocs\ENCASA_DATABASE\app\config\database.php
 
-// Eliminar estas líneas que causan la redefinición de constantes
-// define('DB_HOST', 'localhost');
-// define('DB_NAME', 'IglesiaEnCasa');
-// define('DB_USER', 'root');
-// define('DB_PASS', '');
+// Definir constantes si no existen
+if (!defined('DB_HOST')) define('DB_HOST', 'localhost');
+if (!defined('DB_USER')) define('DB_USER', 'root'); // Usuario predeterminado de XAMPP
+if (!defined('DB_PASS')) define('DB_PASS', ''); // Contraseña en blanco por defecto en XAMPP
+if (!defined('DB_NAME')) define('DB_NAME', 'encasa_db'); // Nombre de tu base de datos
 
 // Solo mantener las que no están en config.php
 define('DB_PORT', '3306');
