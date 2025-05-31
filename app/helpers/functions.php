@@ -81,3 +81,8 @@ if (!function_exists('asset')) {
         return url('public/' . ltrim($path, '/'));
     }
 }
+
+// Definir APP_URL como constante si no está definida
+if (!defined('APP_URL')) {
+    define('APP_URL', url());
+}

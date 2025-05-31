@@ -34,8 +34,17 @@ class Router {
     /**
      * Método abreviado para rutas GET
      */
-    public function get($route, $controller, $action, $middleware = []) {
-        $this->add($route, $controller, $action, ['GET'], $middleware);
+    public function get($route, $controllerAction, $middleware = []) {
+        if (strpos($controllerAction, '@') !== false) {
+            list($controller, $action) = explode('@', $controllerAction);
+            $this->add($route, $controller, $action, ['GET'], $middleware);
+        } else {
+            // Mantener compatibilidad con la forma antigua
+            $controller = $controllerAction;
+            $action = func_get_arg(2);
+            $middleware = func_num_args() > 3 ? func_get_arg(3) : [];
+            $this->add($route, $controller, $action, ['GET'], $middleware);
+        }
     }
     
     /**
@@ -119,7 +128,14 @@ class Router {
                     
                     if (method_exists($controller, $action)) {
                         // Ejecutar la acción del controlador
-                        $controller->$action($this->params);
+                        // Si esperamos un ID, extraerlo del array de parámetros
+                        if ($action === 'ver' || $action === 'editar' || $action === 'actualizar') {
+                            $id = isset($this->params['id']) ? $this->params['id'] : null;
+                            $controller->$action($id);
+                        } else {
+                            // Para otros métodos, pasar todos los parámetros
+                            $controller->$action($this->params);
+                        }
                         return;
                     }
                 }
@@ -148,7 +164,7 @@ class Router {
     }
     
     /**
-     * Obtiene la URL actual
+     * Obtiene la URL current
      */
     private function getUrl() {
         $url = isset($_GET['url']) ? $_GET['url'] : '';

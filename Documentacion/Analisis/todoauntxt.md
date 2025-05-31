@@ -73,3 +73,87 @@ foreach ($archivo in $archivosPhp) {
 }
 
 Write-Host "Proceso completado. Archivo generado en: $archivoSalida"
+
+# Ruta donde se encuentra el proyecto
+$rutaProyecto = "C:\xampp\htdocs\ENCASA_DATABASE"
+
+# Ruta donde se guardará el archivo de salida
+$archivoSalida = "C:\xampp\htdocs\ENCASA_DATABASE\todos_archivos.txt"
+
+# Crear o vaciar el archivo de salida
+"" | Out-File -FilePath $archivoSalida -Encoding UTF8
+
+# Obtener todos los archivos PHP y JS de forma recursiva
+$archivosPhp = Get-ChildItem -Path $rutaProyecto -Filter "*.php" -Recurse | 
+               Where-Object { $_.FullName -notmatch "phpmailer" }
+
+$archivosJs = Get-ChildItem -Path $rutaProyecto -Filter "*.js" -Recurse | 
+              Where-Object { $_.FullName -notmatch "phpmailer" }
+
+# Combinar las dos colecciones de archivos
+$todosArchivos = $archivosPhp + $archivosJs
+
+# Recorrer cada archivo y añadir su contenido al archivo de salida
+foreach ($archivo in $todosArchivos) {
+    # Añadir separador con información del archivo
+    "=============================================================" | Out-File -FilePath $archivoSalida -Append -Encoding UTF8
+    "ARCHIVO: $($archivo.FullName)" | Out-File -FilePath $archivoSalida -Append -Encoding UTF8
+    "=============================================================" | Out-File -FilePath $archivoSalida -Append -Encoding UTF8
+    "" | Out-File -FilePath $archivoSalida -Append -Encoding UTF8
+    
+    # Añadir el contenido del archivo
+    Get-Content -Path $archivo.FullName -Encoding UTF8 | Out-File -FilePath $archivoSalida -Append -Encoding UTF8
+    
+    # Añadir separación entre archivos
+    "" | Out-File -FilePath $archivoSalida -Append -Encoding UTF8
+    "" | Out-File -FilePath $archivoSalida -Append -Encoding UTF8
+}
+
+Write-Host "Proceso completado. Archivo generado en: $archivoSalida"
+
+
+
+# Ruta donde se encuentra el proyecto
+$rutaProyecto = "C:\xampp\htdocs\ENCASA_DATABASE"
+
+# Ruta donde se guardará el archivo de salida
+$archivoSalida = "C:\xampp\htdocs\ENCASA_DATABASE\todos_archivos.txt"
+
+# Crear o vaciar el archivo de salida
+"" | Out-File -FilePath $archivoSalida -Encoding UTF8
+
+# Obtener todos los archivos PHP y JS de forma recursiva, excluyendo carpetas específicas
+$archivosPhp = Get-ChildItem -Path $rutaProyecto -Filter "*.php" -Recurse | 
+               Where-Object { 
+                   $_.FullName -notmatch "phpmailer" -and 
+                   $_.FullName -notmatch "node_modules" -and 
+                   $_.FullName -notmatch "vendor" 
+               }
+
+$archivosJs = Get-ChildItem -Path $rutaProyecto -Filter "*.js" -Recurse | 
+              Where-Object { 
+                  $_.FullName -notmatch "phpmailer" -and 
+                  $_.FullName -notmatch "node_modules" -and 
+                  $_.FullName -notmatch "vendor" 
+              }
+
+# Combinar las dos colecciones de archivos
+$todosArchivos = $archivosPhp + $archivosJs
+
+# Recorrer cada archivo y añadir su contenido al archivo de salida
+foreach ($archivo in $todosArchivos) {
+    # Añadir separador con información del archivo
+    "=============================================================" | Out-File -FilePath $archivoSalida -Append -Encoding UTF8
+    "ARCHIVO: $($archivo.FullName)" | Out-File -FilePath $archivoSalida -Append -Encoding UTF8
+    "=============================================================" | Out-File -FilePath $archivoSalida -Append -Encoding UTF8
+    "" | Out-File -FilePath $archivoSalida -Append -Encoding UTF8
+    
+    # Añadir el contenido del archivo
+    Get-Content -Path $archivo.FullName -Encoding UTF8 | Out-File -FilePath $archivoSalida -Append -Encoding UTF8
+    
+    # Añadir separación entre archivos
+    "" | Out-File -FilePath $archivoSalida -Append -Encoding UTF8
+    "" | Out-File -FilePath $archivoSalida -Append -Encoding UTF8
+}
+
+Write-Host "Proceso completado. Archivo generado en: $archivoSalida"

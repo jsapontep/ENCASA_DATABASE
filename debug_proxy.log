@@ -1,0 +1,392 @@
+Solicitud recibida: 2025-05-31 08:58:50
+POST: Array
+(
+    [nombres] => Hernando Rafael
+    [apellidos] => Gamez Fragozo
+    [celular] => 3042629153
+    [localidad] => Bogota
+    [barrio] => Modelia
+    [fecha_nacimiento] => 1986-11-01
+    [estado_espiritual] => Discípulo
+    [fecha_ingreso] => 2015-06-14
+    [recorrido_espiritual] => Rafa Gamez lleva 10 años creciendo en Encasa. Vive en Modelia y sirve actualmente en conexión.
+    [contacto_id] => 2
+    [tipo_documento] => CC
+    [numero_documento] => 1032373186
+    [telefono] => 3042629153
+    [correo_electronico] => rafa.gzfr@gmail.com
+    [pais] => Colombia
+    [ciudad] => Bogota
+    [direccion] => Carrera 82#24d-48
+    [estado_civil] => Casado/a
+    [estudios_id] => 2
+    [nivel_estudios] => Tecnólogo
+    [profesion] => Tecnologo en Desarrollo de Software
+    [otros_estudios] => 
+    [empresa] => Sena
+    [direccion_empresa] => 
+    [emprendimientos] => 
+    [tallas_id] => 2
+    [talla_camisa] => XXL
+    [talla_camiseta] => XXL
+    [talla_pantalon] => 36
+    [talla_zapatos] => 42
+    [salud_id] => 
+    [rh] => 
+    [eps] => 
+    [acudiente1] => 
+    [telefono1] => 
+    [acudiente2] => 
+    [telefono2] => 
+    [carrera_id] => 2
+    [estado] => 
+    [carrera_biblica] => 
+    [miembro_de] => 
+    [casa_de_palabra_y_vida] => 
+    [cobertura] => 
+    [anotaciones] => 
+)
+
+Solicitud recibida: 2025-05-31 09:03:40
+POST: Array
+(
+    [nombres] => Hernando Rafael
+    [apellidos] => Gamez Fragozo
+    [celular] => 3042629153
+    [localidad] => Bogota
+    [barrio] => Modelia
+    [fecha_nacimiento] => 1986-11-01
+    [estado_espiritual] => Discípulo
+    [fecha_ingreso] => 2015-06-14
+    [recorrido_espiritual] => Rafa Gamez lleva 10 años creciendo en Encasa. Vive en Modelia y sirve actualmente en conexión.
+    [contacto_id] => 2
+    [tipo_documento] => CC
+    [numero_documento] => 1032373186
+    [telefono] => 3042629153
+    [correo_electronico] => rafa.gzfr@gmail.com
+    [pais] => Colombia
+    [ciudad] => Bogota
+    [direccion] => Carrera 82#24d-48
+    [estado_civil] => Casado/a
+    [estudios_id] => 2
+    [nivel_estudios] => Tecnólogo
+    [profesion] => Tecnologo en Desarrollo de Software
+    [otros_estudios] => 
+    [empresa] => Sena
+    [direccion_empresa] => 
+    [emprendimientos] => 
+    [tallas_id] => 2
+    [talla_camisa] => XXL
+    [talla_camiseta] => XXL
+    [talla_pantalon] => 36
+    [talla_zapatos] => 42
+    [salud_id] => 
+    [rh] => 
+    [eps] => 
+    [acudiente1] => 
+    [telefono1] => 
+    [acudiente2] => 
+    [telefono2] => 
+    [carrera_id] => 2
+    [estado] => 
+    [carrera_biblica] => 
+    [miembro_de] => 
+    [casa_de_palabra_y_vida] => 
+    [cobertura] => 
+    [anotaciones] => 
+)
+
+Solicitud recibida: 2025-05-31 09:04:03
+POST: Array
+(
+    [nombres] => Hernando Rafael
+    [apellidos] => Gamez Fragozo
+    [celular] => 3042629153
+    [localidad] => Bogota
+    [barrio] => Modelia
+    [fecha_nacimiento] => 1986-11-01
+    [estado_espiritual] => Discípulo
+    [fecha_ingreso] => 
+    [recorrido_espiritual] => Rafa Gamez lleva 10 años creciendo en Encasa. Vive en Modelia y sirve actualmente en conexión.
+    [contacto_id] => 2
+    [tipo_documento] => CC
+    [numero_documento] => 1032373186
+    [telefono] => 3042629153
+    [correo_electronico] => rafa.gzfr@gmail.com
+    [pais] => Colombia
+    [ciudad] => Bogota
+    [direccion] => Carrera 82#24d-48
+    [estado_civil] => Casado/a
+    [estudios_id] => 2
+    [nivel_estudios] => Tecnólogo
+    [profesion] => Tecnologo en Desarrollo de Software
+    [otros_estudios] => 
+    [empresa] => Sena
+    [direccion_empresa] => 
+    [emprendimientos] => 
+    [tallas_id] => 2
+    [talla_camisa] => XXL
+    [talla_camiseta] => XXL
+    [talla_pantalon] => 36
+    [talla_zapatos] => 42
+    [salud_id] => 
+    [rh] => O+
+    [eps] => Nueva Eps
+    [acudiente1] => 
+    [telefono1] => 
+    [acudiente2] => 
+    [telefono2] => 
+    [carrera_id] => 2
+    [estado] => 
+    [carrera_biblica] => 
+    [miembro_de] => 
+    [casa_de_palabra_y_vida] => 
+    [cobertura] => 
+    [anotaciones] => 
+)
+
+Solicitud recibida: 2025-05-31 09:40:59
+POST: Array
+(
+    [nombres] => Hernando Rafael
+    [apellidos] => Gamez Fragozo
+    [celular] => 3042629153
+    [localidad] => Bogota
+    [barrio] => Modelia
+    [fecha_nacimiento] => 1986-11-01
+    [estado_espiritual] => Discípulo
+    [fecha_ingreso] => 2015-06-14
+    [recorrido_espiritual] => Rafa Gamez lleva casi 10 años en encasa, ahora sirve en conexion y staff.
+    [contacto_id] => 2
+    [tipo_documento] => CC
+    [numero_documento] => 1032373186
+    [telefono] => 3042629153
+    [correo_electronico] => rafa.gzfr@gmail.com
+    [pais] => Colombia
+    [ciudad] => Bogota
+    [direccion] => Carrera 82#24d-48
+    [estado_civil] => Casado/a
+    [estudios_id] => 
+    [nivel_estudios] => 
+    [profesion] => 
+    [otros_estudios] => 
+    [empresa] => 
+    [direccion_empresa] => 
+    [emprendimientos] => 
+    [tallas_id] => 2
+    [talla_camisa] => XXL
+    [talla_camiseta] => XXL
+    [talla_pantalon] => 42
+    [talla_zapatos] => 42
+    [salud_id] => 
+    [rh] => 
+    [eps] => 
+    [acudiente1] => 
+    [telefono1] => 
+    [acudiente2] => 
+    [telefono2] => 
+    [carrera_id] => 
+    [estado] => 
+    [carrera_biblica] => 
+    [miembro_de] => Iglesia En Casa
+    [casa_de_palabra_y_vida] => 
+    [cobertura] => 
+    [anotaciones] => 
+)
+
+Solicitud recibida: 2025-05-31 09:41:51
+POST: Array
+(
+    [nombres] => Hernando Rafael
+    [apellidos] => Gamez Fragozo
+    [celular] => 3042629153
+    [localidad] => Bogota
+    [barrio] => Modelia
+    [fecha_nacimiento] => 1986-11-01
+    [estado_espiritual] => Discípulo
+    [fecha_ingreso] => 
+    [recorrido_espiritual] => Rafa Gamez lleva casi 10 años en encasa, ahora sirve en conexion y staff.
+    [contacto_id] => 2
+    [tipo_documento] => CC
+    [numero_documento] => 1032373186
+    [telefono] => 3042629153
+    [correo_electronico] => rafa.gzfr@gmail.com
+    [pais] => Colombia
+    [ciudad] => Bogota
+    [direccion] => Carrera 82#24d-48
+    [estado_civil] => Casado/a
+    [estudios_id] => 
+    [nivel_estudios] => Tecnólogo
+    [profesion] => Tecnologo en Desarrollo de Software
+    [otros_estudios] => Ingles B1 intermedio básico
+    [empresa] => Uber
+    [direccion_empresa] => 
+    [emprendimientos] => 
+    [tallas_id] => 2
+    [talla_camisa] => XXL
+    [talla_camiseta] => XXL
+    [talla_pantalon] => 42
+    [talla_zapatos] => 42
+    [salud_id] => 
+    [rh] => 
+    [eps] => 
+    [acudiente1] => 
+    [telefono1] => 
+    [acudiente2] => 
+    [telefono2] => 
+    [carrera_id] => 
+    [estado] => 
+    [carrera_biblica] => 
+    [miembro_de] => Iglesia En Casa
+    [casa_de_palabra_y_vida] => 
+    [cobertura] => 
+    [anotaciones] => 
+)
+
+Solicitud recibida: 2025-05-31 09:42:48
+POST: Array
+(
+    [nombres] => Hernando Rafael
+    [apellidos] => Gamez Fragozo
+    [celular] => 3042629153
+    [localidad] => Bogota
+    [barrio] => Modelia
+    [fecha_nacimiento] => 1986-11-01
+    [estado_espiritual] => Discípulo
+    [fecha_ingreso] => 
+    [recorrido_espiritual] => Rafa Gamez lleva casi 10 años en encasa, ahora sirve en conexion y staff.
+    [contacto_id] => 2
+    [tipo_documento] => CC
+    [numero_documento] => 1032373186
+    [telefono] => 3042629153
+    [correo_electronico] => rafa.gzfr@gmail.com
+    [pais] => Colombia
+    [ciudad] => Bogota
+    [direccion] => Carrera 82#24d-48
+    [estado_civil] => Casado/a
+    [estudios_id] => 
+    [nivel_estudios] => 
+    [profesion] => 
+    [otros_estudios] => 
+    [empresa] => 
+    [direccion_empresa] => 
+    [emprendimientos] => 
+    [tallas_id] => 2
+    [talla_camisa] => XXL
+    [talla_camiseta] => XXL
+    [talla_pantalon] => 42
+    [talla_zapatos] => 42
+    [salud_id] => 
+    [rh] => O+
+    [eps] => Nueva Eps
+    [acudiente1] => Yohana Paola Villa Ocampo
+    [telefono1] => 3045977547
+    [acudiente2] => Gloria Lucia Fragozo Crespo
+    [telefono2] => 3106803049
+    [carrera_id] => 
+    [estado] => 
+    [carrera_biblica] => 
+    [miembro_de] => Iglesia En Casa
+    [casa_de_palabra_y_vida] => 
+    [cobertura] => 
+    [anotaciones] => 
+)
+
+Solicitud recibida: 2025-05-31 09:43:41
+POST: Array
+(
+    [nombres] => Hernando Rafael
+    [apellidos] => Gamez Fragozo
+    [celular] => 3042629153
+    [localidad] => Bogota
+    [barrio] => Modelia
+    [fecha_nacimiento] => 1986-11-01
+    [estado_espiritual] => Discípulo
+    [fecha_ingreso] => 
+    [recorrido_espiritual] => Rafa Gamez lleva casi 10 años en encasa, ahora sirve en conexion y staff.
+    [contacto_id] => 2
+    [tipo_documento] => CC
+    [numero_documento] => 1032373186
+    [telefono] => 3042629153
+    [correo_electronico] => rafa.gzfr@gmail.com
+    [pais] => Colombia
+    [ciudad] => Bogota
+    [direccion] => Carrera 82#24d-48
+    [estado_civil] => Casado/a
+    [estudios_id] => 
+    [nivel_estudios] => 
+    [profesion] => 
+    [otros_estudios] => 
+    [empresa] => 
+    [direccion_empresa] => 
+    [emprendimientos] => 
+    [tallas_id] => 2
+    [talla_camisa] => XXL
+    [talla_camiseta] => XXL
+    [talla_pantalon] => 42
+    [talla_zapatos] => 42
+    [salud_id] => 
+    [rh] => 
+    [eps] => 
+    [acudiente1] => 
+    [telefono1] => 
+    [acudiente2] => 
+    [telefono2] => 
+    [carrera_id] => 
+    [estado] => Activo
+    [carrera_biblica] => Discipulado
+    [miembro_de] => Iglesia En Casa
+    [casa_de_palabra_y_vida] => Hayuelos
+    [cobertura] => Pastor Javier Aponte
+    [anotaciones] => 
+)
+
+Solicitud recibida: 2025-05-31 09:45:32
+POST: Array
+(
+    [nombres] => Hernando Rafael
+    [apellidos] => Gamez Fragozo
+    [celular] => 3042629153
+    [localidad] => Bogota
+    [barrio] => Modelia
+    [fecha_nacimiento] => 1986-11-01
+    [estado_espiritual] => Discípulo
+    [fecha_ingreso] => 2015-06-14
+    [recorrido_espiritual] => Rafa Gamez lleva casi 10 años en encasa, ahora sirve en conexion y staff.
+    [contacto_id] => 2
+    [tipo_documento] => CC
+    [numero_documento] => 1032373186
+    [telefono] => 3042629153
+    [correo_electronico] => rafa.gzfr@gmail.com
+    [pais] => Colombia
+    [ciudad] => Bogota
+    [direccion] => Carrera 82#24d-48
+    [estado_civil] => Casado/a
+    [estudios_id] => 
+    [nivel_estudios] => 
+    [profesion] => 
+    [otros_estudios] => 
+    [empresa] => 
+    [direccion_empresa] => 
+    [emprendimientos] => 
+    [tallas_id] => 2
+    [talla_camisa] => XXL
+    [talla_camiseta] => XXL
+    [talla_pantalon] => 42
+    [talla_zapatos] => 42
+    [salud_id] => 
+    [rh] => 
+    [eps] => 
+    [acudiente1] => 
+    [telefono1] => 
+    [acudiente2] => 
+    [telefono2] => 
+    [carrera_id] => 
+    [estado] => 
+    [carrera_biblica] => 
+    [miembro_de] => Iglesia En Casa
+    [casa_de_palabra_y_vida] => 
+    [cobertura] => 
+    [anotaciones] => 
+)
+

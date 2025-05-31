@@ -55,4 +55,29 @@ abstract class Controller {
     protected function isAuthenticated() {
         return isset($_SESSION['user_id']);
     }
+    
+    /**
+     * Renderiza una página de error
+     *
+     * @param int $code Código de error HTTP
+     * @param string $message Mensaje de error
+     */
+    protected function renderError($code, $message = '') {
+        http_response_code($code);
+        
+        // Si es un error 404, usar la vista específica
+        if ($code === 404) {
+            $this->renderWithLayout('errors/404', 'default', [
+                'title' => 'Página no encontrada',
+                'message' => $message
+            ]);
+        } else {
+            // Para otros códigos, usar una vista genérica de error
+            $this->renderWithLayout('errors/general', 'default', [
+                'code' => $code,
+                'title' => 'Error ' . $code,
+                'message' => $message
+            ]);
+        }
+    }
 }

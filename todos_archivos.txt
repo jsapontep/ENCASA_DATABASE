@@ -325,6 +325,72 @@ echo "<p><a href='miembros/{$id}'>Ver página de perfil</a></p>";
 
 
 =============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\debug_update.php
+=============================================================
+
+<?php
+
+// Script para depurar la actualización de miembros
+require_once __DIR__ . '/app/config/config.php';
+require_once __DIR__ . '/app/config/database.php';
+
+// ID a verificar
+$id = isset($_GET['id']) ? (int)$_GET['id'] : 2;
+
+echo "<h1>Depuración de actualización para miembro ID: {$id}</h1>";
+
+try {
+    // Obtener conexión directa
+    $db = Database::getInstance()->getConnection();
+    
+    // Verificar si el miembro existe
+    $stmt = $db->prepare("SELECT * FROM InformacionGeneral WHERE id = ?");
+    $stmt->execute([$id]);
+    $miembro = $stmt->fetch();
+    
+    if (!$miembro) {
+        echo "<div style='color:red'>Miembro no encontrado</div>";
+        exit;
+    }
+    
+    echo "<h2>Datos actuales del miembro:</h2>";
+    echo "<pre>";
+    print_r($miembro);
+    echo "</pre>";
+    
+    // Verificar tablas relacionadas
+    $tablas = ['Contacto', 'EstudiosTrabajo', 'Tallas', 'SaludEmergencias', 'CarreraBiblica'];
+    
+    foreach ($tablas as $tabla) {
+        $stmt = $db->prepare("SELECT * FROM {$tabla} WHERE miembro_id = ?");
+        $stmt->execute([$id]);
+        $datos = $stmt->fetch();
+        
+        echo "<h3>Datos de {$tabla}:</h3>";
+        if ($datos) {
+            echo "<pre>";
+            print_r($datos);
+            echo "</pre>";
+        } else {
+            echo "<p>No hay datos en esta tabla para este miembro</p>";
+            
+            // Mostrar estructura de la tabla para referencia
+            echo "<p>Estructura de la tabla {$tabla}:</p>";
+            $stmt = $db->query("DESCRIBE {$tabla}");
+            $estructura = $stmt->fetchAll();
+            echo "<pre>";
+            print_r($estructura);
+            echo "</pre>";
+        }
+    }
+    
+} catch (Exception $e) {
+    echo "<div style='color:red'>Error: " . $e->getMessage() . "</div>";
+}
+?>
+
+
+=============================================================
 ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\direct_access.php
 =============================================================
 
@@ -789,6 +855,254 @@ exit;
 
 
 =============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\miembro_proxy.php
+=============================================================
+
+<?php
+
+// Script de proxy directo para actualizar miembros sin problemas con túneles
+
+// Configuración básica
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+header('Content-Type: application/json');
+
+// Permitir CORS para túneles
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Methods: POST");
+header("Access-Control-Allow-Headers: Content-Type");
+
+// Si es una solicitud OPTIONS (preflight), responder inmediatamente
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
+
+// Verificar método POST
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    echo json_encode(['success' => false, 'message' => 'Solo se aceptan solicitudes POST']);
+    exit;
+}
+
+// Obtener ID de miembro
+$miembroId = isset($_GET['id']) ? (int)$_GET['id'] : null;
+if (!$miembroId) {
+    echo json_encode(['success' => false, 'message' => 'ID de miembro no especificado']);
+    exit;
+}
+
+// Conectar directamente a la base de datos
+try {
+    require_once __DIR__ . '/app/config/config.php';
+    $db = new PDO("mysql:host=localhost;dbname=IglesiaEnCasa;charset=utf8", "root", "");
+    $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    
+    // Comprobar que el miembro existe
+    $stmt = $db->prepare("SELECT id FROM InformacionGeneral WHERE id = ?");
+    $stmt->execute([$miembroId]);
+    if ($stmt->rowCount() === 0) {
+        echo json_encode(['success' => false, 'message' => 'Miembro no encontrado']);
+        exit;
+    }
+    
+    // Iniciar transacción para asegurar integridad
+    $db->beginTransaction();
+    
+    // 1. Actualizar tabla principal si se enviaron datos
+    $camposPrincipales = ['nombres', 'apellidos', 'celular', 'localidad', 'barrio', 
+        'fecha_nacimiento', 'estado_espiritual', 'recorrido_espiritual'];
+    
+    $actualizados = [];
+    $params = [];
+    
+    foreach ($camposPrincipales as $campo) {
+        if (!empty($_POST[$campo])) {
+            $actualizados[] = "$campo = ?";
+            $params[] = $_POST[$campo];
+        }
+    }
+    
+    if (!empty($actualizados)) {
+        $params[] = $miembroId;
+        $sql = "UPDATE InformacionGeneral SET " . implode(", ", $actualizados) . " WHERE id = ?";
+        $stmt = $db->prepare($sql);
+        $stmt->execute($params);
+    }
+    
+    // 2. Actualizar tallas
+    $existe = $db->prepare("SELECT id FROM Tallas WHERE miembro_id = ?");
+    $existe->execute([$miembroId]);
+    
+    $tallas = [
+        'talla_camisa' => $_POST['talla_camisa'] ?? null,
+        'talla_camiseta' => $_POST['talla_camiseta'] ?? null,
+        'talla_pantalon' => $_POST['talla_pantalon'] ?? null,
+        'talla_zapatos' => $_POST['talla_zapatos'] ?? null
+    ];
+    
+    if ($existe->rowCount() > 0) {
+        // Actualizar registro existente
+        $actualizados = [];
+        $params = [];
+        
+        foreach ($tallas as $campo => $valor) {
+            if ($valor !== null) {
+                $actualizados[] = "$campo = ?";
+                $params[] = $valor;
+            }
+        }
+        
+        if (!empty($actualizados)) {
+            $params[] = $miembroId;
+            $sql = "UPDATE Tallas SET " . implode(", ", $actualizados) . " WHERE miembro_id = ?";
+            $stmt = $db->prepare($sql);
+            $stmt->execute($params);
+        }
+    } else {
+        // Crear nuevo registro
+        $tallas['miembro_id'] = $miembroId;
+        
+        // Filtrar valores nulos
+        $campos = [];
+        $valores = [];
+        $params = [];
+        
+        foreach ($tallas as $campo => $valor) {
+            if ($valor !== null) {
+                $campos[] = $campo;
+                $valores[] = "?";
+                $params[] = $valor;
+            }
+        }
+        
+        if (!empty($campos)) {
+            $sql = "INSERT INTO Tallas (" . implode(", ", $campos) . ") VALUES (" . implode(", ", $valores) . ")";
+            $stmt = $db->prepare($sql);
+            $stmt->execute($params);
+        }
+    }
+    
+    // Actualizar otras tablas relacionadas
+    $tablasRelacionadas = [
+        // Elimina o comenta las tablas que no existen en tu base de datos
+        // 'DatosAdicionales' => ['telefono_adicional', 'direccion_adicional'],
+        // 'Hijos' => ['cantidad_hijos'],
+        // 'Ocupacion' => ['ocupacion'],
+        // 'ReferidoPor' => ['referido_por']
+    ];
+    
+    foreach ($tablasRelacionadas as $tabla => $campos) {
+        actualizarTablaRelacionada($db, $miembroId, $tabla, $campos);
+    }
+    
+    // 3. Actualizar contacto
+    actualizarTablaRelacionada($db, $miembroId, 'Contacto', [
+        'tipo_documento', 'numero_documento', 'telefono', 
+        'correo_electronico', 'pais', 'ciudad', 'direccion', 'estado_civil',
+        'instagram', 'facebook', 'notas', 'familiares'
+    ]);
+    
+    // 4. Actualizar estudios/trabajo
+    actualizarTablaRelacionada($db, $miembroId, 'EstudiosTrabajo', [
+        'nivel_estudios', 'profesion', 'otros_estudios', 
+        'empresa', 'direccion_empresa', 'emprendimientos'
+    ]);
+    
+    // 5. Actualizar salud
+    actualizarTablaRelacionada($db, $miembroId, 'SaludEmergencias', [
+        'rh', 'eps', 'acudiente1', 'telefono1', 'acudiente2', 'telefono2'
+    ]);
+    
+    // 6. Actualizar carrera
+    actualizarTablaRelacionada($db, $miembroId, 'CarreraBiblica', [
+        'estado', 'carrera_biblica', 'miembro_de', 
+        'casa_de_palabra_y_vida', 'cobertura', 'anotaciones'
+    ]);
+    
+    // Confirmar todas las operaciones
+    $db->commit();
+    
+    echo json_encode([
+        'success' => true,
+        'message' => 'Datos actualizados correctamente',
+        'id' => $miembroId,
+        'redirect' => "/ENCASA_DATABASE/miembros/$miembroId"
+    ]);
+    
+} catch (Exception $e) {
+    // Revertir cambios en caso de error
+    if (isset($db) && $db->inTransaction()) {
+        $db->rollBack();
+    }
+    
+    echo json_encode([
+        'success' => false, 
+        'message' => 'Error: ' . $e->getMessage()
+    ]);
+}
+
+// Función para actualizar tablas relacionadas
+function actualizarTablaRelacionada($db, $miembroId, $tabla, $camposPermitidos) {
+    // Verificar si hay datos para actualizar
+    $hayDatos = false;
+    $datos = [];
+    
+    foreach ($camposPermitidos as $campo) {
+        if (isset($_POST[$campo])) {
+            $datos[$campo] = $_POST[$campo];
+            $hayDatos = true;
+        }
+    }
+    
+    if (!$hayDatos) return;
+    
+    // Verificar si ya existe registro
+    $verificar = $db->prepare("SELECT id FROM $tabla WHERE miembro_id = ?");
+    $verificar->execute([$miembroId]);
+    $existe = $verificar->fetch();
+    
+    if ($existe) {
+        // Actualizar
+        $sets = [];
+        $params = [];
+        
+        foreach ($datos as $campo => $valor) {
+            $sets[] = "$campo = ?";
+            $params[] = $valor;
+        }
+        
+        if (empty($sets)) return;
+        
+        $params[] = $miembroId;
+        $sql = "UPDATE $tabla SET " . implode(', ', $sets) . " WHERE miembro_id = ?";
+        
+        $stmt = $db->prepare($sql);
+        $stmt->execute($params);
+    } else {
+        // Insertar
+        if (empty($datos)) return;
+        
+        $datos['miembro_id'] = $miembroId;
+        $campos = array_keys($datos);
+        $placeholders = array_fill(0, count($campos), '?');
+        
+        $sql = "INSERT INTO $tabla (" . implode(', ', $campos) . ") 
+                VALUES (" . implode(', ', $placeholders) . ")";
+        
+        $stmt = $db->prepare($sql);
+        $stmt->execute(array_values($datos));
+    }
+}
+
+// Solo para depuración - Eliminar en producción
+file_put_contents(__DIR__ . '/debug_proxy.log', "Solicitud recibida: " . date('Y-m-d H:i:s') . "\n", FILE_APPEND);
+file_put_contents(__DIR__ . '/debug_proxy.log', "POST: " . print_r($_POST, true) . "\n", FILE_APPEND);
+// Solo para depuración temporal
+file_put_contents(__DIR__ . '/campos_form.log', "Campos del formulario: " . print_r($_POST, true), FILE_APPEND);
+?>
+
+
+=============================================================
 ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\ngrok_test.php
 =============================================================
 
@@ -851,6 +1165,670 @@ echo "<!DOCTYPE html>
 </body>
 </html>";
 ?>
+
+
+=============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\project_status.php
+=============================================================
+
+<?php
+
+/**
+ * Dashboard de Estado del Proyecto ENCASA_DATABASE
+ * Muestra el progreso de la implementación
+ */
+
+// Configuración de etapas y fases
+$stages = [
+    1 => [
+        'name' => 'Configuración del Entorno y Base de Datos',
+        'progress' => 100,
+        'status' => 'completed',
+        'start_date' => '2025-05-10',
+        'end_date' => '2025-05-12',
+        'phases' => [
+            [
+                'name' => 'Entorno de desarrollo',
+                'progress' => 100,
+                'status' => 'completed',
+                'tasks' => [
+                    ['name' => 'Configurar XAMPP y PHP', 'status' => 'completed'],
+                    ['name' => 'Crear estructura de directorios', 'status' => 'completed'],
+                    ['name' => 'Configurar permisos', 'status' => 'completed'],
+                ]
+            ],
+            [
+                'name' => 'Base de datos',
+                'progress' => 100,
+                'status' => 'completed',
+                'tasks' => [
+                    ['name' => 'Diseño de esquema de base de datos', 'status' => 'completed'],
+                    ['name' => 'Configuración de conexión', 'status' => 'completed'],
+                    ['name' => 'Implementar migraciones iniciales', 'status' => 'completed'],
+                ]
+            ]
+        ]
+    ],
+    2 => [
+        'name' => 'Núcleo MVC y Enrutamiento',
+        'progress' => 100,
+        'status' => 'completed',
+        'start_date' => '2025-05-13',
+        'end_date' => '2025-05-16',
+        'phases' => [
+            [
+                'name' => 'Estructura MVC',
+                'progress' => 100,
+                'status' => 'completed',
+                'tasks' => [
+                    ['name' => 'Implementar clases base modelo', 'status' => 'completed'],
+                    ['name' => 'Configurar controladores', 'status' => 'completed'],
+                    ['name' => 'Establecer sistema de vistas', 'status' => 'completed'],
+                ]
+            ],
+            [
+                'name' => 'Sistema de Rutas',
+                'progress' => 100,
+                'status' => 'completed',
+                'tasks' => [
+                    ['name' => 'Crear router principal', 'status' => 'completed'],
+                    ['name' => 'Configurar manejo de parámetros', 'status' => 'completed'],
+                    ['name' => 'Implementar middlewares', 'status' => 'completed'],
+                ]
+            ]
+        ]
+    ],
+    3 => [
+        'name' => 'Sistema de Autenticación y Autorización',
+        'progress' => 100,
+        'status' => 'completed',
+        'start_date' => '2025-05-17',
+        'end_date' => '2025-05-28',
+        'phases' => [
+            [
+                'name' => 'Autenticación Base',
+                'progress' => 100,
+                'status' => 'completed',
+                'tasks' => [
+                    ['name' => 'Implementar clase Auth con métodos base', 'status' => 'completed'],
+                    ['name' => 'Implementar sistema de sesiones seguras', 'status' => 'completed'],
+                    ['name' => 'Crear vistas login/registro', 'status' => 'completed'],
+                ]
+            ],
+            [
+                'name' => 'Verificación en Dos Pasos',
+                'progress' => 100,
+                'status' => 'completed',
+                'tasks' => [
+                    ['name' => 'Implementar verificación para registro', 'status' => 'completed'],
+                    ['name' => 'Desarrollar verificación para login', 'status' => 'completed'],
+                    ['name' => 'Integrar sistema de JWT', 'status' => 'completed'],
+                ]
+            ],
+            [
+                'name' => 'Sistema de Roles y Permisos',
+                'progress' => 100,
+                'status' => 'completed',
+                'tasks' => [
+                    ['name' => 'Crear sistema de roles y permisos', 'status' => 'completed'],
+                    ['name' => 'Implementar middlewares de autorización', 'status' => 'completed'],
+                    ['name' => 'Solucionar problemas de seguridad en formularios', 'status' => 'completed'],
+                ]
+            ]
+        ]
+    ],
+    4 => [
+        'name' => 'Modelos Base y CRUD de Miembros',
+        'progress' => 60,
+        'status' => 'in-progress',
+        'start_date' => '2025-05-22',
+        'end_date' => '2025-05-31',
+        'phases' => [
+            [
+                'name' => 'Modelos y Relaciones',
+                'progress' => 100,
+                'status' => 'completed',
+                'tasks' => [
+                    ['name' => 'Crear Modelo abstracto base', 'status' => 'completed'],
+                    ['name' => 'Implementar modelo Miembro con relaciones', 'status' => 'completed'],
+                    ['name' => 'Implementar modelos relacionados', 'status' => 'completed'],
+                ]
+            ],
+            [
+                'name' => 'Controladores CRUD',
+                'progress' => 65,
+                'status' => 'in-progress',
+                'tasks' => [
+                    ['name' => 'Implementar visualización de perfil de miembro', 'status' => 'completed'],
+                    ['name' => 'Implementar creación/edición de miembros', 'status' => 'in-progress'],
+                    ['name' => 'Implementar listado y filtrado de miembros', 'status' => 'in-progress'],
+                ]
+            ],
+            [
+                'name' => 'Vistas y Formularios',
+                'progress' => 40,
+                'status' => 'in-progress',
+                'tasks' => [
+                    ['name' => 'Implementar vistas para gestión de miembros', 'status' => 'in-progress'],
+                    ['name' => 'Crear formularios de edición', 'status' => 'in-progress'],
+                    ['name' => 'Implementar procesamiento de imágenes/fotos', 'status' => 'pending'],
+                ]
+            ]
+        ]
+    ],
+    5 => [
+        'name' => 'Ministerios, Roles y Tareas',
+        'progress' => 0,
+        'status' => 'pending',
+        'start_date' => '2025-06-01',
+        'end_date' => '2025-06-07',
+        'phases' => [
+            [
+                'name' => 'Modelos y Relaciones',
+                'progress' => 0,
+                'status' => 'pending',
+                'tasks' => [
+                    ['name' => 'Implementar modelo Ministerio', 'status' => 'pending'],
+                    ['name' => 'Implementar modelo Rol', 'status' => 'pending'],
+                    ['name' => 'Implementar modelo Tarea', 'status' => 'pending'],
+                ]
+            ],
+            [
+                'name' => 'Controladores y Lógica',
+                'progress' => 0,
+                'status' => 'pending',
+                'tasks' => [
+                    ['name' => 'Desarrollar controlador de Ministerios', 'status' => 'pending'],
+                    ['name' => 'Desarrollar controlador de Roles', 'status' => 'pending'],
+                    ['name' => 'Implementar asignación de roles', 'status' => 'pending'],
+                ]
+            ]
+        ]
+    ],
+    6 => [
+        'name' => 'Vistas y UI/UX',
+        'progress' => 35,
+        'status' => 'in-progress',
+        'start_date' => '2025-05-24',
+        'end_date' => '2025-06-01',
+        'phases' => [
+            [
+                'name' => 'Plantillas Base',
+                'progress' => 100,
+                'status' => 'completed',
+                'tasks' => [
+                    ['name' => 'Crear layouts principal y de autenticación', 'status' => 'completed'],
+                    ['name' => 'Mejorar interfaz de formularios de autenticación', 'status' => 'completed'],
+                ]
+            ],
+            [
+                'name' => 'Mejoras de Interfaz',
+                'progress' => 15,
+                'status' => 'in-progress',
+                'tasks' => [
+                    ['name' => 'Implementación de Tailwind CSS', 'status' => 'in-progress'],
+                    ['name' => 'Implementar vistas de miembros', 'status' => 'in-progress'],
+                    ['name' => 'Crear vistas de ministerios y tareas', 'status' => 'pending'],
+                ]
+            ]
+        ]
+    ],
+    7 => [
+        'name' => 'Integración, Pruebas y Optimización',
+        'progress' => 40,
+        'status' => 'in-progress',
+        'start_date' => '2025-05-24',
+        'end_date' => '2025-06-03',
+        'phases' => [
+            [
+                'name' => 'URLs y Entornos',
+                'progress' => 100,
+                'status' => 'completed',
+                'tasks' => [
+                    ['name' => 'Solucionar problemas de URLs con ngrok y túneles', 'status' => 'completed'],
+                    ['name' => 'Implementar detección de entorno', 'status' => 'completed'],
+                    ['name' => 'Configurar generación segura de URLs', 'status' => 'completed'],
+                ]
+            ],
+            [
+                'name' => 'Monitoreo y Optimización',
+                'progress' => 30,
+                'status' => 'in-progress',
+                'tasks' => [
+                    ['name' => 'Sistema de logs para monitoreo', 'status' => 'in-progress'],
+                    ['name' => 'Optimizar consultas SQL', 'status' => 'in-progress'],
+                    ['name' => 'Implementar caché donde sea necesario', 'status' => 'pending'],
+                ]
+            ],
+            [
+                'name' => 'Seguridad',
+                'progress' => 40,
+                'status' => 'in-progress',
+                'tasks' => [
+                    ['name' => 'Revisar y mejorar seguridad', 'status' => 'in-progress'],
+                    ['name' => 'Implementar validaciones del lado del cliente', 'status' => 'pending'],
+                ]
+            ]
+        ]
+    ],
+    8 => [
+        'name' => 'Despliegue y Documentación',
+        'progress' => 5,
+        'status' => 'pending',
+        'start_date' => '2025-05-30',
+        'end_date' => '2025-06-05',
+        'phases' => [
+            [
+                'name' => 'Documentación',
+                'progress' => 10,
+                'status' => 'in-progress',
+                'tasks' => [
+                    ['name' => 'Crear manual de usuario', 'status' => 'pending'],
+                    ['name' => 'Documentar API y endpoints', 'status' => 'pending'],
+                    ['name' => 'Crear documentación técnica', 'status' => 'in-progress'],
+                ]
+            ],
+            [
+                'name' => 'Despliegue',
+                'progress' => 0,
+                'status' => 'pending',
+                'tasks' => [
+                    ['name' => 'Configurar servidor de producción', 'status' => 'pending'],
+                    ['name' => 'Automatizar proceso de despliegue', 'status' => 'pending'],
+                    ['name' => 'Configurar backups y alta disponibilidad', 'status' => 'pending'],
+                ]
+            ]
+        ]
+    ],
+];
+
+// Calcular progreso general
+$totalStages = count($stages);
+$completedProgress = 0;
+
+foreach ($stages as $key => $stage) {
+    $completedProgress += $stage['progress'];
+}
+
+$overallProgress = $totalStages > 0 ? round($completedProgress / $totalStages) : 0;
+
+// Calcular siguiente tarea pendiente
+$nextTask = null;
+foreach ($stages as $stageKey => $stage) {
+    if ($stage['status'] !== 'completed') {
+        foreach ($stage['phases'] as $phaseKey => $phase) {
+            if ($phase['status'] !== 'completed') {
+                foreach ($phase['tasks'] as $taskKey => $task) {
+                    if ($task['status'] === 'pending') {
+                        $nextTask = [
+                            'stage' => $stageKey,
+                            'phase' => $phaseKey,
+                            'name' => $task['name'],
+                            'stage_name' => $stage['name'],
+                            'phase_name' => $phase['name']
+                        ];
+                        break 3;
+                    }
+                }
+            }
+        }
+    }
+}
+
+function getStatusClass($status) {
+    switch($status) {
+        case 'completed': return 'bg-success text-white';
+        case 'in-progress': return 'bg-primary text-white';
+        case 'pending': return 'bg-neutral-200 text-neutral-700';
+        default: return 'bg-neutral-200 text-neutral-700';
+    }
+}
+
+function getStatusIcon($status) {
+    switch($status) {
+        case 'completed': return '✓';
+        case 'in-progress': return '→';
+        case 'pending': return '○';
+        default: return '○';
+    }
+}
+
+?>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estado del Proyecto - Iglesia En Casa</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #FF5C28;
+            --primary-light: #FF8A5C;
+            --primary-dark: #E04B1F;
+            --neutral-900: #121212;
+            --neutral-800: #333333;
+            --neutral-700: #555555;
+            --neutral-500: #888888;
+            --neutral-300: #CCCCCC;
+            --neutral-200: #E5E5E5;
+            --neutral-100: #F5F5F5;
+            --neutral-50: #FAFAFA;
+            --white: #FFFFFF;
+            --success: #34D399;
+            --error: #F87171;
+            --warning: #FBBF24;
+            --info: #60A5FA;
+            --shadow: rgba(0, 0, 0, 0.1);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--neutral-50);
+            color: var(--neutral-800);
+        }
+        
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 600;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+        
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 2rem;
+        }
+        
+        .logo-container {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .logo {
+            max-width: 150px;
+            height: auto;
+        }
+        
+        .logo-tagline {
+            font-size: 0.75rem;
+            color: var(--neutral-700);
+            margin-top: 0.25rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .progress-bar-container {
+            height: 8px;
+            background-color: var(--neutral-200);
+            border-radius: 4px;
+            margin: 1.5rem 0;
+            overflow: hidden;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background-color: var(--primary);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+        
+        .stage {
+            background: var(--white);
+            border-radius: 8px;
+            box-shadow: 0 2px 4px var(--shadow);
+            margin-bottom: 1.5rem;
+            overflow: hidden;
+        }
+        
+        .stage-header {
+            padding: 1rem 1.5rem;
+            background-color: var(--neutral-100);
+            border-bottom: 1px solid var(--neutral-200);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .stage-title {
+            font-size: 1.25rem;
+            display: flex;
+            align-items: center;
+        }
+        
+        .stage-title .status-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            margin-right: 0.75rem;
+            font-weight: bold;
+        }
+        
+        .stage-content {
+            padding: 1.5rem;
+        }
+        
+        .phase {
+            margin-bottom: 1.5rem;
+            background: var(--neutral-50);
+            border-radius: 6px;
+            padding: 1rem;
+            border-left: 3px solid var(--neutral-300);
+        }
+        
+        .phase.completed {
+            border-left-color: var(--success);
+        }
+        
+        .phase.in-progress {
+            border-left-color: var(--primary);
+        }
+        
+        .phase-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.75rem;
+        }
+        
+        .phase-title {
+            font-size: 1.1rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+        }
+        
+        .phase-title .status-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+        
+        .tasks {
+            list-style: none;
+        }
+        
+        .task {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+        
+        .task-status {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+            font-size: 0.7rem;
+        }
+        
+        .next-task {
+            background: var(--primary-light);
+            color: var(--white);
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin: 2rem 0;
+        }
+        
+        .next-task h3 {
+            margin-bottom: 0.5rem;
+            font-size: 1.25rem;
+        }
+        
+        .next-task p {
+            margin-bottom: 0.25rem;
+            opacity: 0.9;
+        }
+        
+        .highlight-box {
+            background: var(--info);
+            color: var(--white);
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin: 1rem 0 2rem;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .header > div:last-child {
+                margin-top: 1rem;
+            }
+            
+            .stage-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .stage-header .stage-dates {
+                margin-top: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="logo-container">
+             <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAJYAAABUCAYAAABxuNIZAAAACXBIWXMAAAsTAAALEwEAmpwYAAAF4klEQVR4nO2dXWwUVRTH/zO7s9vdttRStlRb2u4WpLalFhVBiIkGEmMwwQfig/FBEwk+mKgvJj74pCY+GCNGX3zwK8GgMcYIGIMxKolEY0m0YOnHthS7pV3abXe3u7MzxzuDeLed3Xtnzp3ZnfklTdqd2Zk7c/656z1nzj0jpJQQBOt4mQ0Q8hMRS8gEIpaQCUQsIROIWEImELGETCBiCZlAxBIyQbdTAaHDgMrpd6D7AkhmP3s2fEPE6sW5R5eivW01pEOE8vt9ntBpWh2xotfX+uJCK9C2YPQYekrTcPLOTUiZXwDs+M67sOSTExn4/T4OQtyNlJKCd8TyCR9GfH5UGn6M+QIIfUm5Oo7EzQwlVt9YE14srUN99TRcqLWiODrsjFx5iCViIfQI8Iw2YSjUhAGjEa+WL0dZETDQC1ypB2aK86/xlErrUI2w2QhjuBmTfWE0lIYREgKB3sy27SQiinUjGECg9zqCNVcxNBlAIRDQ5zDSG8ToVB1C3ig2ebx0ibYzWsAWaxB6VxyiiuEDSJbq8KKaGahNUs7KBdlnkYZulKA8MYm+t4ZocAZ3jjRlvLxckdNiab4gon211NvUoaqCZjKhLOHUJ1PgF6qdLsSfmEJ1XQyTZrNp6pknclasCq0YZ4vCuHJiMeKRM1ROfYDK2Z42YdLK73zQa6owuKIae4cWIl41DnlDrJ5iA1+E6jGxtxlxkmoeoXgV6hPjNE7bg6MJDxe5JVa0qQaDG15DfRAF+5xZYdDrUYaPDt9Ppw8lPJzk1ldpRtDJVFAwSODBQ6E3x2xlVCznAHqm6pGgJOe25e7ZBoaaxetuSdgcJhuZELh+K1cDMwbkTI+VRC+OIDgTR4JpDyuWRJ16JMft2jtoBkJ5Ehbsw3WxBBZBGpmOgKTKAax2SuQeiefwudGNJDplOcYQqP5iFpx9sWgUotHyYt6wGJQ4uG5NLRJpvZbPm1uusHKho/mA/PQN+WgjFg3AeDIo7jYqln2nSQn0K8v0MFHtJKRxOiSSFUzZy3HdntU4T0V+go7r6aWcXFdQFVS2oDn3CZSM/Q7FWmE7wi1WiTYDrfwSKs1JGFYboyyxKJvdBlXLUWZzcNumcSOFcMOvMGl6AxULC4KetMQKFE1i5OMmxG85YOicnZ6VNulZf9O0QKfd56WsslIg8ey5O32NJh9g2pNexNO8FQt6HHuGw4if6Idhzn2tbAn7VPvblz4ncTkzQ45mbG+cn7ItVszjw6RvDYYXNKKiz4ukJBcS8hK3xDKEgLcujBN7FuHeVgjfVXofk/OGXI7uFla+XY0LTzfjh9fWIXH+HARJlbe4JZYSRze8GPxwNw58/gG+3/E2Lv5+ErVH9qO0f5BOC28IISvclSpXxvrymmqMNbdgeL8PK296UEGPOebVGUbMOUdOT4nQ9SLMrKrEpZpaXHqzFY37LsBcfIwLZbk85QshYypWP96CaNUsxuoS6KmKojptqawXaxd8i+ajnVh9aINCh2qjibvkRjUiyw0kHz+EukOfo+bAd6g9tA/HHnkNXfVLGRt3H7a8+ap74PW1ft+3n3bsPHFk/2vRVAASnTT/Kk86352JjD307J4tq5o+tfLcQvpwTSyr22690O7ETCs7W1MzmrHk5YWz1b9t+xLdK1c4OvnNSSxruy4XL0KWsL7rclPXP9974cU9L2PwkWfyPnrJsrl3zSTGv/kQC+/5E/Gl6zCy9DXbRrT0/NYG3utjuQFXrr0r+f2Lo6tWONZmuT62XNe92UUjGuq/GtsA39Mt8CVo72wx9m3FRVOlzGmpMHehLTw34C4l2LmFQZcwFjzwxwftCQtjUElpj64tXtm5w47YiondsLHjmCO7LiUkrVrRUYt8QdWIjRPOGqPz4+7S+sU7JpwZ2wn9S+BGTF34g7r6JSmqiIe60qP2WgZBEIQCgP1Pi4JgGZl6RL7eRL3UCRv/DwlO8A9TD/qeO/oc0wAAAABJRU5ErkJggg==" alt="Iglesia En Casa" class="logo">
+            <span class="logo-tagline">donde dios es todo</span>
+            </div>
+            <div>
+                            <h1>Estado del Proyecto</h1>
+                            <p>Sistema de Gestión de Base de Datos</p>
+                        </div>
+                    </header>
+            
+                    <!-- Progreso general -->
+                    <div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h2>Progreso General: <?= $overallProgress ?>%</h2>
+                        </div>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar" style="width: <?= $overallProgress ?>%"></div>
+                        </div>
+                    </div>
+            
+                    <!-- Próxima tarea -->
+                    <?php if ($nextTask): ?>
+                    <div class="next-task">
+                        <h3>Próxima tarea pendiente</h3>
+                        <p><strong>Etapa <?= $nextTask['stage'] ?>:</strong> <?= $nextTask['stage_name'] ?></p>
+                        <p><strong>Fase:</strong> <?= $nextTask['phase_name'] ?></p>
+                        <p><strong>Tarea:</strong> <?= $nextTask['name'] ?></p>
+                    </div>
+                    <?php endif; ?>
+            
+                    <!-- Logros destacados -->
+                    <div class="highlight-box">
+                        <h3>Logros destacados (30/05/2025)</h3>
+                        <ul style="margin-top: 10px; opacity: 0.9; padding-left: 20px;">
+                            <li>✅ Solución implementada para problemas con ngrok y túneles</li>
+                            <li>✅ Resuelto el error de "formularios no seguros" en el entorno de ngrok</li>
+                            <li>✅ Mejorada la función url() para detectar automáticamente el entorno</li>
+                            <li>✅ Implementada detección de entorno en index.php</li>
+                            <li>✅ Optimizada la configuración de sesiones para evitar redirecciones infinitas</li>
+                        </ul>
+                    </div>
+            
+                    <!-- Etapas -->
+                    <?php foreach ($stages as $stageKey => $stage): ?>
+                    <div class="stage">
+                        <div class="stage-header">
+                            <div class="stage-title">
+                                <span class="status-icon <?= getStatusClass($stage['status']) ?>"><?= getStatusIcon($stage['status']) ?></span>
+                                <span>Etapa <?= $stageKey ?>: <?= $stage['name'] ?></span>
+                            </div>
+                            <div class="stage-dates">
+                                <?= $stage['start_date'] ?> - <?= $stage['status'] === 'completed' ? $stage['end_date'] : ('Estimado: ' . $stage['end_date']) ?>
+                                <span class="ms-2"><?= $stage['progress'] ?>%</span>
+                            </div>
+                        </div>
+                        <div class="stage-content">
+                            <!-- Fases -->
+                            <?php foreach ($stage['phases'] as $phaseKey => $phase): ?>
+                            <div class="phase <?= $phase['status'] ?>">
+                                <div class="phase-header">
+                                    <div class="phase-title">
+                                        <span class="status-icon <?= getStatusClass($phase['status']) ?>"><?= getStatusIcon($phase['status']) ?></span>
+                                        <?= $phase['name'] ?>
+                                    </div>
+                                    <div><?= $phase['progress'] ?>%</div>
+                                </div>
+                                <!-- Tareas -->
+                                <ul class="tasks">
+                                    <?php foreach ($phase['tasks'] as $taskKey => $task): ?>
+                                    <li class="task">
+                                        <span class="task-status <?= getStatusClass($task['status']) ?>"><?= getStatusIcon($task['status']) ?></span>
+                                        <?= $task['name'] ?>
+                                    </li>
+                                    <?php endforeach; ?>
+                                </ul>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+            
+                    <!-- Footer -->
+                    <footer style="margin-top: 3rem; text-align: center; color: var(--neutral-700); font-size: 0.85rem;">
+                        <p>ENCASA_DATABASE v1.0 &copy; <?= date('Y') ?> Iglesia En Casa</p>
+                        <p>Última actualización: <?= date('d/m/Y') ?></p>
+                    </footer>
+                </div>
+            </body>
+            </html>             
+                            
 
 
 =============================================================
@@ -1548,6 +2526,42 @@ echo "</ul>";
 
 
 =============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\verificar_miembro.php
+=============================================================
+
+<?php
+
+require_once __DIR__ . '/app/config/config.php';
+require_once __DIR__ . '/app/config/database.php';
+
+$id = isset($_GET['id']) ? (int)$_GET['id'] : 1;
+
+try {
+    $db = Database::getInstance()->getConnection();
+    
+    // Consulta directa
+    $stmt = $db->prepare("SELECT * FROM InformacionGeneral WHERE id = ?");
+    $stmt->execute([$id]);
+    $miembro = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+    echo "<h1>Verificación directa de miembro ID: $id</h1>";
+    
+    if ($miembro) {
+        echo "<p style='color:green'>✅ El miembro SÍ existe en la base de datos</p>";
+        echo "<pre>";
+        print_r($miembro);
+        echo "</pre>";
+    } else {
+        echo "<p style='color:red'>❌ El miembro NO existe en la base de datos</p>";
+    }
+    
+} catch (Exception $e) {
+    echo "<p style='color:red'>Error: " . $e->getMessage() . "</p>";
+}
+?>
+
+
+=============================================================
 ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\verify_router.php
 =============================================================
 
@@ -1666,6 +2680,19 @@ define('DB_HOST', 'localhost');
 define('DB_NAME', 'IglesiaEnCasa');
 define('DB_USER', 'root');
 define('DB_PASS', '');
+
+// Agregar esta línea al final del archivo
+define('ALLOW_INSECURE_FORMS', true);
+
+// Agregar esto al final del archivo para mejorar el registro de errores
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+ini_set('error_log', __DIR__ . '/../../logs/php_error.log');
+
+// Asegurarse de que existe el directorio de logs
+if (!is_dir(__DIR__ . '/../../logs')) {
+    mkdir(__DIR__ . '/../../logs', 0777, true);
+}
 
 
 =============================================================
@@ -2003,6 +3030,8 @@ $router->get('miembros', 'Miembros', 'index', ['Auth']);
 $router->get('miembros/crear', 'Miembros', 'crear', ['Auth']);
 $router->post('miembros/guardar', 'Miembros', 'guardar', ['Auth']);
 $router->get('miembros/{id}', 'Miembros', 'ver', ['Auth']);
+$router->get('miembros/editar/{id}', 'Miembros', 'editar');
+$router->post('miembros/actualizar/{id}', 'Miembros', 'actualizar');
 
 // Rutas de ministerios
 $router->get('ministerios', 'Ministerios', 'index', ['Auth']);
@@ -2533,6 +3562,31 @@ abstract class Controller {
     protected function isAuthenticated() {
         return isset($_SESSION['user_id']);
     }
+    
+    /**
+     * Renderiza una página de error
+     *
+     * @param int $code Código de error HTTP
+     * @param string $message Mensaje de error
+     */
+    protected function renderError($code, $message = '') {
+        http_response_code($code);
+        
+        // Si es un error 404, usar la vista específica
+        if ($code === 404) {
+            $this->renderWithLayout('errors/404', 'default', [
+                'title' => 'Página no encontrada',
+                'message' => $message
+            ]);
+        } else {
+            // Para otros códigos, usar una vista genérica de error
+            $this->renderWithLayout('errors/general', 'default', [
+                'code' => $code,
+                'title' => 'Error ' . $code,
+                'message' => $message
+            ]);
+        }
+    }
 }
 
 
@@ -2568,6 +3622,8 @@ use App\Models\Contacto;
 use App\Models\EstudiosTrabajo;
 use App\Models\Tallas;
 use App\Models\CarreraBiblica;
+use App\Models\SaludEmergencias;
+use Exception;
 
 class MiembrosController extends Controller {
     private $miembroModel;
@@ -2735,28 +3791,73 @@ class MiembrosController extends Controller {
     /**
      * Obtiene y muestra el perfil completo del miembro
      */
-    public function ver($id = null) {
-        // Validar y sanitizar ID
-        if (!$id) {
-            $uri = $_SERVER['REQUEST_URI'];
-            if (preg_match('#/miembros/(\d+)#', $uri, $matches)) {
-                $id = (int)$matches[1];
-            } else {
-                $_SESSION['flash_message'] = 'ID de miembro no especificado';
-                $_SESSION['flash_type'] = 'danger';
-                $this->redirect('miembros');
+    public function ver($id)
+    {
+        try {
+            // Corregir la forma en que se maneja el parámetro ID
+            if (is_array($id)) {
+                // Si recibe un array asociativo con clave 'id'
+                if (isset($id['id'])) {
+                    $id = (int)$id['id'];
+                } 
+                // Si recibe un array indexado
+                elseif (isset($id[0])) {
+                    $id = (int)$id[0];
+                } 
+                else {
+                    $id = 0;
+                }
+            }
+            
+            $id = (int)$id;
+            
+            if ($id <= 0) {
+                $this->renderError(404, 'ID de miembro inválido');
                 return;
             }
+            
+            // Obtener perfil completo
+            $miembro = $this->miembroModel->getFullProfile($id);
+            
+            if (!$miembro) {
+                $this->renderError(404, 'Miembro no encontrado');
+                return;
+            }
+            
+            // IMPORTANTE: Usar renderWithLayout en lugar de render
+            $this->renderWithLayout('miembros/ver', 'default', [
+                'miembro' => $miembro,
+                'title' => "{$miembro['nombres']} {$miembro['apellidos']}"
+            ]);
+        } catch (\Exception $e) {
+            error_log("Error en ver(): " . $e->getMessage());
+            $this->renderError(500, 'Error al cargar los datos del miembro');
+        }
+    }
+
+    private function obtenerDatosRelacionados($db, $miembroId, $tabla)
+    {
+        $stmt = $db->prepare("SELECT * FROM {$tabla} WHERE miembro_id = ?");
+        $stmt->execute([$miembroId]);
+        $datos = $stmt->fetch(\PDO::FETCH_ASSOC);
+        
+        if ($datos) {
+            // Eliminar campos redundantes
+            unset($datos['id']);
+            unset($datos['miembro_id']);
+            unset($datos['fecha_actualizacion']);
+            return $datos;
         }
         
-        // Asegurar que ID es entero
-        $id = (int)$id;
-        
-        // Obtener datos del miembro
+        return [];
+    }
+
+    /**
+     * Muestra el formulario para editar un miembro
+     */
+    public function editar($id) 
+    {
         $miembro = $this->miembroModel->getFullProfile($id);
-        
-        // Log seguro usando json_encode para arrays
-        error_log("Datos del miembro: " . ($miembro ? json_encode($miembro) : "no encontrado"));
         
         if (!$miembro) {
             $_SESSION['flash_message'] = 'Miembro no encontrado';
@@ -2765,18 +3866,420 @@ class MiembrosController extends Controller {
             return;
         }
         
-        // Renderizar la vista con los datos
-        return $this->renderWithLayout('miembros/ver', 'default', [
+        return $this->renderWithLayout('miembros/editar', 'default', [
             'miembro' => $miembro,
-            'title' => "Perfil de {$miembro['nombres']} {$miembro['apellidos']}"
+            'title' => 'Editar Miembro: ' . $miembro['nombres'] . ' ' . $miembro['apellidos']
         ]);
     }
 
     /**
-     * Obtiene los parámetros de la URL
+     * Procesa el formulario de edición y actualiza el miembro
      */
-    private function getParams() {
-        return isset($GLOBALS['router']) ? $GLOBALS['router']->getParams() : [];
+    public function actualizar($id)
+    {
+        // Limpiar el id
+        if (is_array($id)) {
+            $id = (int) $id[0];
+        }
+        $id = (int)$id;
+        
+        // Para depuración
+        error_log("Iniciando actualización para miembro ID: $id");
+        error_log("Datos POST: " . json_encode($_POST));
+        
+        try {
+            // Verificar método HTTP
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                $this->responderJSON(['success' => false, 'message' => 'Método no permitido']);
+                return;
+            }
+            
+            // Obtener conexión a la BD
+            $db = \Database::getInstance()->getConnection();
+            
+            // Verificar que el miembro existe
+            $verificarStmt = $db->prepare("SELECT id FROM InformacionGeneral WHERE id = ?");
+            $verificarStmt->execute([$id]);
+            
+            if ($verificarStmt->rowCount() === 0) {
+                $this->responderJSON(['success' => false, 'message' => 'El miembro no existe']);
+                return;
+            }
+            
+            // Datos básicos para actualizar
+            $datosGenerales = [];
+            $camposPermitidos = [
+                'nombres', 'apellidos', 'celular', 'localidad', 'barrio', 
+                'fecha_nacimiento', 'estado_espiritual', 'recorrido_espiritual'
+            ];
+            
+            foreach ($camposPermitidos as $campo) {
+                if (isset($_POST[$campo])) {
+                    $datosGenerales[$campo] = $_POST[$campo];
+                }
+            }
+            
+            // Actualizar tabla principal si hay datos
+            if (!empty($datosGenerales)) {
+                $sets = [];
+                $params = [];
+                
+                foreach ($datosGenerales as $campo => $valor) {
+                    $sets[] = "$campo = ?";
+                    $params[] = $valor;
+                }
+                
+                // Añadir ID al final
+                $params[] = $id;
+                
+                $sql = "UPDATE InformacionGeneral SET " . implode(', ', $sets) . " WHERE id = ?";
+                $stmt = $db->prepare($sql);
+                $resultado = $stmt->execute($params);
+                
+                if (!$resultado) {
+                    throw new \Exception("Error al actualizar datos generales: " . implode(", ", $stmt->errorInfo()));
+                }
+            }
+            
+            // Actualizar tablas relacionadas (sólo si tenemos datos para ellas)
+            $this->actualizarContactoSimplificado($id, $_POST);
+            $this->actualizarEstudioSimplificado($id, $_POST);
+            $this->actualizarTallasSimplificado($id, $_POST);
+            $this->actualizarSaludSimplificado($id, $_POST);
+            $this->actualizarCarreraSimplificado($id, $_POST);
+            
+            // Responder con éxito
+            $this->responderJSON([
+                'success' => true, 
+                'message' => 'Miembro actualizado correctamente',
+                'id' => $id,
+                'redirect' => APP_URL . '/miembros/' . $id
+            ]);
+            
+        } catch (\Exception $e) {
+            error_log("Error en actualizar(): " . $e->getMessage());
+            $this->responderJSON(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+        }
+    }
+
+    private function responderJSON($data) {
+        header('Content-Type: application/json');
+        echo json_encode($data);
+        exit;
+    }
+
+    // Métodos simplificados para actualizar tablas relacionadas
+    private function actualizarContactoSimplificado($id, $datos) {
+        try {
+            $db = \Database::getInstance()->getConnection();
+            
+            // Campos a actualizar (solo si están presentes en POST)
+            $campos = [
+                'tipo_documento', 'numero_documento', 'telefono', 
+                'correo_electronico', 'pais', 'ciudad', 'direccion', 'estado_civil'
+            ];
+            
+            // Verificar si hay datos para actualizar
+            $datosActualizar = [];
+            foreach ($campos as $campo) {
+                if (isset($datos[$campo])) {
+                    $datosActualizar[$campo] = $datos[$campo];
+                }
+            }
+            
+            if (empty($datosActualizar)) {
+                return true; // No hay datos para actualizar
+            }
+            
+            // Verificar si existe registro
+            $verificar = $db->prepare("SELECT id FROM Contacto WHERE miembro_id = ?");
+            $verificar->execute([$id]);
+            $existe = $verificar->fetch();
+            
+            if ($existe) {
+                // Actualizar
+                $sets = [];
+                $params = [];
+                
+                foreach ($datosActualizar as $campo => $valor) {
+                    $sets[] = "$campo = ?";
+                    $params[] = $valor;
+                }
+                
+                $params[] = $id;
+                $sql = "UPDATE Contacto SET " . implode(', ', $sets) . " WHERE miembro_id = ?";
+                
+                $stmt = $db->prepare($sql);
+                $stmt->execute($params);
+            } else {
+                // Insertar
+                $datosActualizar['miembro_id'] = $id;
+                
+                $campos = array_keys($datosActualizar);
+                $placeholders = array_fill(0, count($campos), '?');
+                
+                $sql = "INSERT INTO Contacto (" . implode(', ', $campos) . ") 
+                        VALUES (" . implode(', ', $placeholders) . ")";
+                
+                $stmt = $db->prepare($sql);
+                $stmt->execute(array_values($datosActualizar));
+            }
+            
+            return true;
+        } catch (\Exception $e) {
+            error_log("Error al actualizar contacto: " . $e->getMessage());
+            return false; // No lanzamos la excepción para que no interrumpa el flujo
+        }
+    }
+
+    private function actualizarEstudioSimplificado($id, $datos) {
+        try {
+            $db = \Database::getInstance()->getConnection();
+            
+            // Campos a actualizar
+            $campos = [
+                'nivel_estudios', 'profesion', 'otros_estudios', 
+                'empresa', 'direccion_empresa', 'emprendimientos'
+            ];
+            
+            // Verificar si hay datos para actualizar
+            $datosActualizar = [];
+            foreach ($campos as $campo) {
+                if (isset($datos[$campo])) {
+                    $datosActualizar[$campo] = $datos[$campo];
+                }
+            }
+            
+            if (empty($datosActualizar)) {
+                return true; // No hay datos para actualizar
+            }
+            
+            // Verificar si existe registro
+            $verificar = $db->prepare("SELECT id FROM EstudiosTrabajo WHERE miembro_id = ?");
+            $verificar->execute([$id]);
+            $existe = $verificar->fetch();
+            
+            if ($existe) {
+                // Actualizar
+                $sets = [];
+                $params = [];
+                
+                foreach ($datosActualizar as $campo => $valor) {
+                    $sets[] = "$campo = ?";
+                    $params[] = $valor;
+                }
+                
+                $params[] = $id;
+                $sql = "UPDATE EstudiosTrabajo SET " . implode(', ', $sets) . " WHERE miembro_id = ?";
+                
+                $stmt = $db->prepare($sql);
+                $stmt->execute($params);
+            } else {
+                // Insertar
+                $datosActualizar['miembro_id'] = $id;
+                
+                $campos = array_keys($datosActualizar);
+                $placeholders = array_fill(0, count($campos), '?');
+                
+                $sql = "INSERT INTO EstudiosTrabajo (" . implode(', ', $campos) . ") 
+                        VALUES (" . implode(', ', $placeholders) . ")";
+                
+                $stmt = $db->prepare($sql);
+                $stmt->execute(array_values($datosActualizar));
+            }
+            
+            return true;
+        } catch (\Exception $e) {
+            error_log("Error al actualizar estudios: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    private function actualizarTallasSimplificado($id, $datos) {
+        try {
+            $db = \Database::getInstance()->getConnection();
+            
+            // Campos a actualizar
+            $campos = [
+                'talla_camisa', 'talla_camiseta', 'talla_pantalon', 'talla_zapatos'
+            ];
+            
+            // Verificar si hay datos para actualizar
+            $datosActualizar = [];
+            foreach ($campos as $campo) {
+                if (isset($datos[$campo])) {
+                    $datosActualizar[$campo] = $datos[$campo];
+                }
+            }
+            
+            if (empty($datosActualizar)) {
+                return true; // No hay datos para actualizar
+            }
+            
+            // Verificar si existe registro
+            $verificar = $db->prepare("SELECT id FROM Tallas WHERE miembro_id = ?");
+            $verificar->execute([$id]);
+            $existe = $verificar->fetch();
+            
+            if ($existe) {
+                // Actualizar
+                $sets = [];
+                $params = [];
+                
+                foreach ($datosActualizar as $campo => $valor) {
+                    $sets[] = "$campo = ?";
+                    $params[] = $valor;
+                }
+                
+                $params[] = $id;
+                $sql = "UPDATE Tallas SET " . implode(', ', $sets) . " WHERE miembro_id = ?";
+                
+                $stmt = $db->prepare($sql);
+                $stmt->execute($params);
+            } else {
+                // Insertar
+                $datosActualizar['miembro_id'] = $id;
+                
+                $campos = array_keys($datosActualizar);
+                $placeholders = array_fill(0, count($campos), '?');
+                
+                $sql = "INSERT INTO Tallas (" . implode(', ', $campos) . ") 
+                        VALUES (" . implode(', ', $placeholders) . ")";
+                
+                $stmt = $db->prepare($sql);
+                $stmt->execute(array_values($datosActualizar));
+            }
+            
+            return true;
+        } catch (\Exception $e) {
+            error_log("Error al actualizar tallas: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    private function actualizarSaludSimplificado($id, $datos) {
+        try {
+            $db = \Database::getInstance()->getConnection();
+            
+            // Campos a actualizar
+            $campos = [
+                'rh', 'eps', 'acudiente1', 'telefono1', 'acudiente2', 'telefono2'
+            ];
+            
+            // Verificar si hay datos para actualizar
+            $datosActualizar = [];
+            foreach ($campos as $campo) {
+                if (isset($datos[$campo])) {
+                    $datosActualizar[$campo] = $datos[$campo];
+                }
+            }
+            
+            if (empty($datosActualizar)) {
+                return true; // No hay datos para actualizar
+            }
+            
+            // Verificar si existe registro
+            $verificar = $db->prepare("SELECT id FROM SaludEmergencias WHERE miembro_id = ?");
+            $verificar->execute([$id]);
+            $existe = $verificar->fetch();
+            
+            if ($existe) {
+                // Actualizar
+                $sets = [];
+                $params = [];
+                
+                foreach ($datosActualizar as $campo => $valor) {
+                    $sets[] = "$campo = ?";
+                    $params[] = $valor;
+                }
+                
+                $params[] = $id;
+                $sql = "UPDATE SaludEmergencias SET " . implode(', ', $sets) . " WHERE miembro_id = ?";
+                
+                $stmt = $db->prepare($sql);
+                $stmt->execute($params);
+            } else {
+                // Insertar
+                $datosActualizar['miembro_id'] = $id;
+                
+                $campos = array_keys($datosActualizar);
+                $placeholders = array_fill(0, count($campos), '?');
+                
+                $sql = "INSERT INTO SaludEmergencias (" . implode(', ', $campos) . ") 
+                        VALUES (" . implode(', ', $placeholders) . ")";
+                
+                $stmt = $db->prepare($sql);
+                $stmt->execute(array_values($datosActualizar));
+            }
+            
+            return true;
+        } catch (\Exception $e) {
+            error_log("Error al actualizar salud: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    private function actualizarCarreraSimplificado($id, $datos) {
+        try {
+            $db = \Database::getInstance()->getConnection();
+            
+            // Campos a actualizar
+            $campos = [
+                'estado', 'carrera_biblica', 'miembro_de', 
+                'casa_de_palabra_y_vida', 'cobertura', 'anotaciones'
+            ];
+            
+            // Verificar si hay datos para actualizar
+            $datosActualizar = [];
+            foreach ($campos as $campo) {
+                if (isset($datos[$campo])) {
+                    $datosActualizar[$campo] = $datos[$campo];
+                }
+            }
+            
+            if (empty($datosActualizar)) {
+                return true; // No hay datos para actualizar
+            }
+            
+            // Verificar si existe registro
+            $verificar = $db->prepare("SELECT id FROM CarreraBiblica WHERE miembro_id = ?");
+            $verificar->execute([$id]);
+            $existe = $verificar->fetch();
+            
+            if ($existe) {
+                // Actualizar
+                $sets = [];
+                $params = [];
+                
+                foreach ($datosActualizar as $campo => $valor) {
+                    $sets[] = "$campo = ?";
+                    $params[] = $valor;
+                }
+                
+                $params[] = $id;
+                $sql = "UPDATE CarreraBiblica SET " . implode(', ', $sets) . " WHERE miembro_id = ?";
+                
+                $stmt = $db->prepare($sql);
+                $stmt->execute($params);
+            } else {
+                // Insertar
+                $datosActualizar['miembro_id'] = $id;
+                
+                $campos = array_keys($datosActualizar);
+                $placeholders = array_fill(0, count($campos), '?');
+                
+                $sql = "INSERT INTO CarreraBiblica (" . implode(', ', $campos) . ") 
+                        VALUES (" . implode(', ', $placeholders) . ")";
+                
+                $stmt = $db->prepare($sql);
+                $stmt->execute(array_values($datosActualizar));
+            }
+            
+            return true;
+        } catch (\Exception $e) {
+            error_log("Error al actualizar carrera: " . $e->getMessage());
+            return false;
+        }
     }
 }
 
@@ -3083,6 +4586,11 @@ if (!function_exists('asset')) {
     }
 }
 
+// Definir APP_URL como constante si no está definida
+if (!defined('APP_URL')) {
+    define('APP_URL', url());
+}
+
 
 =============================================================
 ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\helpers\JWT.php
@@ -3288,8 +4796,17 @@ class Router {
     /**
      * Método abreviado para rutas GET
      */
-    public function get($route, $controller, $action, $middleware = []) {
-        $this->add($route, $controller, $action, ['GET'], $middleware);
+    public function get($route, $controllerAction, $middleware = []) {
+        if (strpos($controllerAction, '@') !== false) {
+            list($controller, $action) = explode('@', $controllerAction);
+            $this->add($route, $controller, $action, ['GET'], $middleware);
+        } else {
+            // Mantener compatibilidad con la forma antigua
+            $controller = $controllerAction;
+            $action = func_get_arg(2);
+            $middleware = func_num_args() > 3 ? func_get_arg(3) : [];
+            $this->add($route, $controller, $action, ['GET'], $middleware);
+        }
     }
     
     /**
@@ -3373,7 +4890,14 @@ class Router {
                     
                     if (method_exists($controller, $action)) {
                         // Ejecutar la acción del controlador
-                        $controller->$action($this->params);
+                        // Si esperamos un ID, extraerlo del array de parámetros
+                        if ($action === 'ver' || $action === 'editar' || $action === 'actualizar') {
+                            $id = isset($this->params['id']) ? $this->params['id'] : null;
+                            $controller->$action($id);
+                        } else {
+                            // Para otros métodos, pasar todos los parámetros
+                            $controller->$action($this->params);
+                        }
                         return;
                     }
                 }
@@ -3402,7 +4926,7 @@ class Router {
     }
     
     /**
-     * Obtiene la URL actual
+     * Obtiene la URL current
      */
     private function getUrl() {
         $url = isset($_GET['url']) ? $_GET['url'] : '';
@@ -3914,56 +5438,43 @@ class Miembro extends Model {
      * Obtiene el perfil completo de un miembro
      */
     public function getFullProfile($id) {
-        // Asegurar que el ID es un entero
-        $id = (int)$id;
-        
-        // Preparar consulta principal
-        $sql = "SELECT * FROM InformacionGeneral WHERE id = ?";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$id]);
-        $miembro = $stmt->fetch(\PDO::FETCH_ASSOC);
-        
-        if (!$miembro) {
+        try {
+            // Asegurar que el ID sea un entero
+            $id = (int)$id;
+            
+            // Log para depuración
+            error_log("Buscando miembro con ID: $id");
+            
+            // Usar sentencia preparada en lugar de consulta directa
+            $sql = "SELECT * FROM {$this->table} WHERE id = ?";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$id]);
+            $miembro = $stmt->fetch(\PDO::FETCH_ASSOC);
+            
+            if (!$miembro) {
+                error_log("No se encontró ningún miembro con ID $id");
+                return null;
+            }
+            
+            // Obtener datos de tablas relacionadas y añadirlos al array principal
+            $tablas = ['Contacto', 'EstudiosTrabajo', 'Tallas', 'SaludEmergencias', 'CarreraBiblica'];
+            
+            foreach ($tablas as $tabla) {
+                $sql = "SELECT * FROM $tabla WHERE miembro_id = ?";
+                $stmt = $this->db->prepare($sql);
+                $stmt->execute([$id]);
+                $datos = $stmt->fetch(\PDO::FETCH_ASSOC);
+                
+                if ($datos) {
+                    $miembro[strtolower($tabla)] = $datos;
+                }
+            }
+            
+            return $miembro;
+        } catch (\PDOException $e) {
+            error_log("Error en getFullProfile: " . $e->getMessage());
             return null;
         }
-        
-        // Obtener datos de contacto
-        $sql = "SELECT * FROM Contacto WHERE miembro_id = ?";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$id]);
-        $contacto = $stmt->fetch(\PDO::FETCH_ASSOC);
-        if ($contacto) {
-            $miembro['contacto'] = $contacto;
-        }
-        
-        // Obtener datos de estudios y trabajo
-        $sql = "SELECT * FROM EstudiosTrabajo WHERE miembro_id = ?";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$id]);
-        $estudios = $stmt->fetch(\PDO::FETCH_ASSOC);
-        if ($estudios) {
-            $miembro['estudios'] = $estudios;
-        }
-        
-        // Obtener datos de tallas
-        $sql = "SELECT * FROM Tallas WHERE miembro_id = ?";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$id]);
-        $tallas = $stmt->fetch(\PDO::FETCH_ASSOC);
-        if ($tallas) {
-            $miembro['tallas'] = $tallas;
-        }
-        
-        // Obtener datos de carrera bíblica
-        $sql = "SELECT * FROM CarreraBiblica WHERE miembro_id = ?";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$id]);
-        $carrera = $stmt->fetch(\PDO::FETCH_ASSOC);
-        if ($carrera) {
-            $miembro['carrera'] = $carrera;
-        }
-        
-        return $miembro;
     }
     
     /**
@@ -4045,6 +5556,62 @@ class Miembro extends Model {
             return true;
         } catch (\PDOException $e) {
             error_log("Error al guardar contacto: " . $e->getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Actualiza la información de un miembro
+     */
+    public function actualizar($id, $datos)
+    {
+        try {
+            // Asegurar que el ID sea un entero
+            $id = (int)$id;
+            
+            // Verificar primero si el miembro existe para evitar actualizar un registro inexistente
+            $checkSql = "SELECT id FROM {$this->table} WHERE id = :id";
+            $checkStmt = $this->db->prepare($checkSql);
+            $checkStmt->bindValue(':id', $id);
+            $checkStmt->execute();
+            
+            if ($checkStmt->rowCount() === 0) {
+                error_log("Error en actualizar(): El miembro con ID $id no existe");
+                return false;
+            }
+            
+            // Construir la consulta de actualización
+            $campos = [];
+            foreach ($datos as $campo => $valor) {
+                if (in_array($campo, $this->fillable)) {
+                    $campos[] = "$campo = :$campo";
+                }
+            }
+            
+            if (empty($campos)) {
+                error_log("Error en actualizar(): No hay campos válidos para actualizar");
+                return false;
+            }
+            
+            $sql = "UPDATE {$this->table} SET " . implode(', ', $campos) . " WHERE id = :id";
+            error_log("SQL de actualización: " . $sql);
+            
+            $stmt = $this->db->prepare($sql);
+            
+            // Vincular los valores
+            foreach ($datos as $campo => $valor) {
+                if (in_array($campo, $this->fillable)) {
+                    $stmt->bindValue(":$campo", $valor);
+                }
+            }
+            $stmt->bindValue(':id', $id);
+            
+            // Ejecutar la consulta
+            $resultado = $stmt->execute();
+            error_log("Resultado de actualización de miembro ID $id: " . ($resultado ? "éxito" : "fallido"));
+            return $resultado;
+        } catch (\PDOException $e) {
+            error_log("Error en actualizar(): " . $e->getMessage());
             return false;
         }
     }
@@ -5241,6 +6808,28 @@ ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\views\errors\acceso-denegado.php
 
 
 =============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\views\errors\general.php
+=============================================================
+
+<?php ?>
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h3>Error <?= $code ?></h3>
+                </div>
+                <div class="card-body">
+                    <p class="card-text"><?= $message ?: 'Ha ocurrido un error al procesar tu solicitud.' ?></p>
+                    <a href="<?= url('') ?>" class="btn btn-primary">Volver al inicio</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+=============================================================
 ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\views\home\index.php
 =============================================================
 
@@ -5644,6 +7233,534 @@ $titulo = $esEdicion ? 'Editar Miembro' : 'Registrar Nuevo Miembro';
 
 
 =============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\views\miembros\editar.php
+=============================================================
+
+<?php
+
+// Establecer variables para valores existentes o predeterminados
+$contacto = $miembro['contacto'] ?? [];
+$estudios = $miembro['estudios'] ?? [];
+$tallas = $miembro['tallas'] ?? [];
+$salud = $miembro['salud'] ?? [];
+$carrera = $miembro['carrera'] ?? [];
+?>
+
+<div class="container mt-4">
+    <!-- Formulario con id para manipulación con JS -->
+    <form id="editForm" action="#" method="POST" enctype="multipart/form-data">
+        <!-- Pestañas de navegación -->
+        <ul class="nav nav-tabs mb-4" id="editorTabs" role="tablist">
+            <li class="nav-item">
+                <a class="nav-link active" id="general-tab" data-bs-toggle="tab" href="#general" role="tab">
+                    <i class="fas fa-user me-1"></i> Información General
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="contacto-tab" data-bs-toggle="tab" href="#contacto" role="tab">
+                    <i class="fas fa-address-card me-1"></i> Contacto
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="estudios-tab" data-bs-toggle="tab" href="#estudios" role="tab">
+                    <i class="fas fa-graduation-cap me-1"></i> Estudios/Trabajo
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="tallas-tab" data-bs-toggle="tab" href="#tallas" role="tab">
+                    <i class="fas fa-tshirt me-1"></i> Tallas
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="salud-tab" data-bs-toggle="tab" href="#salud" role="tab">
+                    <i class="fas fa-first-aid me-1"></i> Salud y Emergencias
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="carrera-tab" data-bs-toggle="tab" href="#carrera" role="tab">
+                    <i class="fas fa-bible me-1"></i> Carrera Bíblica
+                </a>
+            </li>
+        </ul>
+        
+        <!-- Contenido de las pestañas -->
+        <div class="tab-content" id="editorTabContent">
+            <!-- Pestaña de información general -->
+            <div class="tab-pane fade show active" id="general" role="tabpanel">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="nombres" class="form-label">Nombres*</label>
+                        <input type="text" class="form-control" id="nombres" name="nombres" value="<?= $miembro['nombres'] ?>" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="apellidos" class="form-label">Apellidos*</label>
+                        <input type="text" class="form-control" id="apellidos" name="apellidos" value="<?= $miembro['apellidos'] ?>" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="celular" class="form-label">Celular</label>
+                        <input type="text" class="form-control" id="celular" name="celular" value="<?= htmlspecialchars($miembro['celular'] ?? '') ?>">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="localidad" class="form-label">Localidad</label>
+                        <input type="text" class="form-control" id="localidad" name="localidad" value="<?= htmlspecialchars($miembro['localidad'] ?? '') ?>">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="barrio" class="form-label">Barrio</label>
+                        <input type="text" class="form-control" id="barrio" name="barrio" value="<?= htmlspecialchars($miembro['barrio'] ?? '') ?>">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="fecha_nacimiento" class="form-label">Fecha de Nacimiento</label>
+                        <input type="date" class="form-control" id="fecha_nacimiento" name="fecha_nacimiento" value="<?= $miembro['fecha_nacimiento'] ?? '' ?>">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="estado_espiritual" class="form-label">Estado Espiritual</label>
+                        <select class="form-select" id="estado_espiritual" name="estado_espiritual">
+                            <option value="">Seleccione</option>
+                            <option value="Discípulo" <?= ($miembro['estado_espiritual'] ?? '') == 'Discípulo' ? 'selected' : '' ?>>Discípulo</option>
+                            <option value="Catecúmeno" <?= ($miembro['estado_espiritual'] ?? '') == 'Catecúmeno' ? 'selected' : '' ?>>Catecúmeno</option>
+                            <option value="Simpatizante" <?= ($miembro['estado_espiritual'] ?? '') == 'Simpatizante' ? 'selected' : '' ?>>Simpatizante</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="fecha_ingreso" class="form-label">Fecha de Ingreso</label>
+                        <input type="date" class="form-control" id="fecha_ingreso" name="fecha_ingreso" value="<?= $miembro['fecha_ingreso'] ?? '' ?>">
+                    </div>
+                    <div class="col-md-12 mb-3">
+                        <label for="recorrido_espiritual" class="form-label">Recorrido Espiritual</label>
+                        <textarea class="form-control" id="recorrido_espiritual" name="recorrido_espiritual" rows="4"><?= htmlspecialchars($miembro['recorrido_espiritual'] ?? '') ?></textarea>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Pestaña de Contacto -->
+            <div class="tab-pane fade" id="contacto" role="tabpanel">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Información de Contacto</h5>
+                        <input type="hidden" name="contacto_id" value="<?= $contacto['id'] ?? '' ?>">
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="tipo_documento" class="form-label">Tipo de Documento</label>
+                                <select class="form-select" id="tipo_documento" name="tipo_documento">
+                                    <option value="">Seleccione</option>
+                                    <option value="CC" <?= ($contacto['tipo_documento'] ?? '') == 'CC' ? 'selected' : '' ?>>Cédula de Ciudadanía</option>
+                                    <option value="TI" <?= ($contacto['tipo_documento'] ?? '') == 'TI' ? 'selected' : '' ?>>Tarjeta de Identidad</option>
+                                    <option value="CE" <?= ($contacto['tipo_documento'] ?? '') == 'CE' ? 'selected' : '' ?>>Cédula de Extranjería</option>
+                                    <option value="PAS" <?= ($contacto['tipo_documento'] ?? '') == 'PAS' ? 'selected' : '' ?>>Pasaporte</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="numero_documento" class="form-label">Número de Documento</label>
+                                <input type="text" class="form-control" id="numero_documento" name="numero_documento" value="<?= htmlspecialchars($contacto['numero_documento'] ?? '') ?>">
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="telefono" class="form-label">Teléfono</label>
+                                <input type="text" class="form-control" id="telefono" name="telefono" value="<?= htmlspecialchars($contacto['telefono'] ?? '') ?>">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="correo_electronico" class="form-label">Correo Electrónico</label>
+                                <input type="email" class="form-control" id="correo_electronico" name="correo_electronico" value="<?= htmlspecialchars($contacto['correo_electronico'] ?? '') ?>">
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="pais" class="form-label">País</label>
+                                <input type="text" class="form-control" id="pais" name="pais" value="<?= htmlspecialchars($contacto['pais'] ?? 'Colombia') ?>">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="ciudad" class="form-label">Ciudad</label>
+                                <input type="text" class="form-control" id="ciudad" name="ciudad" value="<?= htmlspecialchars($contacto['ciudad'] ?? '') ?>">
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="direccion" class="form-label">Dirección</label>
+                                <input type="text" class="form-control" id="direccion" name="direccion" value="<?= htmlspecialchars($contacto['direccion'] ?? '') ?>">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="estado_civil" class="form-label">Estado Civil</label>
+                                <select class="form-select" id="estado_civil" name="estado_civil">
+                                    <option value="">Seleccione</option>
+                                    <option value="Soltero/a" <?= ($contacto['estado_civil'] ?? '') == 'Soltero/a' ? 'selected' : '' ?>>Soltero/a</option>
+                                    <option value="Casado/a" <?= ($contacto['estado_civil'] ?? '') == 'Casado/a' ? 'selected' : '' ?>>Casado/a</option>
+                                    <option value="Viudo/a" <?= ($contacto['estado_civil'] ?? '') == 'Viudo/a' ? 'selected' : '' ?>>Viudo/a</option>
+                                    <option value="Divorciado/a" <?= ($contacto['estado_civil'] ?? '') == 'Divorciado/a' ? 'selected' : '' ?>>Divorciado/a</option>
+                                    <option value="Unión libre" <?= ($contacto['estado_civil'] ?? '') == 'Unión libre' ? 'selected' : '' ?>>Unión libre</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pestaña de Estudios/Trabajo -->
+            <div class="tab-pane fade" id="estudios" role="tabpanel">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Información Académica y Laboral</h5>
+                        <input type="hidden" name="estudios_id" value="<?= $estudios['id'] ?? '' ?>">
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="nivel_estudios" class="form-label">Nivel de Estudios</label>
+                                <select class="form-select" id="nivel_estudios" name="nivel_estudios">
+                                    <option value="">Seleccione</option>
+                                    <option value="Primaria" <?= ($estudios['nivel_estudios'] ?? '') == 'Primaria' ? 'selected' : '' ?>>Primaria</option>
+                                    <option value="Secundaria" <?= ($estudios['nivel_estudios'] ?? '') == 'Secundaria' ? 'selected' : '' ?>>Secundaria</option>
+                                    <option value="Técnico" <?= ($estudios['nivel_estudios'] ?? '') == 'Técnico' ? 'selected' : '' ?>>Técnico</option>
+                                    <option value="Tecnólogo" <?= ($estudios['nivel_estudios'] ?? '') == 'Tecnólogo' ? 'selected' : '' ?>>Tecnólogo</option>
+                                    <option value="Universitario" <?= ($estudios['nivel_estudios'] ?? '') == 'Universitario' ? 'selected' : '' ?>>Universitario</option>
+                                    <option value="Especialización" <?= ($estudios['nivel_estudios'] ?? '') == 'Especialización' ? 'selected' : '' ?>>Especialización</option>
+                                    <option value="Maestría" <?= ($estudios['nivel_estudios'] ?? '') == 'Maestría' ? 'selected' : '' ?>>Maestría</option>
+                                    <option value="Doctorado" <?= ($estudios['nivel_estudios'] ?? '') == 'Doctorado' ? 'selected' : '' ?>>Doctorado</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="profesion" class="form-label">Profesión</label>
+                                <input type="text" class="form-control" id="profesion" name="profesion" value="<?= htmlspecialchars($estudios['profesion'] ?? '') ?>">
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="otros_estudios" class="form-label">Otros Estudios</label>
+                            <textarea class="form-control" id="otros_estudios" name="otros_estudios" rows="2"><?= htmlspecialchars($estudios['otros_estudios'] ?? '') ?></textarea>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="empresa" class="form-label">Empresa</label>
+                                <input type="text" class="form-control" id="empresa" name="empresa" value="<?= htmlspecialchars($estudios['empresa'] ?? '') ?>">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="direccion_empresa" class="form-label">Dirección de Empresa</label>
+                                <input type="text" class="form-control" id="direccion_empresa" name="direccion_empresa" value="<?= htmlspecialchars($estudios['direccion_empresa'] ?? '') ?>">
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="emprendimientos" class="form-label">Emprendimientos</label>
+                            <textarea class="form-control" id="emprendimientos" name="emprendimientos" rows="2"><?= htmlspecialchars($estudios['emprendimientos'] ?? '') ?></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pestaña de Tallas -->
+            <div class="tab-pane fade" id="tallas" role="tabpanel">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Información de Tallas</h5>
+                        <input type="hidden" name="tallas_id" value="<?= $tallas['id'] ?? '' ?>">
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="talla_camisa" class="form-label">Talla de Camisa</label>
+                                <select class="form-select" id="talla_camisa" name="talla_camisa">
+                                    <option value="">Seleccione</option>
+                                    <option value="XS" <?= ($tallas['talla_camisa'] ?? '') == 'XS' ? 'selected' : '' ?>>XS</option>
+                                    <option value="S" <?= ($tallas['talla_camisa'] ?? '') == 'S' ? 'selected' : '' ?>>S</option>
+                                    <option value="M" <?= ($tallas['talla_camisa'] ?? '') == 'M' ? 'selected' : '' ?>>M</option>
+                                    <option value="L" <?= ($tallas['talla_camisa'] ?? '') == 'L' ? 'selected' : '' ?>>L</option>
+                                    <option value="XL" <?= ($tallas['talla_camisa'] ?? '') == 'XL' ? 'selected' : '' ?>>XL</option>
+                                    <option value="XXL" <?= ($tallas['talla_camisa'] ?? '') == 'XXL' ? 'selected' : '' ?>>XXL</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="talla_camiseta" class="form-label">Talla de Camiseta</label>
+                                <select class="form-select" id="talla_camiseta" name="talla_camiseta">
+                                    <option value="">Seleccione</option>
+                                    <option value="XS" <?= ($tallas['talla_camiseta'] ?? '') == 'XS' ? 'selected' : '' ?>>XS</option>
+                                    <option value="S" <?= ($tallas['talla_camiseta'] ?? '') == 'S' ? 'selected' : '' ?>>S</option>
+                                    <option value="M" <?= ($tallas['talla_camiseta'] ?? '') == 'M' ? 'selected' : '' ?>>M</option>
+                                    <option value="L" <?= ($tallas['talla_camiseta'] ?? '') == 'L' ? 'selected' : '' ?>>L</option>
+                                    <option value="XL" <?= ($tallas['talla_camiseta'] ?? '') == 'XL' ? 'selected' : '' ?>>XL</option>
+                                    <option value="XXL" <?= ($tallas['talla_camiseta'] ?? '') == 'XXL' ? 'selected' : '' ?>>XXL</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="talla_pantalon" class="form-label">Talla de Pantalón</label>
+                                <input type="text" class="form-control" id="talla_pantalon" name="talla_pantalon" value="<?= htmlspecialchars($tallas['talla_pantalon'] ?? '') ?>">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="talla_zapatos" class="form-label">Talla de Zapatos</label>
+                                <input type="text" class="form-control" id="talla_zapatos" name="talla_zapatos" value="<?= htmlspecialchars($tallas['talla_zapatos'] ?? '') ?>">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pestaña de Salud y Emergencias -->
+            <div class="tab-pane fade" id="salud" role="tabpanel">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Información de Salud y Contactos de Emergencia</h5>
+                        <input type="hidden" name="salud_id" value="<?= $salud['id'] ?? '' ?>">
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="rh" class="form-label">Tipo de Sangre (RH)</label>
+                                <select class="form-select" id="rh" name="rh">
+                                    <option value="">Seleccione</option>
+                                    <option value="A+" <?= ($salud['rh'] ?? '') == 'A+' ? 'selected' : '' ?>>A+</option>
+                                    <option value="A-" <?= ($salud['rh'] ?? '') == 'A-' ? 'selected' : '' ?>>A-</option>
+                                    <option value="B+" <?= ($salud['rh'] ?? '') == 'B+' ? 'selected' : '' ?>>B+</option>
+                                    <option value="B-" <?= ($salud['rh'] ?? '') == 'B-' ? 'selected' : '' ?>>B-</option>
+                                    <option value="AB+" <?= ($salud['rh'] ?? '') == 'AB+' ? 'selected' : '' ?>>AB+</option>
+                                    <option value="AB-" <?= ($salud['rh'] ?? '') == 'AB-' ? 'selected' : '' ?>>AB-</option>
+                                    <option value="O+" <?= ($salud['rh'] ?? '') == 'O+' ? 'selected' : '' ?>>O+</option>
+                                    <option value="O-" <?= ($salud['rh'] ?? '') == 'O-' ? 'selected' : '' ?>>O-</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="eps" class="form-label">EPS</label>
+                                <input type="text" class="form-control" id="eps" name="eps" value="<?= htmlspecialchars($salud['eps'] ?? '') ?>">
+                            </div>
+                        </div>
+                        
+                        <hr class="my-4">
+                        <h5 class="mb-3">Contactos de Emergencia</h5>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="acudiente1" class="form-label">Primer Contacto</label>
+                                <input type="text" class="form-control" id="acudiente1" name="acudiente1" value="<?= htmlspecialchars($salud['acudiente1'] ?? '') ?>">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="telefono1" class="form-label">Teléfono Primer Contacto</label>
+                                <input type="text" class="form-control" id="telefono1" name="telefono1" value="<?= htmlspecialchars($salud['telefono1'] ?? '') ?>">
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="acudiente2" class="form-label">Segundo Contacto</label>
+                                <input type="text" class="form-control" id="acudiente2" name="acudiente2" value="<?= htmlspecialchars($salud['acudiente2'] ?? '') ?>">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="telefono2" class="form-label">Teléfono Segundo Contacto</label>
+                                <input type="text" class="form-control" id="telefono2" name="telefono2" value="<?= htmlspecialchars($salud['telefono2'] ?? '') ?>">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pestaña de Carrera Bíblica -->
+            <div class="tab-pane fade" id="carrera" role="tabpanel">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Información de Carrera Bíblica</h5>
+                        <input type="hidden" name="carrera_id" value="<?= $carrera['id'] ?? '' ?>">
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="estado" class="form-label">Estado</label>
+                                <select class="form-select" id="estado" name="estado">
+                                    <option value="">Seleccione</option>
+                                    <option value="Activo" <?= ($carrera['estado'] ?? '') == 'Activo' ? 'selected' : '' ?>>Activo</option>
+                                    <option value="Inactivo" <?= ($carrera['estado'] ?? '') == 'Inactivo' ? 'selected' : '' ?>>Inactivo</option>
+                                    <option value="Estudiante" <?= ($carrera['estado'] ?? '') == 'Estudiante' ? 'selected' : '' ?>>Estudiante</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="carrera_biblica" class="form-label">Carrera Bíblica</label>
+                                <select class="form-select" id="carrera_biblica" name="carrera_biblica">
+                                    <option value="">Seleccione</option>
+                                    <option value="Catecumenado" <?= ($carrera['carrera_biblica'] ?? '') == 'Catecumenado' ? 'selected' : '' ?>>Catecumenado</option>
+                                    <option value="Discipulado" <?= ($carrera['carrera_biblica'] ?? '') == 'Discipulado' ? 'selected' : '' ?>>Discipulado</option>
+                                    <option value="Escuela de Ministerios" <?= ($carrera['carrera_biblica'] ?? '') == 'Escuela de Ministerios' ? 'selected' : '' ?>>Escuela de Ministerios</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="miembro_de" class="form-label">Miembro de</label>
+                                <input type="text" class="form-control" id="miembro_de" name="miembro_de" value="<?= htmlspecialchars($carrera['miembro_de'] ?? 'Iglesia En Casa') ?>">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="casa_de_palabra_y_vida" class="form-label">Casa de Palabra y Vida</label>
+                                <input type="text" class="form-control" id="casa_de_palabra_y_vida" name="casa_de_palabra_y_vida" value="<?= htmlspecialchars($carrera['casa_de_palabra_y_vida'] ?? '') ?>">
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="cobertura" class="form-label">Cobertura</label>
+                            <input type="text" class="form-control" id="cobertura" name="cobertura" value="<?= htmlspecialchars($carrera['cobertura'] ?? '') ?>">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="anotaciones" class="form-label">Anotaciones</label>
+                            <textarea class="form-control" id="anotaciones" name="anotaciones" rows="3"><?= htmlspecialchars($carrera['anotaciones'] ?? '') ?></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Botón de guardar -->
+        <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+            <button type="button" id="btnGuardar" class="btn btn-primary btn-lg">
+                <i class="fas fa-save me-1"></i> Guardar Cambios
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Incluir los scripts necesarios -->
+<script src="<?= APP_URL ?>/public/js/controllers/FormController.js"></script>
+<script src="<?= APP_URL ?>/public/js/controllers/MiembrosController.js"></script>
+<script src="<?= APP_URL ?>/public/js/app.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Referencia al formulario y botón
+    const form = document.getElementById('editForm');
+    const btnGuardar = document.getElementById('btnGuardar');
+    
+    // Función para mostrar mensajes
+    function showMessage(message, type = 'success') {
+        // Crear elemento de alerta
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        
+        // Añadir al inicio del formulario
+        form.prepend(alertDiv);
+        
+        // Auto-ocultar después de 5 segundos
+        setTimeout(() => {
+            alertDiv.classList.remove('show');
+            setTimeout(() => alertDiv.remove(), 300);
+        }, 5000);
+    }
+    
+    // Agregar evento al botón de guardar
+    btnGuardar.addEventListener('click', function() {
+        // Mostrar indicador de carga
+        btnGuardar.disabled = true;
+        btnGuardar.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Guardando...';
+        
+        // Crear un objeto FormData con todos los campos del formulario
+        const formData = new FormData(form);
+        
+        // Enviar datos mediante fetch API
+        fetch('/ENCASA_DATABASE/miembros/actualizar/<?= $miembro['id'] ?>', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            // Primero intentar obtener el texto de respuesta
+            return response.text().then(text => {
+                try {
+                    // Intentar analizar como JSON
+                    return JSON.parse(text);
+                } catch (e) {
+                    // Si no es JSON válido, mostrar el texto para depuración
+                    console.error('Respuesta no es JSON válido:', text);
+                    throw new Error('La respuesta del servidor no es un formato válido');
+                }
+            });
+        })
+        .then(data => {
+            // Procesar la respuesta JSON
+            if (data.success) {
+                showMessage('Datos guardados correctamente', 'success');
+                
+                // Redirigir después de un breve retraso
+                setTimeout(() => {
+                    window.location.href = data.redirect || `/ENCASA_DATABASE/miembros/<?= $miembro['id'] ?>`;
+                }, 1500);
+            } else {
+                showMessage('Error: ' + (data.message || 'No se pudieron guardar los cambios'), 'danger');
+                btnGuardar.disabled = false;
+                btnGuardar.innerHTML = '<i class="fas fa-save me-1"></i> Guardar Cambios';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showMessage('Error al procesar la respuesta del servidor', 'danger');
+            btnGuardar.disabled = false;
+            btnGuardar.innerHTML = '<i class="fas fa-save me-1"></i> Guardar Cambios';
+        });
+    });
+});
+</script>
+
+<!-- Agregar este script antes del cierre de </body> -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Capturar el botón de guardar
+    const btnGuardar = document.getElementById('btnGuardar');
+    
+    if (btnGuardar) {
+        btnGuardar.addEventListener('click', function() {
+            // Mensaje visual de carga
+            btnGuardar.disabled = true;
+            btnGuardar.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Guardando...';
+            
+            // Recopilar todos los datos del formulario
+            const formulario = document.getElementById('editForm') || document.querySelector('form');
+            const formData = new FormData(formulario);
+            
+            // Usar el proxy directo que evita problemas con túneles
+            fetch('/ENCASA_DATABASE/miembro_proxy.php?id=<?= $miembro['id'] ?>', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                // Intentar obtener respuesta como texto para depuración
+                return response.text().then(text => {
+                    try {
+                        // Intentar convertir a JSON
+                        return JSON.parse(text);
+                    } catch (e) {
+                        // Si falla, mostrar el texto recibido
+                        console.error("Respuesta no es JSON válido:", text);
+                        throw new Error("Formato de respuesta inválido");
+                    }
+                });
+            })
+            .then(data => {
+                if (data.success) {
+                    // Mostrar mensaje de éxito
+                    alert("Datos guardados correctamente");
+                    
+                    // Redireccionar
+                    window.location.href = data.redirect || `/ENCASA_DATABASE/miembros/<?= $miembro['id'] ?>`;
+                } else {
+                    // Mostrar error
+                    alert("Error: " + (data.message || "No se pudo guardar la información"));
+                    btnGuardar.disabled = false;
+                    btnGuardar.innerHTML = '<i class="fas fa-save me-1"></i> Guardar Cambios';
+                }
+            })
+            .catch(error => {
+                console.error("Error en la solicitud:", error);
+                alert("Error de conexión. Por favor intente nuevamente.");
+                btnGuardar.disabled = false;
+                btnGuardar.innerHTML = '<i class="fas fa-save me-1"></i> Guardar Cambios';
+            });
+        });
+    }
+});
+</script>
+
+
+=============================================================
 ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\views\miembros\index.php
 =============================================================
 
@@ -5793,15 +7910,22 @@ echo "<!-- DEBUG: ID URL: {$debug_id} | ID miembro: {$miembro['id']} -->";
 // Añadir esta línea de depuración temporal
 echo "<!-- DEBUG: " . htmlspecialchars(json_encode($miembro)) . " -->";
 ?>
+<?php 
+// Verificar que tenemos datos del miembro
+if (!isset($miembro) || !is_array($miembro)) {
+    echo '<div class="alert alert-danger">Error: No se encontraron datos del miembro</div>';
+    return;
+}
+?>
 
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1><?= htmlspecialchars($miembro['nombres'] . ' ' . $miembro['apellidos']) ?></h1>
         <div>
-            <a href="<?= APP_URL ?>/miembros/editar/<?= $miembro['id'] ?>" class="btn btn-primary me-2">
+            <a href="<?= url('miembros/editar/'.$miembro['id']) ?>" class="btn btn-primary me-2">
                 <i class="fas fa-edit"></i> Editar
             </a>
-            <a href="<?= APP_URL ?>/miembros" class="btn btn-secondary">
+            <a href="<?= url('miembros') ?>" class="btn btn-secondary">
                 <i class="fas fa-arrow-left"></i> Volver
             </a>
         </div>
@@ -5822,73 +7946,80 @@ echo "<!-- DEBUG: " . htmlspecialchars(json_encode($miembro)) . " -->";
             <a class="nav-link" id="tallas-tab" data-bs-toggle="tab" href="#tallas" role="tab">Tallas</a>
         </li>
         <li class="nav-item">
+            <a class="nav-link" id="salud-tab" data-bs-toggle="tab" href="#salud" role="tab">Salud</a>
+        </li>
+        <li class="nav-item">
             <a class="nav-link" id="carrera-tab" data-bs-toggle="tab" href="#carrera" role="tab">Carrera Bíblica</a>
         </li>
     </ul>
 
-    <div class="tab-content mt-4" id="perfilTabsContent">
+    <div class="tab-content mt-4">
         <!-- Pestaña de Información General -->
         <div class="tab-pane fade show active" id="general" role="tabpanel">
             <div class="row">
                 <div class="col-md-4 mb-4">
                     <!-- Foto del miembro -->
-                    <div class="text-center">
-                        <?php if(!empty($miembro['foto'])): ?>
-                            <img src="<?= APP_URL ?>/uploads/miembros/<?= $miembro['foto'] ?>" alt="Foto de <?= htmlspecialchars($miembro['nombres']) ?>" 
-                                 class="img-fluid rounded-circle" style="width: 200px; height: 200px; object-fit: cover;">
-                        <?php else: ?>
-                            <div class="bg-light rounded-circle d-flex align-items-center justify-content-center" 
-                                 style="width: 200px; height: 200px; margin: 0 auto;">
-                                <i class="fas fa-user fa-5x text-secondary"></i>
-                            </div>
-                        <?php endif; ?>
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <?php if(!empty($miembro['foto'])): ?>
+                                <img src="<?= url('uploads/miembros/'.$miembro['foto']) ?>" class="img-fluid rounded" alt="Foto de perfil">
+                            <?php else: ?>
+                                <div class="p-5 bg-light rounded text-center">
+                                    <i class="fas fa-user fa-4x text-secondary"></i>
+                                    <p class="mt-2">Sin foto</p>
+                                </div>
+                            <?php endif; ?>
+                        </div>
                     </div>
                 </div>
                 <div class="col-md-8">
                     <div class="card">
                         <div class="card-body">
-                            <h5 class="card-title">Datos Personales</h5>
-                            <table class="table table-striped">
+                            <table class="table">
                                 <tbody>
                                     <tr>
-                                        <th scope="row" style="width: 30%">Celular:</th>
-                                        <td><?= htmlspecialchars($miembro['celular'] ?? 'No disponible') ?></td>
+                                        <th width="35%">Nombres:</th>
+                                        <td><?= htmlspecialchars($miembro['nombres']) ?></td>
                                     </tr>
                                     <tr>
-                                        <th scope="row">Localidad:</th>
-                                        <td><?= htmlspecialchars($miembro['localidad'] ?? 'No disponible') ?></td>
+                                        <th>Apellidos:</th>
+                                        <td><?= htmlspecialchars($miembro['apellidos']) ?></td>
                                     </tr>
                                     <tr>
-                                        <th scope="row">Barrio:</th>
-                                        <td><?= htmlspecialchars($miembro['barrio'] ?? 'No disponible') ?></td>
+                                        <th>Celular:</th>
+                                        <td><?= htmlspecialchars($miembro['celular'] ?? 'No registrado') ?></td>
                                     </tr>
                                     <tr>
-                                        <th scope="row">Fecha de Nacimiento:</th>
-                                        <td><?= $miembro['fecha_nacimiento'] ? date('d/m/Y', strtotime($miembro['fecha_nacimiento'])) : 'No disponible' ?></td>
+                                        <th>Localidad:</th>
+                                        <td><?= htmlspecialchars($miembro['localidad'] ?? 'No registrada') ?></td>
                                     </tr>
                                     <tr>
-                                        <th scope="row">Estado Espiritual:</th>
-                                        <td><?= htmlspecialchars($miembro['estado_espiritual'] ?? 'No disponible') ?></td>
+                                        <th>Barrio:</th>
+                                        <td><?= htmlspecialchars($miembro['barrio'] ?? 'No registrado') ?></td>
                                     </tr>
                                     <tr>
-                                        <th scope="row">Fecha de Ingreso:</th>
-                                        <td><?= $miembro['fecha_ingreso'] ? date('d/m/Y', strtotime($miembro['fecha_ingreso'])) : 'No disponible' ?></td>
+                                        <th>Fecha de Nacimiento:</th>
+                                        <td><?= $miembro['fecha_nacimiento'] ? date('d/m/Y', strtotime($miembro['fecha_nacimiento'])) : 'No registrada' ?></td>
+                                    </tr>
+                                    <tr>
+                                        <th>Estado Espiritual:</th>
+                                        <td><?= htmlspecialchars($miembro['estado_espiritual'] ?? 'No registrado') ?></td>
                                     </tr>
                                 </tbody>
                             </table>
                         </div>
                     </div>
+                    
+                    <?php if(isset($miembro['recorrido_espiritual']) && !empty($miembro['recorrido_espiritual'])): ?>
+                    <div class="card mt-3">
+                        <div class="card-body">
+                            <h5 class="card-title">Recorrido Espiritual</h5>
+                            <p class="card-text"><?= nl2br(htmlspecialchars($miembro['recorrido_espiritual'])) ?></p>
+                        </div>
+                    </div>
+                    <?php endif; ?>
                 </div>
             </div>
-            
-            <?php if(isset($miembro['recorrido_espiritual']) && !empty($miembro['recorrido_espiritual'])): ?>
-            <div class="card mt-3">
-                <div class="card-body">
-                    <h5 class="card-title">Recorrido Espiritual</h5>
-                    <p class="card-text"><?= nl2br(htmlspecialchars($miembro['recorrido_espiritual'])) ?></p>
-                </div>
-            </div>
-            <?php endif; ?>
         </div>
 
         <!-- Pestaña de Contacto -->
@@ -5900,36 +8031,36 @@ echo "<!-- DEBUG: " . htmlspecialchars(json_encode($miembro)) . " -->";
                         <table class="table table-striped">
                             <tbody>
                                 <tr>
-                                    <th scope="row" style="width: 30%">Tipo de Documento:</th>
-                                    <td><?= htmlspecialchars($miembro['contacto']['tipo_documento'] ?? 'No disponible') ?></td>
+                                    <th width="35%">Tipo Documento:</th>
+                                    <td><?= htmlspecialchars($miembro['contacto']['tipo_documento'] ?? 'No registrado') ?></td>
                                 </tr>
                                 <tr>
-                                    <th scope="row">Número de Documento:</th>
-                                    <td><?= htmlspecialchars($miembro['contacto']['numero_documento'] ?? 'No disponible') ?></td>
+                                    <th>Número Documento:</th>
+                                    <td><?= htmlspecialchars($miembro['contacto']['numero_documento'] ?? 'No registrado') ?></td>
                                 </tr>
                                 <tr>
-                                    <th scope="row">Teléfono:</th>
-                                    <td><?= htmlspecialchars($miembro['contacto']['telefono'] ?? 'No disponible') ?></td>
+                                    <th>Teléfono:</th>
+                                    <td><?= htmlspecialchars($miembro['contacto']['telefono'] ?? 'No registrado') ?></td>
                                 </tr>
                                 <tr>
-                                    <th scope="row">País:</th>
-                                    <td><?= htmlspecialchars($miembro['contacto']['pais'] ?? 'No disponible') ?></td>
+                                    <th>Correo Electrónico:</th>
+                                    <td><?= htmlspecialchars($miembro['contacto']['correo_electronico'] ?? 'No registrado') ?></td>
                                 </tr>
                                 <tr>
-                                    <th scope="row">Ciudad:</th>
-                                    <td><?= htmlspecialchars($miembro['contacto']['ciudad'] ?? 'No disponible') ?></td>
+                                    <th>País:</th>
+                                    <td><?= htmlspecialchars($miembro['contacto']['pais'] ?? 'No registrado') ?></td>
                                 </tr>
                                 <tr>
-                                    <th scope="row">Dirección:</th>
-                                    <td><?= htmlspecialchars($miembro['contacto']['direccion'] ?? 'No disponible') ?></td>
+                                    <th>Ciudad:</th>
+                                    <td><?= htmlspecialchars($miembro['contacto']['ciudad'] ?? 'No registrada') ?></td>
                                 </tr>
                                 <tr>
-                                    <th scope="row">Estado Civil:</th>
-                                    <td><?= htmlspecialchars($miembro['contacto']['estado_civil'] ?? 'No disponible') ?></td>
+                                    <th>Dirección:</th>
+                                    <td><?= htmlspecialchars($miembro['contacto']['direccion'] ?? 'No registrada') ?></td>
                                 </tr>
                                 <tr>
-                                    <th scope="row">Correo Electrónico:</th>
-                                    <td><?= htmlspecialchars($miembro['contacto']['correo_electronico'] ?? 'No disponible') ?></td>
+                                    <th>Estado Civil:</th>
+                                    <td><?= htmlspecialchars($miembro['contacto']['estado_civil'] ?? 'No registrado') ?></td>
                                 </tr>
                             </tbody>
                         </table>
@@ -5940,10 +8071,185 @@ echo "<!-- DEBUG: " . htmlspecialchars(json_encode($miembro)) . " -->";
             </div>
         </div>
 
-        <!-- Incluir otras pestañas: estudios, tallas, carrera bíblica -->
+        <!-- Pestaña de Estudios/Trabajo -->
+        <div class="tab-pane fade" id="estudios" role="tabpanel">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Información Académica y Laboral</h5>
+                    <?php if(isset($miembro['estudiostrabajo'])): ?>
+                        <table class="table table-striped">
+                            <tbody>
+                                <tr>
+                                    <th width="35%">Nivel de Estudios:</th>
+                                    <td><?= htmlspecialchars($miembro['estudiostrabajo']['nivel_estudios'] ?? 'No registrado') ?></td>
+                                </tr>
+                                <tr>
+                                    <th>Profesión:</th>
+                                    <td><?= htmlspecialchars($miembro['estudiostrabajo']['profesion'] ?? 'No registrada') ?></td>
+                                </tr>
+                                <tr>
+                                    <th>Otros Estudios:</th>
+                                    <td><?= htmlspecialchars($miembro['estudiostrabajo']['otros_estudios'] ?? 'No registrados') ?></td>
+                                </tr>
+                                <tr>
+                                    <th>Empresa:</th>
+                                    <td><?= htmlspecialchars($miembro['estudiostrabajo']['empresa'] ?? 'No registrada') ?></td>
+                                </tr>
+                                <tr>
+                                    <th>Dirección Empresa:</th>
+                                    <td><?= htmlspecialchars($miembro['estudiostrabajo']['direccion_empresa'] ?? 'No registrada') ?></td>
+                                </tr>
+                                <tr>
+                                    <th>Emprendimientos:</th>
+                                    <td><?= htmlspecialchars($miembro['estudiostrabajo']['emprendimientos'] ?? 'No registrados') ?></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    <?php else: ?>
+                        <div class="alert alert-info">No hay información de estudios y trabajo disponible.</div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
 
+        <!-- Pestaña de Tallas -->
+        <div class="tab-pane fade" id="tallas" role="tabpanel">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Información de Tallas</h5>
+                    <?php if(isset($miembro['tallas'])): ?>
+                        <table class="table table-striped">
+                            <tbody>
+                                <tr>
+                                    <th width="35%">Talla Camisa:</th>
+                                    <td><?= htmlspecialchars($miembro['tallas']['talla_camisa'] ?? 'No registrada') ?></td>
+                                </tr>
+                                <tr>
+                                    <th>Talla Camiseta:</th>
+                                    <td><?= htmlspecialchars($miembro['tallas']['talla_camiseta'] ?? 'No registrada') ?></td>
+                                </tr>
+                                <tr>
+                                    <th>Talla Pantalón:</th>
+                                    <td><?= htmlspecialchars($miembro['tallas']['talla_pantalon'] ?? 'No registrada') ?></td>
+                                </tr>
+                                <tr>
+                                    <th>Talla Zapatos:</th>
+                                    <td><?= htmlspecialchars($miembro['tallas']['talla_zapatos'] ?? 'No registrada') ?></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    <?php else: ?>
+                        <div class="alert alert-info">No hay información de tallas disponible.</div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pestaña de Salud -->
+        <div class="tab-pane fade" id="salud" role="tabpanel">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Información de Salud y Emergencias</h5>
+                    <?php if(isset($miembro['saludemergencias'])): ?>
+                        <h6 class="mb-3">Información Médica</h6>
+                        <table class="table table-striped mb-4">
+                            <tbody>
+                                <tr>
+                                    <th width="35%">Tipo de Sangre (RH):</th>
+                                    <td><?= htmlspecialchars($miembro['saludemergencias']['rh'] ?? 'No registrado') ?></td>
+                                </tr>
+                                <tr>
+                                    <th>EPS:</th>
+                                    <td><?= htmlspecialchars($miembro['saludemergencias']['eps'] ?? 'No registrada') ?></td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <h6 class="mb-3">Contactos de Emergencia</h6>
+                        <table class="table table-striped">
+                            <tbody>
+                                <tr>
+                                    <th width="35%">Contacto Principal:</th>
+                                    <td><?= htmlspecialchars($miembro['saludemergencias']['acudiente1'] ?? 'No registrado') ?></td>
+                                </tr>
+                                <tr>
+                                    <th>Teléfono Contacto Principal:</th>
+                                    <td><?= htmlspecialchars($miembro['saludemergencias']['telefono1'] ?? 'No registrado') ?></td>
+                                </tr>
+                                <tr>
+                                    <th>Contacto Secundario:</th>
+                                    <td><?= htmlspecialchars($miembro['saludemergencias']['acudiente2'] ?? 'No registrado') ?></td>
+                                </tr>
+                                <tr>
+                                    <th>Teléfono Contacto Secundario:</th>
+                                    <td><?= htmlspecialchars($miembro['saludemergencias']['telefono2'] ?? 'No registrado') ?></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    <?php else: ?>
+                        <div class="alert alert-info">No hay información de salud y emergencias disponible.</div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pestaña de Carrera Bíblica -->
+        <div class="tab-pane fade" id="carrera" role="tabpanel">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Información de Carrera Bíblica</h5>
+                    <?php if(isset($miembro['carrerabiblica'])): ?>
+                        <table class="table table-striped">
+                            <tbody>
+                                <tr>
+                                    <th width="35%">Estado:</th>
+                                    <td><?= htmlspecialchars($miembro['carrerabiblica']['estado'] ?? 'No registrado') ?></td>
+                                </tr>
+                                <tr>
+                                    <th>Carrera Bíblica:</th>
+                                    <td><?= htmlspecialchars($miembro['carrerabiblica']['carrera_biblica'] ?? 'No registrada') ?></td>
+                                </tr>
+                                <tr>
+                                    <th>Miembro de:</th>
+                                    <td><?= htmlspecialchars($miembro['carrerabiblica']['miembro_de'] ?? 'No registrado') ?></td>
+                                </tr>
+                                <tr>
+                                    <th>Casa de Palabra y Vida:</th>
+                                    <td><?= htmlspecialchars($miembro['carrerabiblica']['casa_de_palabra_y_vida'] ?? 'No registrada') ?></td>
+                                </tr>
+                                <tr>
+                                    <th>Cobertura:</th>
+                                    <td><?= htmlspecialchars($miembro['carrerabiblica']['cobertura'] ?? 'No registrada') ?></td>
+                                </tr>
+                                <?php if(!empty($miembro['carrerabiblica']['anotaciones'])): ?>
+                                <tr>
+                                    <th>Anotaciones:</th>
+                                    <td><?= nl2br(htmlspecialchars($miembro['carrerabiblica']['anotaciones'])) ?></td>
+                                </tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    <?php else: ?>
+                        <div class="alert alert-info">No hay información de carrera bíblica disponible.</div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
+
+<script>
+// Activar las pestañas de Bootstrap
+document.addEventListener('DOMContentLoaded', function() {
+    // Obtener todas las pestañas
+    var tabTriggerList = [].slice.call(document.querySelectorAll('#perfilTabs a'))
+    
+    // Inicializar cada una
+    tabTriggerList.forEach(function(tabTriggerEl) {
+        new bootstrap.Tab(tabTriggerEl)
+    });
+});
+</script>
 
 
 =============================================================
@@ -7110,6 +9416,368 @@ echo "Ocurrieron $errors errores durante el proceso\n";
 
 if ($test_mode) {
     echo "\nEste fue un test. Para aplicar los cambios, cambia \$test_mode = true a \$test_mode = false\n";
+}
+
+
+=============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\postcss.config.js
+=============================================================
+
+module.exports = {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}
+
+
+=============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\tailwind.config.js
+=============================================================
+
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: [
+    "./app/views/**/*.php",
+    "./resources/**/*.js",
+    "./resources/**/*.css"  // Añadir esta línea
+  ],
+  theme: {
+    extend: {
+      colors: {
+        primary: {
+          50: '#f0f9ff',
+          100: '#e0f2fe',
+          200: '#bae6fd',
+          300: '#7dd3fc',
+          400: '#38bdf8',
+          500: '#0ea5e9',
+          600: '#0284c7',
+          700: '#0369a1',
+          800: '#075985',
+          900: '#0c4a6e',
+        },
+        secondary: {
+          50: '#f0fdfa',
+          100: '#ccfbf1',
+          200: '#99f6e4',
+          300: '#5eead4',
+          400: '#2dd4bf',
+          500: '#14b8a6',
+          600: '#0d9488',
+          700: '#0f766e',
+          800: '#115e59',
+          900: '#134e4a',
+        }
+      },
+    },
+  },
+  plugins: [
+    require('@tailwindcss/forms'),
+  ],
+}
+
+
+=============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\public\js\app.js
+=============================================================
+
+
+
+=============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\public\js\controllers\FormController.js
+=============================================================
+
+
+
+=============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\app\public\js\controllers\MiembrosController.js
+=============================================================
+
+
+
+=============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\public\js\app.js
+=============================================================
+
+/**
+ * Inicialización de controladores
+ */
+document.addEventListener('DOMContentLoaded', function() {
+    // Detectar formularios de miembros
+    if (document.getElementById('editForm')) {
+        // Obtener el ID del miembro de la URL
+        const path = window.location.pathname;
+        const matches = path.match(/\/miembros\/editar\/(\d+)/);
+        const miembroId = matches ? matches[1] : '';
+        
+        if (miembroId) {
+            new MiembrosController('editForm', {
+                url: `/ENCASA_DATABASE/miembros/actualizar/${miembroId}`,
+                method: 'POST',
+                redirect: true
+            });
+        }
+    }
+    
+    // Otros inicializadores aquí...
+});
+
+
+=============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\public\js\controllers\FormController.js
+=============================================================
+
+/**
+ * Controlador base para manejar formularios
+ */
+class FormController {
+    constructor(formId, options = {}) {
+        this.formElement = document.getElementById(formId);
+        this.submitButton = document.querySelector(`#${formId} [type="submit"]`) || 
+                           document.getElementById('btnGuardar');
+        this.options = Object.assign({
+            method: 'POST',
+            redirect: true,
+            showMessages: true,
+        }, options);
+        
+        this.initialize();
+    }
+    
+    initialize() {
+        if (this.formElement) {
+            this.formElement.addEventListener('submit', this.handleSubmit.bind(this));
+            
+            // Si hay un botón específico (no submit) para el envío
+            if (this.submitButton && this.submitButton.type !== 'submit') {
+                this.submitButton.addEventListener('click', this.handleSubmit.bind(this));
+            }
+        }
+    }
+    
+    handleSubmit(event) {
+        event.preventDefault();
+        
+        if (this.beforeSubmit() === false) {
+            return false;
+        }
+        
+        this.showLoading();
+        
+        const formData = new FormData(this.formElement);
+        const url = this.options.url || this.formElement.getAttribute('action');
+        
+        fetch(url, {
+            method: this.options.method,
+            body: formData,
+            credentials: 'same-origin'
+        })
+        .then(response => {
+            if (response.redirected) {
+                // Si el servidor redirige, seguimos la redirección
+                window.location.href = response.url;
+                return null;
+            } else {
+                return response.json().catch(() => response.text());
+            }
+        })
+        .then(data => {
+            this.hideLoading();
+            
+            if (data === null) return; // Ya se redirigió
+            
+            if (typeof data === 'object' && data.success) {
+                this.onSuccess(data);
+            } else if (typeof data === 'object' && data.errors) {
+                this.onErrors(data.errors);
+            } else if (typeof data === 'object' && !data.success) {
+                this.onError(data.message || 'Ha ocurrido un error');
+            } else {
+                // Intentar detectar si es HTML de la página de éxito
+                if (typeof data === 'string' && data.includes('<title>')) {
+                    this.onSuccess({message: 'Operación completada con éxito'});
+                } else {
+                    this.onError('Ocurrió un error inesperado');
+                }
+            }
+        })
+        .catch(error => {
+            this.hideLoading();
+            this.onError('Error de conexión: ' + error.message);
+            console.error('Error:', error);
+        });
+    }
+    
+    // Métodos que pueden ser sobrescritos por controladores hijos
+    beforeSubmit() {
+        return true; // Permitir continuar por defecto
+    }
+    
+    onSuccess(data) {
+        if (this.options.showMessages) {
+            this.showMessage(data.message || 'Operación completada con éxito', 'success');
+        }
+        
+        if (this.options.redirect && data.redirect) {
+            setTimeout(() => {
+                window.location.href = data.redirect;
+            }, 1500);
+        }
+    }
+    
+    onErrors(errors) {
+        if (this.options.showMessages) {
+            this.showMessage(
+                Array.isArray(errors) ? errors.join('<br>') : errors,
+                'danger'
+            );
+        }
+        
+        // Marcar campos con error
+        if (typeof errors === 'object') {
+            for (const field in errors) {
+                const input = this.formElement.querySelector(`[name="${field}"]`);
+                if (input) {
+                    input.classList.add('is-invalid');
+                    
+                    // Agregar mensaje de error
+                    const feedback = document.createElement('div');
+                    feedback.className = 'invalid-feedback';
+                    feedback.textContent = errors[field];
+                    input.parentNode.appendChild(feedback);
+                }
+            }
+        }
+    }
+    
+    onError(message) {
+        if (this.options.showMessages) {
+            this.showMessage(message, 'danger');
+        }
+    }
+    
+    // Métodos de utilidad
+    showMessage(message, type = 'info') {
+        // Crear un elemento de alerta
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${type} alert-dismissible fade show`;
+        alert.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        
+        // Insertar al inicio del formulario
+        this.formElement.prepend(alert);
+        
+        // Auto-ocultar después de 5 segundos
+        setTimeout(() => {
+            alert.classList.remove('show');
+            setTimeout(() => alert.remove(), 300);
+        }, 5000);
+    }
+    
+    showLoading() {
+        if (this.submitButton) {
+            this.submitButton.disabled = true;
+            this.submitButtonOriginalText = this.submitButton.innerHTML;
+            this.submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Procesando...';
+        }
+    }
+    
+    hideLoading() {
+        if (this.submitButton && this.submitButtonOriginalText) {
+            this.submitButton.disabled = false;
+            this.submitButton.innerHTML = this.submitButtonOriginalText;
+        }
+    }
+}
+
+
+=============================================================
+ARCHIVO: C:\xampp\htdocs\ENCASA_DATABASE\public\js\controllers\MiembrosController.js
+=============================================================
+
+/**
+ * Controlador específico para formularios de miembros
+ */
+class MiembrosController extends FormController {
+    constructor(formId, options = {}) {
+        super(formId, options);
+        
+        // Pestañas del formulario
+        this.tabs = document.querySelectorAll('a[data-bs-toggle="tab"]');
+        this.initializeTabs();
+    }
+    
+    initializeTabs() {
+        // Implementar navegación entre pestañas
+        this.tabs.forEach(tab => {
+            tab.addEventListener('shown.bs.tab', (e) => {
+                const id = e.target.id.replace('-tab', '');
+                const url = new URL(window.location.href);
+                url.searchParams.set('tab', id);
+                history.replaceState({}, '', url);
+            });
+        });
+    }
+    
+    beforeSubmit() {
+        // Validar campos críticos antes de enviar
+        const nombres = this.formElement.querySelector('[name="nombres"]');
+        const apellidos = this.formElement.querySelector('[name="apellidos"]');
+        
+        let isValid = true;
+        
+        if (!nombres || !nombres.value.trim()) {
+            this.highlightError(nombres, 'El campo nombres es obligatorio');
+            isValid = false;
+        }
+        
+        if (!apellidos || !apellidos.value.trim()) {
+            this.highlightError(apellidos, 'El campo apellidos es obligatorio');
+            isValid = false;
+        }
+        
+        return isValid;
+    }
+    
+    highlightError(field, message) {
+        if (!field) return;
+        
+        field.classList.add('is-invalid');
+        
+        // Agregar mensaje de error si no existe
+        let feedback = field.parentNode.querySelector('.invalid-feedback');
+        if (!feedback) {
+            feedback = document.createElement('div');
+            feedback.className = 'invalid-feedback';
+            field.parentNode.appendChild(feedback);
+        }
+        
+        feedback.textContent = message;
+        
+        // Ir a la pestaña correspondiente
+        const tabPane = field.closest('.tab-pane');
+        if (tabPane) {
+            const tabId = tabPane.id;
+            const tab = document.querySelector(`[data-bs-toggle="tab"][href="#${tabId}"]`);
+            if (tab) {
+                const tabInstance = new bootstrap.Tab(tab);
+                tabInstance.show();
+            }
+        }
+    }
+    
+    onSuccess(data) {
+        // Mostrar mensaje de éxito
+        this.showMessage(data.message || 'Miembro actualizado correctamente', 'success');
+        
+        // Redirigir después de un breve retraso
+        setTimeout(() => {
+            window.location.href = data.redirect || `/ENCASA_DATABASE/miembros/${data.id || ''}`;
+        }, 1500);
+    }
 }
 
 

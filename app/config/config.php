@@ -26,3 +26,16 @@ define('DB_HOST', 'localhost');
 define('DB_NAME', 'IglesiaEnCasa');
 define('DB_USER', 'root');
 define('DB_PASS', '');
+
+// Agregar esta línea al final del archivo
+define('ALLOW_INSECURE_FORMS', true);
+
+// Agregar esto al final del archivo para mejorar el registro de errores
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+ini_set('error_log', __DIR__ . '/../../logs/php_error.log');
+
+// Asegurarse de que existe el directorio de logs
+if (!is_dir(__DIR__ . '/../../logs')) {
+    mkdir(__DIR__ . '/../../logs', 0777, true);
+}
