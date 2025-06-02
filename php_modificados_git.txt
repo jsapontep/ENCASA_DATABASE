@@ -1,0 +1,37 @@
+﻿# Archivos PHP modificados no subidos al repositorio Git
+# Total de archivos encontrados: 11
+# Generado: 2025-05-31 18:44:27
+
+// filepath: C:\xampp\htdocs\ENCASA_DATABASE\app\Controllers\AuthController.php
+
+
+// filepath: C:\xampp\htdocs\ENCASA_DATABASE\app\config\config.php
+
+
+// filepath: C:\xampp\htdocs\ENCASA_DATABASE\app\config\database.php
+
+
+// filepath: C:\xampp\htdocs\ENCASA_DATABASE\app\models\Usuario.php
+
+
+// filepath: C:\xampp\htdocs\ENCASA_DATABASE\app\views\auth\login.php
+
+
+// filepath: C:\xampp\htdocs\ENCASA_DATABASE\app\views\auth\register.php
+
+
+// filepath: C:\xampp\htdocs\ENCASA_DATABASE\app\views\auth\verify-login.php
+
+
+// filepath: C:\xampp\htdocs\ENCASA_DATABASE\app\views\auth\verify.php
+
+
+// filepath: C:\xampp\htdocs\ENCASA_DATABASE\index.php
+
+
+// filepath: C:\xampp\htdocs\ENCASA_DATABASE\project_status.php
+
+
+// filepath: C:\xampp\htdocs\ENCASA_DATABASE\test_db.php
+
+

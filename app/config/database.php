@@ -5,7 +5,7 @@
 if (!defined('DB_HOST')) define('DB_HOST', 'localhost');
 if (!defined('DB_USER')) define('DB_USER', 'root'); // Usuario predeterminado de XAMPP
 if (!defined('DB_PASS')) define('DB_PASS', ''); // Contraseña en blanco por defecto en XAMPP
-if (!defined('DB_NAME')) define('DB_NAME', 'encasa_db'); // Nombre de tu base de datos
+if (!defined('DB_NAME')) define('DB_NAME', 'iglesiaencasa'); // Nombre de tu base de datos (cambio importante)
 
 // Solo mantener las que no están en config.php
 define('DB_PORT', '3306');

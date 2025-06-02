@@ -1,0 +1,37 @@
+# Script para listar archivos PHP modificados en Git no subidos al repositorio
+$proyectoPath = "C:\xampp\htdocs\ENCASA_DATABASE"
+$outputFile = "$proyectoPath\php_modificados_git.txt"
+
+# Cambiar al directorio del proyecto
+Set-Location $proyectoPath
+
+# Ejecutar git status para identificar archivos modificados (amarillos)
+$gitStatus = git status --porcelain
+
+# Filtrar solo los archivos PHP modificados (marcados con M)
+$phpModificados = $gitStatus | Where-Object { $_ -match '^\s*M.*\.php$' }
+
+# Extraer solo los nombres de archivo
+$archivos = $phpModificados | ForEach-Object {
+    $_.Trim() -replace '^M\s+', ''
+}
+
+# Crear el archivo de salida
+"# Archivos PHP modificados no subidos al repositorio Git" | Out-File -FilePath $outputFile -Encoding utf8
+"# Total de archivos encontrados: $($archivos.Count)" | Out-File -FilePath $outputFile -Append -Encoding utf8
+"# Generado: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')`n" | Out-File -FilePath $outputFile -Append -Encoding utf8
+
+# Añadir cada archivo con su ruta completa
+foreach ($archivo in $archivos) {
+    $rutaCompleta = Join-Path $proyectoPath $archivo
+    "// filepath: $rutaCompleta" | Out-File -FilePath $outputFile -Append -Encoding utf8
+    
+    # También podríamos incluir los cambios si quieres
+    # $cambios = git diff -- "$archivo"
+    # $cambios | Out-File -FilePath $outputFile -Append -Encoding utf8
+    
+    "`n" | Out-File -FilePath $outputFile -Append -Encoding utf8
+}
+
+Write-Host "Se encontraron $($archivos.Count) archivos PHP modificados en Git."
+Write-Host "Lista guardada en: $outputFile"

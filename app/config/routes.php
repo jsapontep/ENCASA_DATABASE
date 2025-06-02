@@ -45,6 +45,11 @@ $router->get('auth/verify-login', 'Auth', 'verifyLogin');
 $router->post('auth/verify-login', 'Auth', 'verifyLogin');
 $router->get('auth/resend-login-code', 'Auth', 'resendLoginCode');
 
+// API para datos educativos
+$router->get('api/education-data/:country', 'Education', 'getEducationData');
+$router->post('api/education-data/save-institution', 'Education', 'saveInstitution');
+$router->post('api/education-data/save-profession', 'Education', 'saveProfession');
+
 // Rutas de error
 $router->setNotFound(function() {
     include VIEW_PATH . '/errors/404.php';

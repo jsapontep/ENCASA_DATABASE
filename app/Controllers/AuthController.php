@@ -34,7 +34,7 @@ class AuthController extends Controller {
             return;
         }
 
-        $email_or_username = $_POST['email_or_username'] ?? '';
+        $email_or_username = trim($_POST['email_or_username'] ?? ''); // Añadido trim()
         $password = $_POST['password'] ?? '';
 
         if (empty($email_or_username) || empty($password)) {
@@ -46,9 +46,23 @@ class AuthController extends Controller {
 
         $userModel = new \App\Models\Usuario();
         $user = $userModel->findByEmailOrUsername($email_or_username);
-
-        // Este es el cambio clave: primero verifica las credenciales, luego el estado
-        if ($user && password_verify($password, $user['password'])) {
+        
+        // Añadir logging para diagnóstico
+        error_log("Intento de login para: $email_or_username");
+        
+        if (!$user) {
+            error_log("Usuario no encontrado: $email_or_username");
+            return $this->renderWithLayout('auth/login', 'auth', [
+                'error' => 'Credenciales incorrectas [U]',
+                'title' => 'Iniciar Sesión'
+            ]);
+        }
+        
+        // Verificar la contraseña
+        $password_match = password_verify($password, $user['password']);
+        error_log("Usuario encontrado. ID: {$user['id']}, Estado: {$user['estado']}, Password match: " . ($password_match ? "SI" : "NO"));
+        
+        if ($password_match) {
             // Si las credenciales son correctas, verificar el estado del usuario
             if (strtolower($user['estado']) != 'activo') {
                 // Usuario no activo - Mostrar mensaje de verificación pendiente

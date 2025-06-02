@@ -83,7 +83,10 @@ if (!isset($miembro) || !is_array($miembro)) {
                     <div class="card">
                         <div class="card-body text-center">
                             <?php if(!empty($miembro['foto'])): ?>
-                                <img src="<?= url('uploads/miembros/'.$miembro['foto']) ?>" class="img-fluid rounded" alt="Foto de perfil">
+                                <!-- DEBUG: Mostrar la ruta de la imagen -->
+                                <?php $imagen_url = url('uploads/miembros/'.$miembro['foto']); ?>
+                                <p class="text-muted small">Ruta: <?= htmlspecialchars($imagen_url) ?></p>
+                                <img src="<?= $imagen_url ?>" class="img-fluid rounded" alt="Foto de perfil" onerror="this.onerror=null; this.src=''; this.alt='Error al cargar imagen'; this.style.display='none'; alert('Error al cargar imagen: ' + this.src);">
                             <?php else: ?>
                                 <div class="p-5 bg-light rounded text-center">
                                     <i class="fas fa-user fa-4x text-secondary"></i>
@@ -130,8 +133,12 @@ if (!isset($miembro) || !is_array($miembro)) {
                                         <td><?= $miembro['fecha_nacimiento'] ? date('d/m/Y', strtotime($miembro['fecha_nacimiento'])) : 'No registrada' ?></td>
                                     </tr>
                                     <tr>
-                                        <th>Fecha de Ingreso:</th>
-                                        <td><?= date('d/m/Y H:i', strtotime($miembro['fecha_ingreso'])) ?></td>
+                                        <th>Fecha de Ingreso a la Iglesia:</th>
+                                        <td><?= $miembro['fecha_ingreso_iglesia'] ? date('d/m/Y', strtotime($miembro['fecha_ingreso_iglesia'])) : 'No registrada' ?></td>
+                                    </tr>
+                                    <tr>
+                                        <th>Fecha de Registro en Sistema:</th>
+                                        <td><?= date('d/m/Y H:i', strtotime($miembro['fecha_registro_sistema'])) ?></td>
                                     </tr>
                                     <tr>
                                         <th>Estado Espiritual:</th>
@@ -167,6 +174,50 @@ if (!isset($miembro) || !is_array($miembro)) {
                                     <tr>
                                         <th>Habeas Data:</th>
                                         <td><?= !empty($miembro['habeas_data']) ? '<i class="fas fa-check-circle text-success"></i> Aceptado' : '<i class="fas fa-times-circle text-danger"></i> No aceptado' ?></td>
+                                    </tr>
+                                    <tr>
+                                        <th>Estado del Miembro:</th>
+                                        <td>
+                                            <?php
+                                            // Colorea el estado según la categoría
+                                            $estado = htmlspecialchars($miembro['estado_miembro'] ?? 'Por Validar Estado');
+                                            $color_clase = '';
+                                            
+                                            // Contacto inicial (rojo/morado)
+                                            if (in_array($estado, ['Primer contacto', 'Conectado', 'Primer intento', 'Segundo intento', 
+                                                                'Tercero intento', 'Intento llamada telefónica', 'Intento 2 llamada telefónica', 
+                                                                'Intento 3 llamada telefónica', 'No interesado'])) {
+                                                $color_clase = 'bg-danger-subtle';
+                                            }
+                                            // Desayunos (azul claro)
+                                            else if (in_array($estado, ['No confirma desayuno', 'Confirmado a Desayuno', 'Desayuno Asistido'])) {
+                                                $color_clase = 'bg-info-subtle';
+                                            }
+                                            // Miembros (verde)
+                                            else if (in_array($estado, ['Miembro activo', 'Miembro inactivo', 'Miembro ausente', 
+                                                                     'Congregado sin desayuno', 'Visitante'])) {
+                                                $color_clase = 'bg-success-subtle';
+                                            }
+                                            // Líderes (azul)
+                                            else if (in_array($estado, ['Líder Activo', 'Líder Inactivo', 'Líder ausente'])) {
+                                                $color_clase = 'bg-primary-subtle';
+                                            }
+                                            // Reconexión (verde/amarillo)
+                                            else if (in_array($estado, ['Reconectado', 'Intento de reconexión', 'Etapa 1 reconexión (1 mes)',
+                                                                     'Etapa 2 reconexión (3 mes)', 'Etapa 3 reconexión final (6 mes)'])) {
+                                                $color_clase = 'bg-warning-subtle';
+                                            }
+                                            // Ministerios (amarillo)
+                                            else if (in_array($estado, ['Vencedores Kids', 'Legado', 'No es legado'])) {
+                                                $color_clase = 'bg-warning-subtle';
+                                            }
+                                            // Otras (naranja)
+                                            else {
+                                                $color_clase = 'bg-secondary-subtle';
+                                            }
+                                            ?>
+                                            <span class="badge rounded-pill <?= $color_clase ?> text-dark px-3 py-2"><?= $estado ?></span>
+                                        </td>
                                     </tr>
                                 </tbody>
                             </table>
