@@ -81,6 +81,15 @@ class FormController {
     
     // Métodos que pueden ser sobrescritos por controladores hijos
     beforeSubmit() {
+        // Validaciones existentes...
+        
+        // Depuración - ver qué datos se están enviando
+        const formData = new FormData(this.formElement);
+        console.log('Datos a enviar:');
+        for (let [key, value] of formData.entries()) {
+            console.log(`${key}: ${value}`);
+        }
+        
         return true; // Permitir continuar por defecto
     }
     

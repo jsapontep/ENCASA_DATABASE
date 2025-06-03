@@ -48,10 +48,17 @@ class Router {
     }
     
     /**
-     * Método abreviado para rutas POST
+     * Registra una ruta POST
      */
-    public function post($route, $controller, $action, $middleware = []) {
-        $this->add($route, $controller, $action, ['POST'], $middleware);
+    public function post($route, $controller, $action = null, $middleware = []) {
+        // Si el segundo parámetro contiene @, es el formato abreviado Controller@action
+        if (is_string($controller) && strpos($controller, '@') !== false) {
+            list($controllerName, $actionName) = explode('@', $controller);
+            $this->add($route, $controllerName, $actionName, ['POST'], $middleware);
+        } else {
+            // Usar el modo tradicional con parámetros separados
+            $this->add($route, $controller, $action, ['POST'], $middleware);
+        }
     }
     
     /**

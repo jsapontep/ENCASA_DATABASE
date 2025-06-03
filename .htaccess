@@ -20,3 +20,8 @@ Options -Indexes
     Order Allow,Deny
     Deny from all
 </FilesMatch>
+
+# Agregar a .htaccess
+php_flag display_errors off
+php_value error_reporting E_ALL
+php_value error_log logs/php_error.log

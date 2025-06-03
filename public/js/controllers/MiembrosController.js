@@ -23,20 +23,24 @@ class MiembrosController extends FormController {
     }
     
     beforeSubmit() {
-        // Validar campos críticos antes de enviar
-        const nombres = this.formElement.querySelector('[name="nombres"]');
-        const apellidos = this.formElement.querySelector('[name="apellidos"]');
-        
-        let isValid = true;
-        
-        if (!nombres || !nombres.value.trim()) {
-            this.highlightError(nombres, 'El campo nombres es obligatorio');
-            isValid = false;
+        // Registrar todos los valores que se están enviando para diagnóstico
+        const formData = new FormData(this.form);
+        console.log("Enviando datos del formulario:");
+        for (let [key, value] of formData.entries()) {
+            console.log(`${key}: ${value}`);
         }
         
-        if (!apellidos || !apellidos.value.trim()) {
-            this.highlightError(apellidos, 'El campo apellidos es obligatorio');
-            isValid = false;
+        // Validación básica
+        let isValid = true;
+        
+        // Validar campos obligatorios
+        const requiredFields = ['nombres', 'apellidos'];
+        for (let field of requiredFields) {
+            const inputField = this.form.querySelector(`[name="${field}"]`);
+            if (!inputField || !inputField.value.trim()) {
+                this.highlightError(inputField, `El campo ${field} es obligatorio`);
+                isValid = false;
+            }
         }
         
         return isValid;
@@ -56,17 +60,12 @@ class MiembrosController extends FormController {
         }
         
         feedback.textContent = message;
-        
-        // Ir a la pestaña correspondiente
-        const tabPane = field.closest('.tab-pane');
-        if (tabPane) {
-            const tabId = tabPane.id;
-            const tab = document.querySelector(`[data-bs-toggle="tab"][href="#${tabId}"]`);
-            if (tab) {
-                const tabInstance = new bootstrap.Tab(tab);
-                tabInstance.show();
-            }
-        }
+    }
+    
+    // Añadir función para depurar actualizaciones
+    debugSubmit() {
+        const formData = new FormData(this.form);
+        console.table(Array.from(formData.entries()));
     }
     
     onSuccess(data) {
@@ -77,5 +76,98 @@ class MiembrosController extends FormController {
         setTimeout(() => {
             window.location.href = data.redirect || `/ENCASA_DATABASE/miembros/${data.id || ''}`;
         }, 1500);
+   }
+    
+    confirmSubmit() {
+        const formData = new FormData(this.formElement);
+        let message = "¿Confirmar los siguientes cambios?\n\n";
+        message += `Nombre: ${formData.get('nombres')}\n`;
+        message += `Apellidos: ${formData.get('apellidos')}\n`;
+        // etc.
+        
+        return confirm(message);
+    }
+    
+    // Añadir este método a la clase MiembrosController
+    onSubmitForm(e) {
+        e.preventDefault();
+        
+        // Evitar envíos múltiples
+        if (this.isSubmitting) return;
+        this.isSubmitting = true;
+        
+        // Validación
+        if (!this.beforeSubmit()) {
+            this.isSubmitting = false;
+            return false;
+        }
+        
+        // Mostrar indicador de carga
+        const submitBtn = this.form.querySelector('[type="submit"]');
+        const originalBtnText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
+        
+        // Crear FormData con todos los campos
+        const formData = new FormData(this.form);
+        
+        // Agregar encabezados AJAX
+        const fetchOptions = {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            },
+            body: formData
+        };
+        
+        console.log('Enviando formulario con datos:', this.debugFormData(formData));
+        
+        // Enviar solicitud
+        fetch(this.form.action, fetchOptions)
+            .then(response => {
+                return response.text().then(text => {
+                    try {
+                        return JSON.parse(text);
+                    } catch (e) {
+                        console.error('Respuesta no es JSON válido:', text);
+                        throw new Error('La respuesta del servidor no es JSON válido');
+                    }
+                });
+            })
+            .then(data => {
+                this.isSubmitting = false;
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalBtnText;
+                
+                if (data.success) {
+                    this.onSuccess(data);
+                } else {
+                    this.onError(data);
+                }
+            })
+            .catch(error => {
+                console.error('Error en envío:', error);
+                this.isSubmitting = false;
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalBtnText;
+                this.showMessage('Error: ' + error.message, 'danger');
+            });
+    }
+
+    // Método para depurar FormData
+    debugFormData(formData) {
+        const object = {};
+        formData.forEach((value, key) => {
+            if (object[key]) {
+                if (!Array.isArray(object[key])) {
+                    object[key] = [object[key]];
+                }
+                object[key].push(value);
+            } else {
+                object[key] = value;
+            }
+        });
+        return object;
     }
 }

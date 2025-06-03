@@ -1,4 +1,3 @@
-
 <div class="tab-pane fade" id="contacto" role="tabpanel">
     <div class="card shadow-sm">
         <div class="card-body">
@@ -97,6 +96,21 @@
                     <div class="form-text">Información sobre familiares y relaciones</div>
                 </div>
             </div>
+
+            <!-- Estado Civil -->
+            <div class="mb-3">
+                <label for="contacto[estado_civil]" class="form-label">Estado Civil</label>
+                <select class="form-select" id="contacto_estado_civil" name="contacto[estado_civil]">
+                    <option value="">Seleccione...</option>
+                    <option value="Soltero/a" <?= (isset($contacto['estado_civil']) && $contacto['estado_civil'] == 'Soltero/a') ? 'selected' : '' ?>>Soltero/a</option>
+                    <option value="Casado/a" <?= (isset($contacto['estado_civil']) && $contacto['estado_civil'] == 'Casado/a') ? 'selected' : '' ?>>Casado/a</option>
+                    <option value="Divorciado/a" <?= (isset($contacto['estado_civil']) && $contacto['estado_civil'] == 'Divorciado/a') ? 'selected' : '' ?>>Divorciado/a</option>
+                    <option value="Viudo/a" <?= (isset($contacto['estado_civil']) && $contacto['estado_civil'] == 'Viudo/a') ? 'selected' : '' ?>>Viudo/a</option>
+                    <option value="Unión libre" <?= (isset($contacto['estado_civil']) && $contacto['estado_civil'] == 'Unión libre') ? 'selected' : '' ?>>Unión libre</option>
+                    <option value="Separado/a" <?= (isset($contacto['estado_civil']) && $contacto['estado_civil'] == 'Separado/a') ? 'selected' : '' ?>>Separado/a</option>
+                </select>
+            </div>
         </div>
     </div>
 </div>
+

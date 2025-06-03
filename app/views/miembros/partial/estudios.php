@@ -6,17 +6,15 @@
             
             <div class="row">
                 <div class="col-md-12 mb-3">
-                    <label for="nivel_estudios" class="form-label">Nivel Educativo</label>
-                    <select class="form-select" id="nivel_estudios" name="estudios[nivel_estudios]">
-                        <option value="">-- Seleccione --</option>
-                        <option value="Primaria" <?= isset($estudios['nivel_estudios']) && $estudios['nivel_estudios'] == 'Primaria' ? 'selected' : '' ?>>Primaria</option>
-                        <option value="Bachillerato" <?= isset($estudios['nivel_estudios']) && $estudios['nivel_estudios'] == 'Bachillerato' ? 'selected' : '' ?>>Bachillerato</option>
-                        <option value="Técnico" <?= isset($estudios['nivel_estudios']) && $estudios['nivel_estudios'] == 'Técnico' ? 'selected' : '' ?>>Técnico</option>
-                        <option value="Tecnólogo" <?= isset($estudios['nivel_estudios']) && $estudios['nivel_estudios'] == 'Tecnólogo' ? 'selected' : '' ?>>Tecnólogo</option>
-                        <option value="Universitario" <?= isset($estudios['nivel_estudios']) && $estudios['nivel_estudios'] == 'Universitario' ? 'selected' : '' ?>>Universitario</option>
-                        <option value="Especialización" <?= isset($estudios['nivel_estudios']) && $estudios['nivel_estudios'] == 'Especialización' ? 'selected' : '' ?>>Especialización</option>
-                        <option value="Maestría" <?= isset($estudios['nivel_estudios']) && $estudios['nivel_estudios'] == 'Maestría' ? 'selected' : '' ?>>Maestría</option>
-                        <option value="Doctorado" <?= isset($estudios['nivel_estudios']) && $estudios['nivel_estudios'] == 'Doctorado' ? 'selected' : '' ?>>Doctorado</option>
+                    <label for="estudios_nivel_estudios" class="form-label">Nivel Educativo</label>
+                    <select class="form-select" id="estudios_nivel_estudios" name="estudios[nivel_estudios]">
+                        <option value="">Seleccione...</option>
+                        <option value="Primaria" <?= (isset($estudios['nivel_estudios']) && $estudios['nivel_estudios'] == 'Primaria') ? 'selected' : '' ?>>Primaria</option>
+                        <option value="Secundaria" <?= (isset($estudios['nivel_estudios']) && $estudios['nivel_estudios'] == 'Secundaria') ? 'selected' : '' ?>>Secundaria</option>
+                        <option value="Técnico" <?= (isset($estudios['nivel_estudios']) && $estudios['nivel_estudios'] == 'Técnico') ? 'selected' : '' ?>>Técnico</option>
+                        <option value="Tecnólogo" <?= (isset($estudios['nivel_estudios']) && $estudios['nivel_estudios'] == 'Tecnólogo') ? 'selected' : '' ?>>Tecnólogo</option>
+                        <option value="Universitario" <?= (isset($estudios['nivel_estudios']) && $estudios['nivel_estudios'] == 'Universitario') ? 'selected' : '' ?>>Universitario</option>
+                        <option value="Postgrado" <?= (isset($estudios['nivel_estudios']) && $estudios['nivel_estudios'] == 'Postgrado') ? 'selected' : '' ?>>Postgrado</option>
                     </select>
                 </div>
             </div>
@@ -96,6 +94,7 @@
         </div>
     </div>
 </div>
+
 
 
 

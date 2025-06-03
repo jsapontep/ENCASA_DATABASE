@@ -6,7 +6,8 @@ class Miembro extends Model {
     protected $fillable = [
         'nombres', 'apellidos', 'celular', 'localidad', 'barrio', 
         'fecha_nacimiento', 'invitado_por', 'conector', 'estado_espiritual',
-        'recorrido_espiritual', 'foto', 'habeas_data', 'fecha_ingreso'
+        'recorrido_espiritual', 'foto', 'habeas_data', 'fecha_ingreso_iglesia',
+        'estado_miembro', 'fecha_modificacion'
     ];
     
     /**
@@ -115,56 +116,38 @@ class Miembro extends Model {
     /**
      * Obtiene el perfil completo de un miembro
      */
-    public function getFullProfile($id)
+    public function getFullProfile($id) 
     {
-        try {
-            // Asegurar que el ID sea un entero
-            $id = (int)$id;
-            
-            // Registrar para depuración
-            error_log("Modelo: Buscando miembro con ID: $id");
-            
-            // Consulta principal
-            $stmt = $this->db->prepare("SELECT * FROM InformacionGeneral WHERE id = ?");
-            $stmt->execute([$id]);
-            $miembro = $stmt->fetch(\PDO::FETCH_ASSOC);
-            
-            if (!$miembro) {
-                error_log("Modelo: No se encontró miembro con ID: $id");
-                return null;
-            }
-            
-            error_log("Modelo: Miembro encontrado, buscando datos relacionados");
-            
-            // Obtener datos relacionados
-            $tablas = ['Contacto', 'EstudiosTrabajo', 'Tallas', 'SaludEmergencias', 'CarreraBiblica'];
-            
-            foreach ($tablas as $tabla) {
-                try {
-                    $sql = "SELECT * FROM {$tabla} WHERE miembro_id = ?";
-                    $stmt = $this->db->prepare($sql);
-                    $stmt->execute([$id]);
-                    $datos = $stmt->fetch(\PDO::FETCH_ASSOC);
-                    
-                    if ($datos) {
-                        // Clave en minúsculas para consistencia
-                        $miembro[strtolower($tabla)] = $datos;
-                    } else {
-                        // Asignar array vacío para evitar errores
-                        $miembro[strtolower($tabla)] = [];
-                        error_log("Modelo: No se encontraron datos en $tabla para miembro ID: $id");
-                    }
-                } catch (\PDOException $e) {
-                    error_log("Modelo: Error al consultar $tabla: " . $e->getMessage());
-                    $miembro[strtolower($tabla)] = []; // Array vacío para evitar errores
-                }
-            }
-            
-            return $miembro;
-        } catch (\Exception $e) {
-            error_log("Modelo: Error en getFullProfile: " . $e->getMessage());
+        // Consulta principal para obtener datos del miembro
+        $query = "SELECT * FROM informaciongeneral WHERE id = ?";
+        $stmt = $this->db->prepare($query);
+        $stmt->execute([$id]);
+        $miembro = $stmt->fetch();
+        
+        if (!$miembro) {
             return null;
         }
+        
+        // Cargar datos relacionados
+        $tablas = [
+            'contacto' => 'contacto',
+            'estudiostrabajo' => 'estudiostrabajo', 
+            'tallas' => 'tallas',
+            'saludemergencias' => 'saludemergencias',
+            'carrerabiblica' => 'carrerabiblica'
+        ];
+        
+        foreach ($tablas as $key => $tabla) {
+            $query = "SELECT * FROM {$tabla} WHERE miembro_id = ?";
+            $stmt = $this->db->prepare($query);
+            $stmt->execute([$id]);
+            $relacion = $stmt->fetch();
+            
+            // Asignar datos relacionados o array vacío si no existen
+            $miembro[$key] = $relacion ?: [];
+        }
+        
+        return $miembro;
     }
     
     /**
@@ -260,11 +243,10 @@ class Miembro extends Model {
             // Asegurar que el ID sea un entero
             $id = (int)$id;
             
-            // Verificar primero si el miembro existe para evitar actualizar un registro inexistente
-            $checkSql = "SELECT id FROM {$this->table} WHERE id = :id";
+            // Verificar primero si el miembro existe
+            $checkSql = "SELECT id FROM {$this->table} WHERE id = ?";
             $checkStmt = $this->db->prepare($checkSql);
-            $checkStmt->bindValue(':id', $id);
-            $checkStmt->execute();
+            $checkStmt->execute([$id]);
             
             if ($checkStmt->rowCount() === 0) {
                 error_log("Error en actualizar(): El miembro con ID $id no existe");
@@ -272,33 +254,35 @@ class Miembro extends Model {
             }
             
             // Construir la consulta de actualización
-            $campos = [];
+            $setClausulas = [];
+            $valores = [];
+            
             foreach ($datos as $campo => $valor) {
+                // Solo incluir campos permitidos
                 if (in_array($campo, $this->fillable)) {
-                    $campos[] = "$campo = :$campo";
+                    $setClausulas[] = "$campo = ?";
+                    $valores[] = $valor;
+                    error_log("Campo a actualizar: $campo = $valor");
+                } else {
+                    error_log("Campo ignorado (no en fillable): $campo");
                 }
             }
             
-            if (empty($campos)) {
+            if (empty($setClausulas)) {
                 error_log("Error en actualizar(): No hay campos válidos para actualizar");
                 return false;
             }
             
-            $sql = "UPDATE {$this->table} SET " . implode(', ', $campos) . " WHERE id = :id";
+            // Añadir ID al final de los valores
+            $valores[] = $id;
+            
+            $sql = "UPDATE {$this->table} SET " . implode(', ', $setClausulas) . " WHERE id = ?";
             error_log("SQL de actualización: " . $sql);
+            error_log("Valores para actualizar: " . implode(", ", $valores));
             
             $stmt = $this->db->prepare($sql);
+            $resultado = $stmt->execute($valores);
             
-            // Vincular los valores
-            foreach ($datos as $campo => $valor) {
-                if (in_array($campo, $this->fillable)) {
-                    $stmt->bindValue(":$campo", $valor);
-                }
-            }
-            $stmt->bindValue(':id', $id);
-            
-            // Ejecutar la consulta
-            $resultado = $stmt->execute();
             error_log("Resultado de actualización de miembro ID $id: " . ($resultado ? "éxito" : "fallido"));
             return $resultado;
         } catch (\PDOException $e) {
@@ -470,6 +454,38 @@ class Miembro extends Model {
         } catch (\PDOException $e) {
             error_log("Error al guardar datos de carrera bíblica: " . $e->getMessage());
             return false;
+        }
+    }
+
+    /**
+     * Verifica si un ID de miembro existe en la base de datos
+     */
+    public function existeId($id)
+    {
+        try {
+            $id = (int)$id;
+            $sql = "SELECT COUNT(*) FROM {$this->table} WHERE id = ?";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$id]);
+            return (int)$stmt->fetchColumn() > 0;
+        } catch (\PDOException $e) {
+            error_log("Error al verificar ID: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Obtiene una lista simplificada de todos los miembros (ID, nombres, apellidos)
+     * @return array Lista de miembros
+     */
+    public static function obtenerTodosSimple() {
+        try {
+            $db = \Database::getInstance()->getConnection();
+            $stmt = $db->query("SELECT id, nombres, apellidos FROM informaciongeneral ORDER BY nombres, apellidos");
+            return $stmt->fetchAll();
+        } catch (\Exception $e) {
+            error_log("Error al obtener lista simple de miembros: " . $e->getMessage());
+            return [];
         }
     }
 }

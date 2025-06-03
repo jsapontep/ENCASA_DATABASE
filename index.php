@@ -4,6 +4,22 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
+// Captura todos los errores de PHP para asegurar respuestas JSON correctas
+set_error_handler(function($errno, $errstr, $errfile, $errline) {
+    // Si es una solicitud AJAX, devolver JSON
+    if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && 
+        strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => false,
+            'message' => "Error PHP: $errstr en $errfile:$errline"
+        ]);
+        exit;
+    }
+    // De lo contrario, usar el manejador de errores predeterminado
+    return false;
+});
+
 // Definir constantes del sistema
 define('BASE_PATH', __DIR__);
 define('APP_PATH', BASE_PATH . '/app');
@@ -58,6 +74,26 @@ require_once CONFIG_PATH . '/config.php';
 require_once CONFIG_PATH . '/database.php';
 require_once CONFIG_PATH . '/autoload.php';
 require_once CONFIG_PATH . '/mail_autoload.php';
+
+// Manejador de excepciones no capturadas
+set_exception_handler(function($exception) {
+    // Si es una solicitud AJAX, devolver JSON
+    if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && 
+        strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => false,
+            'message' => 'Error en el servidor: ' . $exception->getMessage()
+        ]);
+        exit;
+    }
+    // De lo contrario, mostrar página de error
+    echo '<pre>';
+    echo 'Error: ' . $exception->getMessage();
+    echo '<br>En archivo: ' . $exception->getFile() . ' línea: ' . $exception->getLine();
+    echo '</pre>';
+    die();
+});
 
 // Cargar y ejecutar el router
 $router = require_once CONFIG_PATH . '/routes.php';

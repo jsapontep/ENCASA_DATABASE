@@ -86,3 +86,15 @@ if (!function_exists('asset')) {
 if (!defined('APP_URL')) {
     define('APP_URL', url());
 }
+
+// Nueva implementación de la función url
+function url($path = '') {
+    $base_url = 'http://localhost/ENCASA_DATABASE/';
+    
+    // Si la ruta comienza con 'uploads/', ajustarla para incluir 'public/'
+    if (strpos($path, 'uploads/') === 0) {
+        $path = 'public/' . $path;
+    }
+    
+    return $base_url . $path;
+}

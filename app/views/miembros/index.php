@@ -38,6 +38,13 @@
         </div>
     </div>
     
+    <!-- Añadir esta sección en algún lugar visible -->
+    <?php if (!empty($mensajeIDs)): ?>
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i> <?= htmlspecialchars($mensajeIDs) ?>
+        </div>
+    <?php endif; ?>
+    
     <div class="card shadow">
         <div class="card-body">
             <?php if (empty($miembros)): ?>

@@ -55,4 +55,8 @@ $router->setNotFound(function() {
     include VIEW_PATH . '/errors/404.php';
 });
 
+// Rutas para guardar/actualizar por tabla individual
+$router->post('miembros/guardar/tabla/{tabla}', 'Miembros', 'guardarTabla');
+$router->post('miembros/actualizar/{id}/tabla/{tabla}', 'Miembros', 'actualizarTabla');
+
 return $router;

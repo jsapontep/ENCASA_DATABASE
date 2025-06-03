@@ -106,7 +106,7 @@ $stages = [
     ],
     4 => [
         'name' => 'Modelos Base y CRUD de Miembros',
-        'progress' => 60,
+        'progress' => 75, // Aumentado de 60 a 75
         'status' => 'in-progress',
         'start_date' => '2025-05-22',
         'end_date' => '2025-05-31',
@@ -123,21 +123,23 @@ $stages = [
             ],
             [
                 'name' => 'Controladores CRUD',
-                'progress' => 65,
+                'progress' => 80, // Aumentado de 65 a 80
                 'status' => 'in-progress',
                 'tasks' => [
                     ['name' => 'Implementar visualización de perfil de miembro', 'status' => 'completed'],
                     ['name' => 'Implementar creación/edición de miembros', 'status' => 'in-progress'],
                     ['name' => 'Implementar listado y filtrado de miembros', 'status' => 'in-progress'],
+                    ['name' => 'Sistema dinámico de datos educativos por país', 'status' => 'completed'], // Nueva tarea completada
                 ]
             ],
             [
                 'name' => 'Vistas y Formularios',
-                'progress' => 40,
+                'progress' => 60, // Aumentado de 40 a 60
                 'status' => 'in-progress',
                 'tasks' => [
                     ['name' => 'Implementar vistas para gestión de miembros', 'status' => 'in-progress'],
                     ['name' => 'Crear formularios de edición', 'status' => 'in-progress'],
+                    ['name' => 'Formulario dinámico de datos educativos', 'status' => 'completed'], // Nueva tarea completada
                     ['name' => 'Implementar procesamiento de imágenes/fotos', 'status' => 'pending'],
                 ]
             ]
@@ -598,13 +600,13 @@ function getStatusIcon($status) {
             
                     <!-- Logros destacados -->
                     <div class="highlight-box">
-                        <h3>Logros destacados (30/05/2025)</h3>
+                        <h3>Logros destacados (02/06/2025)</h3>
                         <ul style="margin-top: 10px; opacity: 0.9; padding-left: 20px;">
+                            <li>✅ Implementado sistema dinámico de datos educativos por país</li>
+                            <li>✅ Creadas tablas para instituciones educativas y profesiones</li>
+                            <li>✅ Formularios interactivos para selección de instituciones y carreras</li>
+                            <li>✅ API para gestión de datos educativos implementada</li>
                             <li>✅ Solución implementada para problemas con ngrok y túneles</li>
-                            <li>✅ Resuelto el error de "formularios no seguros" en el entorno de ngrok</li>
-                            <li>✅ Mejorada la función url() para detectar automáticamente el entorno</li>
-                            <li>✅ Implementada detección de entorno en index.php</li>
-                            <li>✅ Optimizada la configuración de sesiones para evitar redirecciones infinitas</li>
                         </ul>
                     </div>
             
@@ -654,5 +656,4 @@ function getStatusIcon($status) {
                     </footer>
                 </div>
             </body>
-            </html>             
-                            
+            </html>

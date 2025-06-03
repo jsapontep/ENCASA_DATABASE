@@ -82,11 +82,13 @@ if (!isset($miembro) || !is_array($miembro)) {
                     <!-- Foto del miembro -->
                     <div class="card">
                         <div class="card-body text-center">
-                            <?php if(!empty($miembro['foto'])): ?>
-                                <!-- DEBUG: Mostrar la ruta de la imagen -->
-                                <?php $imagen_url = url('uploads/miembros/'.$miembro['foto']); ?>
-                                <p class="text-muted small">Ruta: <?= htmlspecialchars($imagen_url) ?></p>
-                                <img src="<?= $imagen_url ?>" class="img-fluid rounded" alt="Foto de perfil" onerror="this.onerror=null; this.src=''; this.alt='Error al cargar imagen'; this.style.display='none'; alert('Error al cargar imagen: ' + this.src);">
+                            <?php if(!empty($miembro['foto'])): 
+                                $imagen_url = url('public/uploads/miembros/'.$miembro['foto']);
+                                $ruta_fisica = __DIR__ . '/../../../public/uploads/miembros/'.$miembro['foto'];
+                                $existe_archivo = file_exists($ruta_fisica);
+                            ?>
+                                <!-- Eliminar toda la información de depuración y mantener solo la imagen -->
+                                <img src="<?= $imagen_url ?>" class="img-fluid rounded" alt="Foto de perfil">
                             <?php else: ?>
                                 <div class="p-5 bg-light rounded text-center">
                                     <i class="fas fa-user fa-4x text-secondary"></i>

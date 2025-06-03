@@ -16,6 +16,9 @@ $carrera = $esEdicion ? ($miembro['carrerabiblica'] ?? []) : [];
 <div class="container mt-4">
     <h1><?= $titulo ?></h1>
     
+    <!-- Área para mensajes -->
+    <div id="mensajes-area"></div>
+    
     <form action="<?= url($esEdicion ? 'miembros/actualizar/'.$miembro['id'] : 'miembros/guardar') ?>" method="POST" enctype="multipart/form-data" id="formMiembro">
         <!-- ID oculto para edición -->
         <?php if($esEdicion): ?>
@@ -66,13 +69,44 @@ $carrera = $esEdicion ? ($miembro['carrerabiblica'] ?? []) : [];
             <?php include 'partial/carrera.php'; ?>
         </div>
 
+        <!-- Campos ocultos para fechas de modificación -->
+        <input type="hidden" name="fecha_modificacion" value="<?php echo date('Y-m-d H:i:s'); ?>">
+        <!-- Cambiar nombre del campo para coincidir con la columna de la BD -->
+        <input type="hidden" name="fecha_registro_sistema" value="<?php echo date('Y-m-d H:i:s'); ?>">
+
+        <!-- Botones de acción generales -->
         <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
             <button type="submit" class="btn btn-primary btn-lg">
-                <i class="fas fa-save me-1"></i> <?= $esEdicion ? 'Actualizar' : 'Registrar' ?> Miembro
+                <i class="fas fa-save me-1"></i> <?= $esEdicion ? 'Actualizar' : 'Registrar' ?> Miembro Completo
             </button>
             <a href="<?= url('miembros') ?>" class="btn btn-secondary btn-lg">
                 <i class="fas fa-times me-1"></i> Cancelar
             </a>
+        </div>
+        
+        <!-- Botones de prueba para cada tabla -->
+        <div class="mt-4 mb-3">
+            <h5>Herramientas de prueba (guardar tabla por tabla):</h5>
+            <div class="d-flex flex-wrap gap-2">
+                <button type="button" class="btn btn-outline-primary btn-probar-tabla" data-tabla="miembro">
+                    <i class="fas fa-user me-1"></i> Probar Información General
+                </button>
+                <button type="button" class="btn btn-outline-primary btn-probar-tabla" data-tabla="contacto">
+                    <i class="fas fa-address-book me-1"></i> Probar Contacto
+                </button>
+                <button type="button" class="btn btn-outline-primary btn-probar-tabla" data-tabla="estudiostrabajo">
+                    <i class="fas fa-graduation-cap me-1"></i> Probar Estudios/Trabajo
+                </button>
+                <button type="button" class="btn btn-outline-primary btn-probar-tabla" data-tabla="tallas">
+                    <i class="fas fa-tshirt me-1"></i> Probar Tallas
+                </button>
+                <button type="button" class="btn btn-outline-primary btn-probar-tabla" data-tabla="saludemergencias">
+                    <i class="fas fa-heartbeat me-1"></i> Probar Salud
+                </button>
+                <button type="button" class="btn btn-outline-primary btn-probar-tabla" data-tabla="carrerabiblica">
+                    <i class="fas fa-pray me-1"></i> Probar Carrera Bíblica
+                </button>
+            </div>
         </div>
     </form>
 </div>
@@ -82,3 +116,4 @@ $carrera = $esEdicion ? ($miembro['carrerabiblica'] ?? []) : [];
 <script src="<?= url('assets/js/miembros/geo-data.js') ?>"></script>
 <script src="<?= url('assets/js/miembros/form-handlers.js') ?>"></script>
 <script src="<?= url('assets/js/formulario-estudios.js') ?>"></script>
+<script src="<?= url('assets/js/tabla-por-tabla.js') ?>"></script>

@@ -20,18 +20,17 @@ class Database {
     
     private function __construct() {
         try {
-            // Conexión básica a MySQL sin usar variables de entorno
+            // Usar las constantes en vez de valores hardcodeados
             $this->connection = new PDO(
-                "mysql:host=localhost;dbname=IglesiaEnCasa;charset=utf8", 
-                "root",  // Usuario por defecto de XAMPP 
-                ""       // Contraseña por defecto (vacía)
+                "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8", 
+                DB_USER,
+                DB_PASS
             );
             $this->connection->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $this->connection->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
         } catch (PDOException $e) {
-            // Registrar error
             file_put_contents(__DIR__ . '/../../db_error.log', date('Y-m-d H:i:s') . ' - ' . $e->getMessage() . "\n", FILE_APPEND);
-            throw new Exception("Error en la conexión a la base de datos");
+            throw new Exception("Error en la conexión a la base de datos: " . $e->getMessage());
         }
     }
     

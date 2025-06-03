@@ -2,3 +2,6 @@
 [2025-06-02 06:58:46] [INFO] [App\Helpers\Logger::info] Código de verificación enviado a rafa.gzfr@gmail.com
 [2025-06-02 07:04:15] [INFO] [App\Helpers\Logger::info] Código de verificación enviado a rafa.gzfr@gmail.com
 [2025-06-02 07:32:24] [INFO] [App\Helpers\Logger::info] Código de verificación enviado a rafa.gzfr@gmail.com
+[2025-06-02 12:25:51] [ERROR] [App\Helpers\Logger::error] Error al enviar correo de verificación: SMTP Error: Could not authenticate. SMTP server error: Called QUIT without being connected
+[2025-06-02 12:27:29] [INFO] [App\Helpers\Logger::info] Código de verificación enviado a Javaponte@gmail.com
+[2025-06-02 13:43:42] [INFO] [App\Helpers\Logger::info] Código de verificación enviado a rafa.gzfr@gmail.com
